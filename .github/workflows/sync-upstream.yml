@@ -23,7 +23,7 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Fast-forward from upstream
+      - name: Safely merge upstream
         shell: bash
         run: |
           set -euo pipefail
@@ -33,14 +33,9 @@ jobs:
           git remote add upstream https://github.com/T8mars/T8-penguin-canvas.git
           git fetch --no-tags upstream main
 
-          if git diff --quiet HEAD upstream/main; then
-            echo "Already synchronized at $(git rev-parse --short HEAD)."
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Upstream is already included at $(git rev-parse --short HEAD)."
             exit 0
-          fi
-
-          if ! git merge-base --is-ancestor HEAD upstream/main; then
-            echo "Refusing to synchronize divergent history." >&2
-            exit 1
           fi
 
           protected_changes="$(git diff --name-only HEAD..upstream/main -- \
@@ -52,5 +47,11 @@ jobs:
             exit 1
           fi
 
-          git merge --ff-only upstream/main
+          if ! git merge --no-commit --no-ff upstream/main; then
+            git merge --abort || true
+            echo "Refusing to synchronize because the merge has conflicts." >&2
+            exit 1
+          fi
+
+          git commit --no-edit
           git push origin HEAD:main
