@@ -1,0 +1,56 @@
+name: Sync upstream
+
+on:
+  schedule:
+    # 03:30 Asia/Shanghai (UTC+8).
+    - cron: "30 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fast-forward from upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/T8mars/T8-penguin-canvas.git
+          git fetch --no-tags upstream main
+
+          if git diff --quiet HEAD upstream/main; then
+            echo "Already synchronized at $(git rev-parse --short HEAD)."
+            exit 0
+          fi
+
+          if ! git merge-base --is-ancestor HEAD upstream/main; then
+            echo "Refusing to synchronize divergent history." >&2
+            exit 1
+          fi
+
+          protected_changes="$(git diff --name-only HEAD..upstream/main -- \
+            tools/ffmpeg-runtime/ffmpeg.exe \
+            tools/remove-ai-watermarks-runtime/README.md)"
+          if [[ -n "$protected_changes" ]]; then
+            echo "Refusing to update protected files:" >&2
+            printf '%s\n' "$protected_changes" >&2
+            exit 1
+          fi
+
+          git merge --ff-only upstream/main
+          git push origin HEAD:main
