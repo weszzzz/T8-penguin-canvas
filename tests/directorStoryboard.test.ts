@@ -496,8 +496,8 @@ test('director storyboard binds seedance.nz provider to shot and bridge payloads
 
 test('director storyboard UI exposes automatic, seedance.nz and legacy built-in sources', () => {
   const node = read('../src/components/nodes/DirectorStoryboardNode.tsx');
-  assert.match(node, /主力 API（自动：优先国内平价工坊）/);
-  assert.match(node, /贞贞的平价AI工坊（国内） · api\.seedance\.nz/);
+  assert.match(node, /主力 API（自动：优先平价AI小屋）/);
+  assert.match(node, /贞贞的平价AI小屋 · api\.seedance\.nz/);
   assert.match(node, /贞贞的AI工坊（海外） · ai\.t8star\.org/);
   assert.match(node, /taskProvider: submittedProvider/);
 });
@@ -726,7 +726,7 @@ test('director storyboard bridge generation is per-pair and refresh can recover 
   assert.match(node, /filter\(\(\[, result\]\) => result\?\.taskId && !result\.videoUrl\)/);
   assert.match(node, /patchBridge\(bridgeIdFromJob, \{[\s\S]*status: 'success',[\s\S]*videoUrl: query\.videoUrl/);
   assert.match(node, /reporter\?\.providerRequest\(baseTrace\)[\s\S]*reporter\?\.providerPolling\([\s\S]*reporter\?\.providerResponse/);
-  assert.match(node, /submitSeedance\(job\.payload\)[\s\S]*reporter\?\.providerSubmitted\([\s\S]*reporter\?\.providerPolling\(pollingTrace\)/);
+  assert.match(node, /submitSeedance\(job\.payload,\s*\{[\s\S]*submissionKey:\s*reporter\?\.providerSubmissionKey[\s\S]*\}\)[\s\S]*reporter\?\.providerSubmitted\([\s\S]*reporter\?\.providerPolling\(pollingTrace\)/);
   assert.match(node, /catch \(error: any\) \{[\s\S]*reporter\?\.providerResponse\(\{[\s\S]*status: signal\?\.aborted \? 'cancelled' : 'failed'/);
   assert.match(node, /runDirectorStoryboardJobs\(plan, \(job, signal\) => pollJob\(job, signal, reporter\)/);
   assert.match(node, /throw new Error\(message\)/);
