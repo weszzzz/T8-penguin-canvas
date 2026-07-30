@@ -4,13 +4,15 @@
 
 ## 当前权威开发路径
 
-- 用户已明确决定恢复简单工作流：`E:\PenguinPravite\T8-penguin-canvas` 是唯一默认开发目录，当前分支为 `codex/vibex-workbench-node`。后续代码修改、开发运行、测试与本地提交都直接在这里进行。
+- 当前宿主的权威路径先读 `PROJECT-RUNBOOK.md`，不得把另一操作系统的绝对路径套到本机。
+- macOS 当前仓库为 `/Users/wes/Documents/T8-penguin-canvas`。`main` 只用于读取、拉取和检查，不启动开发服务；代码修改或开发启动前必须按用户要求进入非 release 的 `codex/*` 分支，并让 `npm run worktree:development` 通过。
+- Windows 路径 `E:\PenguinPravite\T8-penguin-canvas` 只在 Windows 宿主上作为默认开发目录；其历史集成事实继续保留，不代表 macOS 任务应切换到该路径。
 - merge commit 的第一父提交是 core checkpoint `4e3061094014b5dc2720d52ed178a62e8469a9d3`，第二父提交是 release/F2 checkpoint `e0c6679b5a22539dd5b4983165ecc3f9d5c790e1`。
 - `E:\PenguinPravite\T8-penguin-canvas` 的 `codex/vibex-workbench-node` 已无损采用双父语义 merge commit `68b5f72526a7272cc9787f6fda8b27a6f2fb54c8` 及后续修复；F2 与 core 的代码已经统一。
 - `E:\PenguinPravite\T8-penguin-canvas-dev-integration-f2-core-20260720` 只保留为已完成集成的历史参考，不再作为必需开发入口，也不要在两个目录同时修改同一功能。
 - `E:\PenguinPravite\T8-penguin-canvas-release-2.5.7` 继续冻结，不得在任何 release 命名路径开发。
 - release/F2 的旧 `T8_ALLOW_LEGACY_F2_WORKTREE=1` 例外已随 HEAD 从 `9b6f6a4...` 移动到 checkpoint 而永久失效；这只用于继续阻止在旧 release 目录开发，不限制 canonical core。
-- canonical core 的 `npm run worktree:core` 与 `npm run worktree:development` 都必须通过；`T8-penguin-canvas-dev-*` 仍可在特殊隔离任务中使用，但不是默认要求。release 路径必须拒绝 development。
+- `npm run worktree:check` 在所有宿主都必须通过。`npm run worktree:development` 只在实际代码开发前要求通过；它在 `main` 和 release 路径失败是保护机制，不得绕过。`T8-penguin-canvas-dev-*` 仍可在特殊隔离任务中使用，但不是默认要求。
 
 ## 永久保护
 
@@ -37,7 +39,7 @@
 ## 防止再次跑错目录
 
 - 新功能开始前先执行 `npm run worktree:check` 与 `npm run worktree:development`，并记录绝对路径、branch、HEAD、common dir。
-- 默认 development 目录就是 `E:\PenguinPravite\T8-penguin-canvas`；`T8-penguin-canvas-dev-*` 仅在用户明确需要隔离任务时使用，release 目录只用于发布。
+- 默认目录按当前宿主的 `PROJECT-RUNBOOK.md` 选择；`T8-penguin-canvas-dev-*` 仅在用户明确需要隔离任务时使用，release 目录只用于发布。
 - 不通过复制目录同步代码，也不在 core 与历史 integration 目录同时修改同一功能。
 - `predev`、`predev:vite`、`predev:backend`、`preelectron:dev` 必须保留 worktree role 门，新增开发入口也必须接入同一门。
 - 任一保护文件漂移、未知 staged/unmerged、目录角色不符或外部证据缺失时，必须失败关闭并停止扩大结论。
