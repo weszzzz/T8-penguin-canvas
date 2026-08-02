@@ -14,16 +14,17 @@
     "coverageReceiptCompiler": "tools/zcanvas-cli/src/capabilityCoverage.cjs"
   },
   "sourceDigests": {
-    "creativeCapabilityManifest": "862cf87d748e9be79d2859bdb3d31845274b8912eb8169995be6071f98473796",
+    "creativeCapabilityManifest": "36908537be76c1b8bfcecbe1fec079d8a335e6d7d03f470ecd562f823658e0f5",
     "canvasNodeSchema": "c594306f7a1efc8124a25d83c3294ea7fe87c0718e4305a282a3f10f8896e0e7",
-    "canvasNodeSchemaFile": "21806d0f5bee2ebe845f943dc6718293f6f57ff5cfcb57a341d285c21a7707a5",
-    "runtimeCatalogSources": "8d07f381b1c1d4ed2c759dddc79bbe8c65e5f2f047c052ac0adc3b77d16233fa",
-    "runtimeCatalogArtifact": "b9e3c05fed55928194cf51830109840d1f5904b4c2a37dda4ad443bdf0ca4265",
+    "canvasNodeSchemaFile": "330bd64abf3de1d183f61dee477670ef72192052a2d516e22805511e6bdc93d1",
+    "runtimeCatalogSources": "bb999a55796a6ea1091d08699c99c65a4c375d86ab5009fc25051a813cf4a6f6",
+    "runtimeCatalogArtifact": "cf3f7c0ae16832dddc06249c36a167c4f48c1b8d138b4605d3d115ab7636461f",
     "handlerBindings": "7f689a24a0d9afd39cb2788f5ecdcbdcbc6446adc357bc36373d1ab2461cd4bd",
-    "capabilityGraphCompiler": "05a050818efca904418de7dbd02ac151480295ce1dd98956f740874c615bbede",
-    "coverageReceiptCompiler": "b562109fae3df266c20198b0c079b61330b2f663be78319be9104ef2c3457961"
+    "capabilityGraphCompiler": "1a611d7e91dcf523e0536a92e9adb6ba2d884689a65fa10274bcda3a05ef9840",
+    "coverageReceiptCompiler": "68c02167cb5317107edd346223a5e5999168e447bacbb977ff8e9678e6753fe7",
+    "canonicalTextDigestCompiler": "b0afcf28a257fbbd8f391edc117348f8f2ede1b4a039ae91bce25a8d563ac0cf"
   },
-  "aggregateDigest": "700d67055fca7b461929ceb74407abcbeb9989ad5c1c65fc85685cac3e51894d",
+  "aggregateDigest": "c25377b7aeeaa6731dfc6f6254f2495a9dd02e9d5f21eb25caf56651760c879d",
   "principles": {
     "oneSentenceStart": true,
     "directCanvasMutation": false,
@@ -47,17 +48,17 @@
     "accountedNodes": 70,
     "unexplainedNodes": 0,
     "fullyOperableNodes": 14,
-    "runtimeEntries": 197,
+    "runtimeEntries": 200,
     "runtimeByKind": {
       "llm": 29,
       "image": 28,
-      "video": 85,
+      "video": 88,
       "audio": 8,
       "actions": 47
     },
     "runtimeByProvider": {
       "grok-oauth": 2,
-      "seedance-nz": 140,
+      "seedance-nz": 143,
       "zhenzhen": 48,
       "fal": 7
     },
@@ -6016,7 +6017,7 @@
   ],
   "runtime": {
     "schema": "t8-creative-runtime-catalog-v1",
-    "sourceDigest": "8d07f381b1c1d4ed2c759dddc79bbe8c65e5f2f047c052ac0adc3b77d16233fa",
+    "sourceDigest": "bb999a55796a6ea1091d08699c99c65a4c375d86ab5009fc25051a813cf4a6f6",
     "platforms": [
       {
         "id": "zhenzhen",
@@ -8587,6 +8588,66 @@
         }
       },
       {
+        "id": "video:seedance-nz:hailuo-h3-i2v",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "hailuo-h3-i2v",
+        "label": "hailuo-h3-i2v（H3 首尾帧图生视频）",
+        "family": "hailuo-2.3",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:seedance-nz:hailuo-h3-multi",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "hailuo-h3-multi",
+        "label": "hailuo-h3-multi（H3 多模态参考）",
+        "family": "hailuo-2.3",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:seedance-nz:hailuo-h3-t2v",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "hailuo-h3-t2v",
+        "label": "hailuo-h3-t2v（H3 文生视频）",
+        "family": "hailuo-2.3",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
         "id": "video:seedance-nz:happyhorse-1.1-i2v",
         "kind": "video",
         "provider": "seedance-nz",
@@ -10356,6 +10417,9 @@
       "video:seedance-nz:hailuo-2.3-i2v-standard",
       "video:seedance-nz:hailuo-2.3-t2v-pro",
       "video:seedance-nz:hailuo-2.3-t2v-standard",
+      "video:seedance-nz:hailuo-h3-i2v",
+      "video:seedance-nz:hailuo-h3-multi",
+      "video:seedance-nz:hailuo-h3-t2v",
       "video:seedance-nz:happyhorse-1.1-i2v",
       "video:seedance-nz:happyhorse-1.1-r2v",
       "video:seedance-nz:happyhorse-1.1-t2v",
@@ -10433,11 +10497,11 @@
   "coverageReceipt": {
     "schema": "t8-creative-capability-coverage-receipt-v1",
     "sourceDigests": {
-      "capabilityManifest": "862cf87d748e9be79d2859bdb3d31845274b8912eb8169995be6071f98473796",
+      "capabilityManifest": "36908537be76c1b8bfcecbe1fec079d8a335e6d7d03f470ecd562f823658e0f5",
       "nodeSchema": "c594306f7a1efc8124a25d83c3294ea7fe87c0718e4305a282a3f10f8896e0e7",
-      "runtimeCatalog": "8d07f381b1c1d4ed2c759dddc79bbe8c65e5f2f047c052ac0adc3b77d16233fa",
+      "runtimeCatalog": "bb999a55796a6ea1091d08699c99c65a4c375d86ab5009fc25051a813cf4a6f6",
       "handlerBindings": "7f689a24a0d9afd39cb2788f5ecdcbdcbc6446adc357bc36373d1ab2461cd4bd",
-      "receiptCompiler": "b562109fae3df266c20198b0c079b61330b2f663be78319be9104ef2c3457961"
+      "receiptCompiler": "68c02167cb5317107edd346223a5e5999168e447bacbb977ff8e9678e6753fe7"
     },
     "inventory": {
       "nodes": {
@@ -10448,7 +10512,7 @@
       "runtime": {
         "llm": 29,
         "image": 28,
-        "video": 85,
+        "video": 88,
         "audio": 8,
         "actions": 47
       },
@@ -10464,6 +10528,6 @@
       "missingCompatibilityEdges": []
     },
     "complete": true,
-    "digest": "8f986fd3617053c1a7d7cc9713ff1f6c0a509b4941f74553053e6124aefef425"
+    "digest": "bc1ea248d55c90c53ddc7dcd9c56d22a02a36b8d520a20ea9546547273200edf"
   }
 }

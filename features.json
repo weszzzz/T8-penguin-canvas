@@ -1,20 +1,226 @@
 {
   "$schema": "本文件为 T8-penguin-canvas 节点清单防丢失锁,任何节点删减都需要在 roadmap.md 中说明并更新本文件。",
-  "version": "2.7.0",
-  "lastUpdated": "2026-07-30-v2.7.0-release-candidate",
+  "version": "2.7.5",
+  "lastUpdated": "2026-08-02-v2.7.5-released",
   "release": {
-    "status": "release-candidate-authorized-evidence-deferred",
-    "version": "2.7.0",
-    "date": "2026-07-30",
-    "tag": "v2.7.0",
-    "latest": false,
+    "status": "released-v2.7.5",
+    "version": "2.7.5",
+    "date": "2026-08-02",
+    "publishedAt": "2026-08-01T17:56:31Z",
+    "tag": "v2.7.5",
+    "latest": true,
+    "sourceCommit": "0d22644f9f751c11cf1dec2dc50b76e57c13b52d",
+    "url": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v2.7.5",
+    "artifacts": {
+      "installer": {
+        "name": "T8-PenguinCanvas-Setup-2.7.5.exe",
+        "size": 1304690274,
+        "sha256": "d1cfb27a09a6de0b4586fcf963be21bc75a339d2bab7082cd4762cd0a4f07350"
+      },
+      "blockmap": {
+        "name": "T8-PenguinCanvas-Setup-2.7.5.exe.blockmap",
+        "size": 1359819,
+        "sha256": "10f6a59e141052b799d7bb4c5fb04da217ee5d6943326e498d3fa1314094790e"
+      },
+      "updateManifest": {
+        "name": "latest.yml",
+        "size": 362,
+        "sha256": "7c693bc95ae94b1757f21bffec0f5b125d2177ebabf534ff9ca84dafc99ea2c8"
+      }
+    },
     "verification": [
-      "用户已明确授权发布 v2.7.0，并授权先发布、后补真实 Provider、协作多端与安装升级证据；延期不将尚未执行的证据标记为通过。",
-      "Electron/NSIS 正式安装包只允许构建一次，使用 BelowNormal 优先级和受限逻辑核心；正式资产、Tag、Latest 与哈希在发布后回填。"
+      "v2.7.5 Tag 与 Release target 已固定到唯一正式 Electron/NSIS 安装包对应源码 0d22644f9f751c11cf1dec2dc50b76e57c13b52d；Release 已公开且为 GitHub Latest。",
+      "上游素材物理化、RunningHub、Canvas Hook 顺序、操作栏缩放、系统网络与代理安全日志等发布范围聚焦回归 147/147，协作发布门 4/4 通过；TypeScript、公开发布面、RH 工具箱和能力目录检查通过。",
+      "Electron/Vite/加密/运行时/原生模块/NSIS 正式流程只实际打包一次；安装包、blockmap 与 latest.yml 已通过 post-build、provenance、sealed recovery、GitHub digest/size 元数据、发布前完整远端回下载、最终 Latest 与 recovery 清理核验。",
+      "用户已明确授权先发布、后补真实 Provider、协作多端与安装升级证据；延期不将尚未执行的证据标记为通过。"
+    ]
+  },
+  "versionSequencePolicy": {
+    "status": "active",
+    "date": "2026-07-30",
+    "currentVersion": "2.7.5",
+    "rules": [
+      "版本号每一段只使用 0-9；v2.6.9 的下一正式版本固定为 v2.7.0。",
+      "禁止创建、打包、推送、打 tag、发布或写入自动更新元数据为 v2.6.10。",
+      "v2.7.1 的下一正式版本固定为 v2.7.2。",
+      "v2.7.2 的下一正式版本固定为 v2.7.3。",
+      "v2.7.3 的下一正式版本固定为 v2.7.4。",
+      "v2.7.4 的下一正式版本固定为 v2.7.5。",
+      "后续改版本前必须同步核对 package.json、package-lock.json、README、features.json、项目 SKILL.md、Release notes、自动更新元数据和 Git tag。"
+    ]
+  },
+  "mediaCompatibilityCanvasStabilityV275": {
+    "status": "released-v2.7.5",
+    "date": "2026-08-02",
+    "releaseIncluded": true,
+    "highlights": [
+      "资源库 /api/resources/file/*、素材集与项目资产 /api/project-assets/*/media 统一在 LLM、图像、视频、音频和 RunningHub 提交前解析为受控物理文件；相对 URL 与本机 loopback 绝对 URL 使用同一路径，保留原始名称和 MIME 提示。",
+      "媒体兼容恢复到生成优先原则：有效文件魔数可以纠正 CDN 的错误 MIME 子类型或扩展名；未知新编码可按可信声明 MIME、文件名或消费节点需要的媒体种类落盘，不再因元数据漂移误杀真实素材。",
+      "安全边界继续拒绝 HTML/JSON 错误页、ZIP/归档、空或超限内容、跨媒体种类伪装、不可信远程目标和任意磁盘路径；受控 input/output/thumbnails、资源库和项目资产之外的本地路径不会被读取。",
+      "RunningHub 普通节点和 RH 工具箱共享全部 T8 受控媒体引用识别与物理上传；WebApp 站点显示跟随 app-info 实际解析站点，RH 超市管理弹窗通过 document portal 避免被悬浮 RUN 控件遮挡。",
+      "CanvasInner 的 Creator Context hook 固定在空画布早返回之前，消除生产版 React #310；选中节点 RUN/STOP/关闭操作栏使用 ReactFlow viewport zoom 同比缩放并保持节点右上锚定。"
+    ],
+    "verification": [
+      "nodeActionBarZoom、canvasInteraction、resourceLibraryUpstreamMedia、runningHubSiteRouting、系统网络、可信 Provider 输出与 proxyLogRedactionB3 等发布范围聚焦回归 147/147 通过，协作发布门 4/4 通过。",
+      "TypeScript、公开发布面、RH 工具箱、能力目录和固定提交上的唯一一次 Electron/NSIS 正式流程通过；三项资产已完成远端完整回下载与 Latest 核验。",
+      "真实 Provider、协作多端与安装升级证据按用户授权后补，不会在执行前标记为通过。"
+    ]
+  },
+  "electronSystemNetworkBridgeAndTrustedOutputRecovery": {
+    "status": "released-v2.7.4",
+    "date": "2026-08-01",
+    "releaseIncluded": true,
+    "highlights": [
+      "Electron 正式端普通 HTTP(S) Provider 请求统一优先使用 Chromium 系统网络栈，自动跟随 Windows 系统代理、TUN、VPN、IPv4/IPv6 与证书环境；健康请求不刷新代理或 DNS。",
+      "连接失败时刷新 Chromium 代理配置和主机解析缓存：只读 GET 可自动重试一次，POST/PUT 等写请求只刷新下一次连接而不自动重放，避免重复生成和重复扣费。",
+      "已完成任务的可信 Provider 状态与素材下载优先沿系统网络桥接，并保留重定向敏感头剥离、响应大小上限、回环/内网拒绝、TUN RFC2544 Fake-IP、NAT64 与 DNS 固定回退等安全边界。",
+      "LLM/Vision、图像、视频、音频、RunningHub、Seedance 与其他共享 Provider/远程素材入口复用同一兼容层，不再只修单一图像节点。"
+    ],
+    "verification": [
+      "systemFetchBridge、trustedProviderOutputFetch、safeRemoteMediaFetch、proxyLogRedaction 与 Seedance Provider 聚焦回归全部通过。",
+      "系统网络桥接与资源库入画布合并测试共 121/121 通过；唯一一次正式 Electron/NSIS 打包、post-build、provenance、三资产上传及完整远端回下载验证通过。",
+      "安全边界回归覆盖跨域重定向、敏感头剥离、大小限制、回环拒绝、TUN Fake-IP、NAT64、系统网络失败后 DNS 固定回退及部分流清理。"
+    ]
+  },
+  "resourceLibraryCanvasIngressAndUpstreamMediaFixV2": {
+    "status": "released-v2.7.4",
+    "date": "2026-08-01",
+    "releaseIncluded": true,
+    "highlights": [
+      "资源库加号、飞机发送与 Ctrl 拖拽到空白画布现在会创建对应图像、视频或音频上传节点，不再因点击画布而只关闭资源库却没有目标素材。",
+      "Chromium 指针事件链补齐 pointermove、pointerup 与 pointercancel，兼容 pointerdown 阻止默认行为后不再触发 mouse 事件的触控板与浏览器环境，同时保留鼠标回退。",
+      "入画布素材保留原始文件名、MIME、字节数和资源引用；下游节点按真实媒体类型及原始扩展名接收，避免无扩展 URL 被误判或 Content-Type 与文件魔数子类型不一致。"
+    ],
+    "verification": [
+      "resourceLibraryUpstreamMedia 与资源库拖放/发送聚焦回归通过，覆盖图片、视频、音频、空白画布落点、已有节点引用和下游素材序列化。",
+      "与系统网络、可信输出、Seedance 媒体等发布范围合并测试共 121/121 通过。",
+      "不会放宽非媒体文件、跨类型伪装或不可信远程 URL；真实文件魔数仍为最终格式依据。"
+    ]
+  },
+  "hailuoH3VideoModels": {
+    "status": "released-v2.7.3-live-provider-verified",
+    "date": "2026-07-31",
+    "releaseIncluded": true,
+    "platform": "贞贞的平价AI小屋",
+    "models": [
+      "hailuo-h3-t2v",
+      "hailuo-h3-i2v",
+      "hailuo-h3-multi"
+    ],
+    "highlights": [
+      "视频节点 Hailuo TAB 在独立贞贞的平价AI小屋来源下新增 Hailuo H3 文生视频、首尾帧图生视频和图片/视频/音频多模态参考视频，原 Hailuo 2.3 与其他视频来源保持不变。",
+      "严格按官方 H3 合同固定 2K、5~15 秒：t2v 只使用提示词和画幅；i2v 使用 1 张首帧并可选第 2 张尾帧且不提交画幅；multi 要求提示词并支持最多 9 张图片、3 个 MP4 视频和 3 个 MP3/WAV 音频。",
+      "三个模式分别校验提示词、素材数量、MIME、文件大小和参数边界，参考素材先上传到平价AI小屋再提交；完成结果继续沿现有安全下载与本地持久化链路写回画布。",
+      "新增 hailuo-h3-t2v、hailuo-h3-i2v、hailuo-h3-multi 三份可导入工作流模板，明确保存 source、model、5 秒和 2K 等关键字段，不保存 API Key、任务 ID、签名 URL 或 Provider 原始响应。"
+    ],
+    "verification": [
+      "官方 docs/llms.txt 与 ComfyUI_Seedance 的 H3 节点、前端动态输入及三份示例工作流已逐项交叉核对。",
+      "Provider、前端、路由、来源隔离、模型默认值和工作流导入定向回归 71/71 通过；能力目录同步为 31 项公开动作、200 项运行时条目和 70/70 节点覆盖。",
+      "用户于 2026-07-31 明确授权付费测试后，hailuo-h3-t2v 与 hailuo-h3-multi 均被平台接受、到达完成终态、下载为本地 MP4 并通过 ftyp 文件头校验。",
+      "hailuo-h3-t2v 实证文件为 3839300 bytes、SHA-256 cb2bcf0d21052645fbb04dc835a8811895b3ac8ec47a2d3a45ae66a3f8f3cb34；hailuo-h3-multi 实证文件为 1238037 bytes、SHA-256 6f9cd855703ebdba8b3311018058006fa06290eb8f4726f09e5c8b3d9f834bff。",
+      "用户随后明确授权继续验证 hailuo-h3-i2v；本次续测首次提交即被平台接受，之后只轮询同一任务至成功终态，没有重复提交已接受任务。结果下载为 1007194 bytes 的本地 MP4，SHA-256 a6698f437ed69cf63b7fdbb5963a877b35c5e738c3f78305b1191d99a0aecd2f，并同时通过 ftyp 文件头与 bundled FFmpeg 单线程容器读取校验。",
+      "hailuo-h3-t2v、hailuo-h3-i2v、hailuo-h3-multi 三个模型现均具有真实平台接受、完成终态、本地下载和媒体校验证据；任务标识、签名 URL、API Key 与 Provider 原始响应未写入项目记录。",
+      "三模型与资源库上游素材修复已进入 v2.7.3 正式 Electron 自动更新版；不可移动 Tag、GitHub Latest Release 和三项远端资产已完成元数据与完整字节回下载核验。"
+    ]
+  },
+  "resourceLibraryUpstreamMediaFix": {
+    "status": "released-v2.7.3",
+    "date": "2026-07-31",
+    "releaseIncluded": true,
+    "highlights": [
+      "修复从资源库拖入图像、视频或音频作为图像、视频、音频等生成节点上游素材时，资源 URL 没有文件扩展名导致 Provider 上传被错误按图片校验或误判为不存在的问题。",
+      "资源库拖拽现在保留原始文件名、MIME 和字节数提示；后端从持久化资源记录恢复原始名称与本地文件类型，并继续以真实文件魔数作为最终可信格式依据。",
+      "共享平价AI小屋上传链路统一接受经过边界、大小和魔数验证的图像、视频、音频资源；图像专用入口仍保持图像限定，非媒体文件和跨类型伪装继续拒绝。",
+      "音频节点从资源库接收无扩展名 URL 时会结合原文件名和响应 MIME 恢复 mp3、wav、m4a、ogg、flac、aac 或 wma 扩展名，不再默认误传为 mp3。"
+    ],
+    "verification": [
+      "resourceLibraryUpstreamMedia、mediaResolver、imageReferencePersistence、resourceLibraryDrawer 定向回归 18/18 通过。",
+      "TypeScript type-check、proxy/mediaResolver/seedanceNz Node 语法检查和定向 diff-check 已通过。",
+      "真实文件仍在 Provider 上传边界做 image/video/audio 魔数校验；资源库数据库声明只作为提示，不覆盖真实文件类型。",
+      "该修复已进入 v2.7.3 正式 Electron 自动更新版；GitHub Release 为 Latest，安装包、blockmap 与 latest.yml 已通过远端完整回下载核验。"
+    ]
+  },
+  "runningHubTextOutputTerminalFix": {
+    "status": "released-v2.7.2",
+    "date": "2026-07-31",
+    "releaseIncluded": true,
+    "highlights": [
+      "修复 RunningHub AI 应用返回 txt 文本产物时被误当作图像/视频/音频做魔数校验、从而永久停留在 MATERIALIZING 并无限轮询的问题。",
+      "RunningHub 查询公共终态现在按 fileType、MIME 与签名 URL 扩展名识别 txt、Markdown、JSON 和 CSV；文本以有界安全下载读取、统一 UTF-8 持久化，并与媒体产物一起在同一次 SUCCESS 响应返回。",
+      "普通 RunningHub 节点、RH AI 应用节点和 RH 工具箱统一接收 texts/textUrls，并写入 outputText、text、texts 与 textSegments，文本可以继续沿画布连线传给下游节点。"
+    ],
+    "verification": [
+      "使用用户指定 WebApp 2082878851868348418 完成真实调用：实际上游返回 txt + flac，3 秒间隔轮询仅经历 RUNNING → SUCCESS，MATERIALIZING 为 0 次，最终返回 1 个本地 flac、1 段文本和 1 个本地 txt。",
+      "对同一真实 taskId 再次查询仍为 SUCCESS，媒体地址和文本内容保持稳定一致，没有重新提交任务。",
+      "RunningHub 文本、站点与 RH 工具箱定向回归 32/32 通过；TypeScript type-check、Node 语法与 diff-check 已通过开发轮验证，修复 checkpoint 与 v2.7.1 发布基线语义合并完成。",
+      "该修复已进入 v2.7.2 正式 Electron 自动更新版；Release 为非草稿、非预发布并已成为 Latest，三项远端资产通过完整字节回下载核验。"
+    ]
+  },
+  "providerSystemNetworkCompatibilityCorrection": {
+    "status": "released-v2.7.1",
+    "date": "2026-07-31",
+    "releaseIncluded": true,
+    "highlights": [
+      "纠正 v2.7.0 Provider 恢复层的共同回归：默认工坊、LLM/Vision、图像、视频、音频、RunningHub 与其他统一代理请求恢复为首选运行时系统网络，不再在第一次请求时强制覆盖为自建 Undici dispatcher。",
+      "首次系统网络失败后才启用禁用连接复用的全新系统 DNS 连接；需要重放的写请求必须携带相同 Idempotency-Key，旧调用没有稳定提交标识时不会自动重发，避免重复生成和扣费。",
+      "贞贞的平价AI小屋独立 Provider 同步采用系统网络优先、官方根证书连接回退；公共 DNS 仅保留为已存在任务的只读最终回退，不用于绕过当前代理/TUN 提交生成。",
+      "已完成任务若在状态 JSON 或结果响应体读取阶段超时，会继续使用原 taskId 查询和转存，不再把 100% 下载、响应体停顿或网络切换误报为生成失败。"
+    ],
+    "verification": [
+      "统一 proxy 安全、LLM、图像、视频、音频、RunningHub、下载与任务恢复完整回归 34/34 通过；Electron Node ABI 下系统网络优先、LLM SSE 与完成任务响应恢复定向回归 3/3 通过。",
+      "平价AI小屋模型、上传、提交、轮询、TLS、响应边界与本地素材回归 53/53 通过；Provider trace 与提交上下文回归 10/10 通过。",
+      "本轮未调用真实付费 Provider，未声称覆盖尚未复现的外部用户网络；未执行 build、Electron 打包、提交、推送、tag 或 Release。"
+    ]
+  },
+  "creatorAgentRecommendationPublicationAndStageConfirmation": {
+    "status": "released-v2.7.1",
+    "date": "2026-07-30",
+    "releaseIncluded": true,
+    "highlights": [
+      "Creator Agent 的三个推荐项只在最新 assistant.response.completed 所携带的 SuggestionSet 摘要与当前会话版本完全一致后展示；思考、流式回复、请求提交和阶段确认期间不会提前显示上一轮建议。",
+      "阶段确认继续精确绑定当前 SuggestionSet、plan、回复正文、创作工件、决策文档和能力合同；只忽略画布自动保存、选区变化和实时素材摘要对已完成创作稿确认造成的无关漂移。",
+      "普通画布操作建议仍会在 canvas revision、选区或素材变化后严格过期；确认按钮只有在当前完成回复提供 confirmCurrentStage 建议时出现。"
+    ],
+    "verification": [
+      "Creator Agent Session、Route、UI 与建议不变量聚焦回归 116/116 通过；独立 UI 建议合同回归 47/47 通过。",
+      "回归覆盖画布 revision 12→13 后确认创意并进入 script 成功，同时普通旧建议在相同漂移下仍返回 CREATOR_SUGGESTION_STALE。",
+      "npm run type-check、npm run feature-sync:check、npm run worktree:check、Node 语法和 diff-check 通过；未执行 build、Electron 打包、提交、推送、tag 或 Release。"
+    ]
+  },
+  "imageAndStoryDefaultModelCorrection": {
+    "status": "released-v2.7.1",
+    "date": "2026-07-30",
+    "releaseIncluded": true,
+    "highlights": [
+      "普通图像/编辑节点以及 Story 切换到贞贞 AI 工坊（海外）时，默认模型统一为 gpt-image-2。",
+      "Story 的贞贞的平价AI小屋补齐并默认使用 zhenzhen-image-g-v2-lowprice，模型白名单、平台识别、API Key 提示、2K 单图提交和异步轮询保持同一来源。",
+      "旧画布已保存的 gpt-image-2-all、G-2 和其他有效模型继续原样保留，不强制迁移或改变已存在工作流。"
+    ],
+    "verification": [
+      "模型映射与 Story 定向回归 31/31 通过，TypeScript type-check 通过。",
+      "本轮未调用真实付费 Provider，未执行 build、Electron 打包、提交、推送、tag 或 Release。"
+    ]
+  },
+  "creatorAgentSingleDecisionStages": {
+    "status": "released-v2.7.1",
+    "date": "2026-07-30",
+    "releaseIncluded": true,
+    "schema": "t8-creator-decision-document-v1",
+    "highlights": [
+      "Creator Agent 每轮只公开一个当前待完善决策，并且只给同一决策的三个选项；用户也可以直接自由补充或改写，不再一次抛出整阶段问题清单。",
+      "当前决策、已确认答案、文档版本、摘要和未来决策保存在版本化决策文档中；未来问题不会提前显示，主回复不再出现“本阶段待确认”。",
+      "每个阶段完成全部细分决策后才出现一次显式阶段确认；确认后按 idea → script → assets → shots → candidates → delivery 逐步推进，故事、电商、图像、视频、音频与混合创作共用同一状态机。",
+      "确认并发送到画布时只采用已持久化、摘要匹配且非空的权威创作工件正文；Text 节点不会再因展示文案、空 prompt 或陈旧版本而生成空白内容。",
+      "候选采用和 QC 已从视频专用链扩展到图像、音频与文本：不同媒体使用各自真实结果类型、时长、分辨率、文件与 Run 关联门槛，不用视频条件阻断其他创作。"
+    ],
+    "verification": [
+      "Creator Agent 决策、语言运行时、会话、路由、UI 与 Agent Control 联合回归 181/181 通过；新增图像真实候选绑定、评审、采用及 9 项持久化 QC 回归。",
+      "npm run type-check、npm run feature-sync:check 与 npm run build 通过；能力目录同步为 31 项公开动作、197 项运行时条目和 70/70 节点覆盖。",
+      "本轮未调用真实付费 Provider、未应用生产画布 CanvasPatch、未运行生产节点，也未执行 Electron 打包、提交、推送、tag 或 Release。"
     ]
   },
   "releaseV270CreatorAgentGroundingAndProviderRecovery": {
-    "status": "release-candidate-v2.7.0",
+    "status": "released-v2.7.0",
     "date": "2026-07-30",
     "releaseIncluded": true,
     "highlights": [
@@ -28,7 +234,8 @@
     "verification": [
       "Creator Agent 在线模型、附件落地、建议不变量、工具提案、会话恢复与 UI 合同由源码测试覆盖；Provider、TUN Fake-IP、IPv6 回退、完成任务恢复和安全转存由定向回归覆盖。",
       "公开文件边界保持不变：本地 SKILL.md、roadmap.md、用户数据、缓存、测试凭据和受保护 FFmpeg/运行时文件不会进入公开提交。",
-      "用户明确授权先发布、后补真实 Provider、协作多端与安装升级证据；正式 Electron 构建、自动更新资产和 GitHub Release 结果将在单次发布流程完成后回填。"
+      "v2.7.0 已完成 Electron/NSIS、自动更新资产、GitHub Tag 与 Latest Release 发布；安装包、blockmap 和 latest.yml 的本地摘要、远端 digest/size 与完整回下载字节均一致。",
+      "用户明确授权先发布、后补真实 Provider、协作多端与安装升级证据；延期不将尚未执行的证据标记为通过。"
     ]
   },
   "releaseV269CreatorAgentAndProviderStability": {
@@ -6126,11 +6333,11 @@
       "T8_ENABLE_LOCAL_PRIVATE": "开发环境和普通本机构建可选；0=关闭本机 local-private/extensions 私有扩展。正式 dist:release 固定为 1，不能被父环境降级。GitHub/clean clone 因为没有 local-private 目录，不包含充值实现。",
       "T8_DISABLE_LOCAL_EXTENSIONS": "开发环境可选；1=关闭本地扩展。正式 dist:release 固定为 0，确保本机私有 sidecar 参与加密打包与后置校验。"
     },
-    "version": "2.6.3",
-    "semverVersion": "2.6.3",
+    "version": "2.7.5",
+    "semverVersion": "2.7.5",
     "versionNumberPolicy": "T8 版本号仍采用 x.y.z 三段，但每一段只允许 0-9；任一段到 9 后下一次发布必须向左进位，禁止任一段出现两位数字。例：1.9.9 的下一版必须是 2.0.0。",
-    "versionNote": "v1.3.0 起统一采用三段阶段号 x.y.z；当前正式发布版为 v2.6.3，聚焦画布复制与并行执行回归、自定义并联循环、即梦 CLI 1.4.14、GPT Image 2 参数和视频当前帧截图。公开源码继续排除本地私有计费/支付/充值/分组令牌实现。",
-    "installer": "v2.6.3 Electron 自动更新版已正式发布并成为 GitHub Latest；固定 source/tag、三项自动更新资产、摘要、全量远端回读与隔离冷启动均已记录。用户授权的一次性证据延期不改变 F8-F10 未完成状态。",
+    "versionNote": "v1.3.0 起统一采用三段阶段号 x.y.z；当前发布候选为 v2.7.5，聚焦受控素材物理化、兼容真实媒体元数据漂移、RunningHub 上传/弹窗，以及 Canvas Hook 与操作栏缩放稳定性。公开源码继续排除本地私有计费/支付/充值/分组令牌实现。",
+    "installer": "v2.7.5 已获授权进入唯一一次 Electron/NSIS 正式发布流程；固定 source/tag、三项自动更新资产、摘要和完整远端回下载事实将在流程成功后回写。用户授权的一次性证据延期不改变未完成证据状态。",
     "updaterInstallMode": "自动更新下载完成后不得静默安装：main.cjs 必须设置 autoInstallOnAppQuit=false，显式安装调用 quitAndInstall(false,true)；electron/build-resources/installer.nsh 通过 SetSilent normal 让新版 NSIS 安装器即使收到旧客户端传入的 /S 也尽量切回前台安装向导。",
     "installerShortcutPolicy": "安装完成后必须创建桌面和开始菜单快捷方式：package.json build.nsis.createDesktopShortcut 必须为 \"always\"，createStartMenuShortcut 必须为 true；electron/build-resources/installer.nsh 必须保留 customInstall 兜底 CreateShortCut \"$newStartMenuLink\" 与 \"$DESKTOP\\${SHORTCUT_NAME}.lnk\"，防止更新安装/keepShortcuts 路径遗漏入口。",
     "updaterEntryPolicy": "顶栏桌面更新入口不得只因 window.t8pc.updater 缺失就静默消失；Electron UA 或 t8pc.getInfo/openExternal 可用时必须显示诊断入口，提示重新安装完整桌面包，Web/纯浏览器环境才隐藏。状态为 not-available 时按钮仍保留“更新”字样，避免用户误以为自动更新入口被删除。",

@@ -5,8 +5,8 @@
     "capabilityManifest": "tools/zcanvas-cli/creativeCapabilityManifest.json",
     "capabilityGraph": "tools/zcanvas-cli/generated/creative-capability-graph.json"
   },
-  "sourceDigest": "862cf87d748e9be79d2859bdb3d31845274b8912eb8169995be6071f98473796",
-  "capabilityGraphDigest": "700d67055fca7b461929ceb74407abcbeb9989ad5c1c65fc85685cac3e51894d",
+  "sourceDigest": "36908537be76c1b8bfcecbe1fec079d8a335e6d7d03f470ecd562f823658e0f5",
+  "capabilityGraphDigest": "c25377b7aeeaa6731dfc6f6254f2495a9dd02e9d5f21eb25caf56651760c879d",
   "counts": {
     "capabilities": 31,
     "agentTools": 31,

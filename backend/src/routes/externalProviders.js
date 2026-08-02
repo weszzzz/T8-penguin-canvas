@@ -11,7 +11,11 @@ const {
   generateVideoWithProvider,
   testProviderConnection,
 } = require('../providers/adapters');
-const { resolveMediaRef } = require('../providers/mediaResolver');
+const {
+  isT8LocalMediaPath,
+  normalizeT8LocalMediaRef,
+  resolveMediaRef,
+} = require('../providers/mediaResolver');
 const { isLoopbackAddress, safeRemoteMediaFetch } = require('../utils/safeRemoteMediaFetch');
 
 const router = express.Router();
@@ -149,6 +153,7 @@ async function saveOneMediaOutput(url, kind = 'image', options = {}) {
     }
     const remote = await safeRemoteMediaFetch(text, {
       allowedKinds: [kind],
+      trustedProviderOutput: true,
       maxBytes: kind === 'video' ? 1024 * 1024 * 1024 : kind === 'audio' ? 256 * 1024 * 1024 : 64 * 1024 * 1024,
       deadlineMs: 5 * 60 * 1000,
       idleTimeoutMs: 30 * 1000,
@@ -273,10 +278,10 @@ function cleanWebText(value, maxLen = 4000) {
 }
 
 function cleanWebImageUrl(value) {
-  const text = String(value || '').trim();
+  const text = normalizeT8LocalMediaRef(value);
   if (!text || text.length > 8 * 1024 * 1024) return '';
   if (/^(https?:\/\/|data:image\/)/i.test(text)) return text;
-  if (text.startsWith('/files/') || text.startsWith('/input/') || text.startsWith('/output/')) return text;
+  if (isT8LocalMediaPath(text)) return text;
   return '';
 }
 
@@ -337,7 +342,7 @@ async function fetchWebImageAsDataUrl(imageUrl, options = {}) {
 }
 
 async function resolveWebImageForVision(imageUrl, options = {}) {
-  const text = String(imageUrl || '').trim();
+  const text = normalizeT8LocalMediaRef(imageUrl);
   if (/^data:image\/[^;,]+;base64,/i.test(text)) return text;
   if (/^https?:\/\//i.test(text)) return fetchWebImageAsDataUrl(text, options);
 
@@ -683,7 +688,7 @@ router.post('/web-image', async (req, res) => {
 
     const remoteImageUrls = Array.isArray(imageResult.imageUrls) ? imageResult.imageUrls : [];
     const savedImages = await saveMediaOutputs('image', remoteImageUrls, {
-      trustedLocalOrigins: trustedLocalOutputOrigins(resolved.provider),
+      trustedLocalOrigins: trustedLocalOutputOrigins(provider),
     });
     const imageUrls = savedImages.urls;
     if (!imageUrls.length) {
@@ -751,7 +756,9 @@ router.post('/video', async (req, res) => {
     });
     if (!result.ok) return resultResponse(res, result, resolved.provider);
     const remoteVideoUrls = Array.isArray(result.videoUrls) ? result.videoUrls : [];
-    const videoUrls = await saveVideoOutputs(remoteVideoUrls);
+    const videoUrls = await saveVideoOutputs(remoteVideoUrls, {
+      trustedLocalOrigins: trustedLocalOutputOrigins(resolved.provider),
+    });
     return resultResponse(res, result, resolved.provider, {
       remoteVideoUrls,
       videoUrls,

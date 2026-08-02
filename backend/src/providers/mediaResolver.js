@@ -12,15 +12,20 @@ const MIME_BY_EXT = {
   '.gif': 'image/gif',
   '.bmp': 'image/bmp',
   '.avif': 'image/avif',
+  '.tif': 'image/tiff',
+  '.tiff': 'image/tiff',
   '.mp4': 'video/mp4',
   '.webm': 'video/webm',
   '.mov': 'video/quicktime',
   '.m4v': 'video/mp4',
+  '.mkv': 'video/x-matroska',
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav',
   '.ogg': 'audio/ogg',
   '.m4a': 'audio/mp4',
   '.flac': 'audio/flac',
+  '.aac': 'audio/aac',
+  '.wma': 'audio/x-ms-wma',
   '.txt': 'text/plain',
   '.json': 'application/json',
 };
@@ -49,12 +54,12 @@ function isRemoteUrl(value) {
 }
 
 function isT8RelativeUrl(value) {
-  return /^\/(?:files|api\/resources|api\/files|input|output)\//.test(String(value || '').trim());
+  return /^\/(?:files|api\/resources|api\/project-assets|api\/files|input|output)\//.test(String(value || '').trim());
 }
 
 function isT8LocalMediaPath(value) {
   const pathname = String(value || '').trim().split(/[?#]/)[0];
-  return /^\/(?:files\/(?:input|output|thumbnails)\/|input\/|output\/|api\/resources\/(?:file|set-file)\/)/.test(pathname);
+  return /^\/(?:files\/(?:input|output|thumbnails)\/|input\/|output\/|api\/resources\/(?:file|set-file)\/|api\/project-assets\/[^/?#]+\/media(?:[/?#]|$))/.test(pathname);
 }
 
 function normalizeT8LocalMediaRef(value, options = {}) {
@@ -136,6 +141,16 @@ function findResourceItem(db, id) {
   return db.items.find((item) => String(item?.id || '') === cleanId) || null;
 }
 
+function resourceEntryMime(entry, filePath) {
+  const pathMime = mimeFromPath(filePath, '');
+  const declaredMime = String(entry?.mime || '').trim().toLowerCase().split(';')[0];
+  // Resource URLs do not carry a file extension. Prefer the persisted file's
+  // extension when it is recognized, because older library rows may contain
+  // an empty/application-octet-stream MIME. Providers still verify the actual
+  // bytes at their upload boundary.
+  return pathMime || declaredMime || 'application/octet-stream';
+}
+
 function resolveResourceLibraryMediaPath(value, options = {}) {
   const text = String(value || '').trim().split(/[?#]/)[0];
   const fileMatch = /^\/api\/resources\/file\/([^/?#]+)/.exec(text);
@@ -152,7 +167,8 @@ function resolveResourceLibraryMediaPath(value, options = {}) {
     const filePath = safeJoinInside(root, item.fileRel);
     return filePath ? {
       path: filePath,
-      mime: item.mime || mimeFromPath(filePath),
+      mime: resourceEntryMime(item, filePath),
+      name: String(item.originalName || item.title || path.basename(filePath)).trim(),
     } : null;
   }
 
@@ -165,14 +181,58 @@ function resolveResourceLibraryMediaPath(value, options = {}) {
   const filePath = safeJoinInside(root, child.fileRel);
   return filePath ? {
     path: filePath,
-    mime: child.mime || mimeFromPath(filePath),
+    mime: resourceEntryMime(child, filePath),
+    name: String(child.name || path.basename(filePath)).trim(),
   } : null;
+}
+
+function resolveProjectAssetMediaPath(value, options = {}) {
+  const text = String(value || '').trim().split(/[?#]/)[0];
+  const match = /^\/api\/project-assets\/([^/?#]+)\/media$/.exec(text);
+  if (!match) return null;
+  try {
+    const { getProjectDatabase } = require('../services/projectDatabase');
+    const { getAssetBlobStore } = require('../services/assetBlobStore');
+    const database = options.projectDatabase || getProjectDatabase(config);
+    const asset = database.getAsset(decodeUrlPathPart(match[1]));
+    if (!asset?.managedPath || !['linked', 'managed'].includes(asset.storageMode)) return null;
+
+    const filename = path.resolve(asset.managedPath);
+    const lexicalStat = fs.lstatSync(filename);
+    if (lexicalStat.isSymbolicLink() || !lexicalStat.isFile()) return null;
+    const realFilename = fs.realpathSync.native(filename);
+
+    if (asset.storageMode === 'managed') {
+      const blobStore = options.blobStore || getAssetBlobStore(config);
+      let allowed = blobStore.isBlobPath(realFilename);
+      if (!allowed) {
+        const managedRoots = [config.INPUT_DIR, config.OUTPUT_DIR]
+          .map((root) => {
+            try { return fs.realpathSync.native(path.resolve(root)); } catch (_) { return null; }
+          })
+          .filter(Boolean);
+        allowed = managedRoots.some((root) => (
+          realFilename === root || realFilename.startsWith(`${root}${path.sep}`)
+        ));
+      }
+      if (!allowed) return null;
+    }
+
+    return {
+      path: realFilename,
+      mime: String(asset.mimeType || '').trim() || mimeFromPath(realFilename),
+      name: String(asset.filename || path.basename(realFilename)).trim(),
+    };
+  } catch {
+    return null;
+  }
 }
 
 function resolveT8LocalMediaPath(value, options = {}) {
   const text = normalizeT8LocalMediaRef(value, options).split(/[?#]/)[0];
   const resourcePath = resolveResourceLibraryMediaPath(text, options);
-  if (resourcePath?.path) return resourcePath.path;
+  const projectAssetPath = resolveProjectAssetMediaPath(text, options);
+  if (resourcePath?.path || projectAssetPath?.path) return resourcePath?.path || projectAssetPath.path;
   const rules = [
     ['/files/input/', config.INPUT_DIR],
     ['/input/', config.INPUT_DIR],
@@ -245,7 +305,8 @@ async function resolveMediaRef(value, options = {}) {
   }
 
   const resourcePath = resolveResourceLibraryMediaPath(text, options);
-  const t8Path = resourcePath?.path || resolveT8LocalMediaPath(text, options);
+  const projectAssetPath = resolveProjectAssetMediaPath(text, options);
+  const t8Path = resourcePath?.path || projectAssetPath?.path || resolveT8LocalMediaPath(text, options);
   const localPath = t8Path || resolveDirectLocalPath(text);
 
   if (target === 'local-path') {
@@ -254,7 +315,8 @@ async function resolveMediaRef(value, options = {}) {
         kind: 'local-path',
         source: text,
         path: localPath,
-        mime: resourcePath?.mime || mimeFromPath(localPath),
+        mime: resourcePath?.mime || projectAssetPath?.mime || mimeFromPath(localPath),
+        name: resourcePath?.name || projectAssetPath?.name || path.basename(localPath),
       };
     }
     throw new Error(`无法解析本地媒体路径：${text.slice(0, 160)}`);
@@ -292,6 +354,7 @@ async function resolveMediaRef(value, options = {}) {
       source: text,
       path: localPath,
       mime: mimeFromPath(localPath),
+      name: path.basename(localPath),
     };
   }
 
@@ -305,6 +368,7 @@ module.exports = {
   mimeFromPath,
   normalizeT8LocalMediaRef,
   resolveMediaRef,
+  resolveProjectAssetMediaPath,
   resolveResourceLibraryMediaPath,
   resolveT8LocalMediaPath,
 };

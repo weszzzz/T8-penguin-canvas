@@ -7,6 +7,16 @@ description: Create, change, remove, extend, remake, compare, continue, recover,
 
 Turn creative intent into an editable production plan, then use `zcanvas` as the only business control surface.
 
+## Current release baseline
+
+- The current released desktop and automatic-update baseline is `v2.7.5`: <https://github.com/T8mars/T8-penguin-canvas/releases/tag/v2.7.5>. It is published, non-prerelease, and GitHub Latest.
+- Its immutable `v2.7.5` release Tag and Release target are fixed to packaged-source commit `0d22644f9f751c11cf1dec2dc50b76e57c13b52d`. Later metadata-only commits on `main` must not move that Tag.
+- Treat T8-managed `/api/resources/file/<id>`, `/api/resources/set-file/<id>`, and `/api/project-assets/<id>/media` references as Provider-upload media that must be resolved to their controlled physical file before LLM, image, video, audio, or RunningHub submission. Preserve the original name and MIME as hints while validated bytes remain authoritative.
+- Prefer generation continuity for valid media: a positive media signature may correct stale CDN MIME or filename metadata, while a genuinely unknown codec may fall back to the declared media kind required by the consuming node. Continue rejecting HTML/JSON error bodies, archives, empty/oversized content, cross-kind input, untrusted remote destinations, and arbitrary disk paths.
+- Keep every `CanvasInner` hook before any conditional return, mount RH management modals in the document portal above ReactFlow controls, and scale the selected-node action bar with the same viewport zoom as its node.
+- The authorized v2.7.5 flow produced exactly one actual Electron/NSIS artifact set. Installer `T8-PenguinCanvas-Setup-2.7.5.exe` is 1,304,690,274 bytes with SHA-256 `d1cfb27a09a6de0b4586fcf963be21bc75a339d2bab7082cd4762cd0a4f07350`; its blockmap is 1,359,819 bytes with SHA-256 `10f6a59e141052b799d7bb4c5fb04da217ee5d6943326e498d3fa1314094790e`; `latest.yml` is 362 bytes with SHA-256 `7c693bc95ae94b1757f21bffec0f5b125d2177ebabf534ff9ca84dafc99ea2c8`. Post-build, provenance, sealed recovery, GitHub digest/size metadata, full remote re-download, final Latest verification, and recovery cleanup passed.
+- Multi-device collaboration, installed-upgrade, and live Provider evidence remains explicitly deferred by the owner and must never be reported as passed before it exists.
+
 ## Optimize for the creator
 
 - Treat one natural-language sentence as the mandatory default entry. Start planning immediately; never require the creator to learn a command, node type, provider, model ID, protocol, or UUID first.
@@ -24,7 +34,7 @@ Turn creative intent into an editable production plan, then use `zcanvas` as the
 3. Inspect the live app, project, canvas revision, node schema, existing assets, locks, and run evidence before proposing changes.
 4. Generate an editable plan before any write, upload, generation, replacement, deletion, or browser submission.
 5. Preserve locked and accepted results. Regeneration creates candidates; it does not silently overwrite the accepted version.
-6. Treat a provider task as complete only after its result is downloaded, validated, persisted, and linked to the intended run and asset.
+6. Treat a provider task as complete only after its result is downloaded, validated, persisted, and linked to the intended run and asset. Preserve the runtime's native system proxy/TUN/VPN/IPv6 path for the first Provider request; connection recovery may use a fresh bounded connection only after failure. A write may be replayed only with the same stable submission identity and replayable body. A completed asynchronous task is recovered by querying and persisting that same task, never by submitting a replacement that could duplicate work or billing.
 7. Keep credentials opaque. Only report configured/not configured; never request or reveal API keys, cookies, passwords, tokens, signed URLs, or browser profile data.
 8. Treat Canvas Patch apply/revert evidence as authoritative only when the persisted Patch ledger confirms the exact project, canvas, actor, patch ID, status, and revision. Never infer a revision or mark an Agent plan applied from UI state alone; do not offer exact revert after a real Run has been linked.
 9. Treat the desktop Codex connection indicator as a non-secret receipt only. It may show active-session counts, approved scope labels, pending confirmation count, and expiry, but never a token, pairing secret, code, session ID, client identity, local path, or private canvas content. A copied one-sentence onboarding prompt starts planning only; the trusted desktop verification code and explicit scope approval remain mandatory before any authority is granted.

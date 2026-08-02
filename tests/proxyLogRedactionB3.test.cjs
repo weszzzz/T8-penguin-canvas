@@ -55,7 +55,7 @@ async function startProxyApp() {
   return listen(app);
 }
 
-async function requestJson(server, pathname, body) {
+async function requestJson(server, pathname, body, extraHeaders = {}) {
   const payload = Buffer.from(JSON.stringify(body ?? {}));
   return new Promise((resolve, reject) => {
     const req = http.request({
@@ -66,6 +66,7 @@ async function requestJson(server, pathname, body) {
       headers: {
         'content-type': 'application/json',
         'content-length': payload.length,
+        ...extraHeaders,
       },
     }, (res) => {
       const chunks = [];
@@ -142,6 +143,40 @@ async function withProxyFixture(run) {
     fs.rmSync(root, { recursive: true, force: true });
   }
 }
+
+test('B3 mounted canvas image references trust valid magic over a stale filename subtype', async () => {
+  await withProxyFixture(async ({ inputDir }) => {
+    const jpeg = await sharp({
+      create: {
+        width: 8,
+        height: 4,
+        channels: 3,
+        background: { r: 170, g: 15, b: 35 },
+      },
+    }).jpeg().toBuffer();
+    const misleadingName = 'reference-card.png';
+    fs.writeFileSync(path.join(inputDir, misleadingName), jpeg);
+
+    const references = [
+      `/files/input/${misleadingName}`,
+      `http://127.0.0.1:${config.PORT}/files/input/${misleadingName}`,
+      `http://127.0.0.1:11422/files/input/${misleadingName}`,
+    ];
+    for (const reference of references) {
+      const converted = await proxyRouter._test.refToBuffer(reference);
+      assert.ok(converted);
+      assert.equal(converted.mime, 'image/jpeg');
+      assert.equal(converted.ext, 'jpg');
+      assert.deepEqual(converted.buf, jpeg);
+    }
+
+    fs.writeFileSync(path.join(inputDir, 'not-an-image.png'), Buffer.from('<html>not media</html>'));
+    await assert.rejects(
+      () => proxyRouter._test.refToBuffer('/files/input/not-an-image.png'),
+      /HTML\/JSON|不是媒体文件/,
+    );
+  });
+});
 
 function captureConsoleErrors() {
   const messages = [];
@@ -277,7 +312,7 @@ test('B3 Provider fetch deadline covers DNS, connect, TLS, and response headers'
   }
 });
 
-test('B3 Provider requests use fresh TUN connections and replay writes only with one stable idempotency key', async () => {
+test('B3 Provider requests preserve native system networking first and replay writes only with one stable idempotency key', async () => {
   const originalFetch = global.fetch;
   let calls = 0;
   const readDispatchers = [];
@@ -300,11 +335,16 @@ test('B3 Provider requests use fresh TUN connections and replay writes only with
     );
     assert.equal(recovered.status, 200);
     assert.equal(calls, 2, 'read-only Provider queries may retry once after refreshing the connection pool');
+    assert.equal(
+      readDispatchers[0],
+      undefined,
+      'the primary Provider request must preserve the runtime/system network path used by v2.5.3',
+    );
     assert.notEqual(readDispatchers[0], readDispatchers[1]);
     assert.equal(
       readDispatchers[1],
-      proxyRouter._test.currentProviderDispatcher(true),
-      'the recovery query must use the independent public-DNS dispatcher',
+      proxyRouter._test.currentProviderDispatcher(false),
+      'the recovery query must use a fresh system-DNS connection without bypassing the active proxy/TUN path',
     );
 
     calls = 0;
@@ -687,8 +727,14 @@ test('B3 RunningHub upload route enforces encoded traversal, symlink, max-byte, 
     assert.equal(path.dirname(outside), path.dirname(outputDir));
     const originalFetch = global.fetch;
     let providerFetches = 0;
-    global.fetch = async () => {
+    const providerUploads = [];
+    global.fetch = async (_url, options = {}) => {
       providerFetches += 1;
+      const file = options.body?.get?.('file');
+      providerUploads.push({
+        name: String(file?.name || ''),
+        type: String(file?.type || ''),
+      });
       return new Response(JSON.stringify({ code: 0, data: { fileName: 'safe-upload.png', fileType: 'image/png' } }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -754,24 +800,27 @@ test('B3 RunningHub upload route enforces encoded traversal, symlink, max-byte, 
       assert.doesNotMatch(badMagic.text, /magic-secret/);
       assert.equal(providerFetches, 0);
 
-      fs.writeFileSync(path.join(outputDir, 'jpeg-disguised-as-png.png'), Buffer.from([
-        0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46,
-        0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
-        0xff, 0xd9,
-      ]));
-      const subtypeSpoof = await requestJson(appServer, '/api/proxy/runninghub/upload-asset', {
+      const disguisedJpeg = await sharp({
+        create: { width: 2, height: 1, channels: 3, background: { r: 180, g: 20, b: 40 } },
+      }).jpeg().toBuffer();
+      fs.writeFileSync(path.join(outputDir, 'jpeg-disguised-as-png.png'), disguisedJpeg);
+      const subtypeDrift = await requestJson(appServer, '/api/proxy/runninghub/upload-asset', {
         url: '/files/output/jpeg-disguised-as-png.png',
         site: 'cn',
       });
-      assert.equal(subtypeSpoof.status, 400, subtypeSpoof.text);
-      assert.equal(providerFetches, 0);
+      assert.equal(subtypeDrift.status, 200, subtypeDrift.text);
+      assert.equal(providerFetches, 1);
+      assert.deepEqual(providerUploads[0], {
+        name: 'jpeg-disguised-as-png.jpg',
+        type: 'image/jpeg',
+      });
 
       const overlongUrl = await requestJson(appServer, '/api/proxy/runninghub/upload-asset', {
         url: `https://example.invalid/${'x'.repeat(16_384)}`,
         site: 'cn',
       });
       assert.equal(overlongUrl.status, 400, overlongUrl.text);
-      assert.equal(providerFetches, 0);
+      assert.equal(providerFetches, 1);
 
       const safeFile = path.join(outputDir, 'safe.png');
       const safePng = await sharp({
@@ -787,7 +836,11 @@ test('B3 RunningHub upload route enforces encoded traversal, symlink, max-byte, 
       });
       assert.equal(safe.status, 200, safe.text);
       assert.equal(safe.data.data.fileName, 'safe-upload.png');
-      assert.equal(providerFetches, 1);
+      assert.equal(providerFetches, 2);
+      assert.deepEqual(providerUploads[1], {
+        name: 'safe.png',
+        type: 'image/png',
+      });
     } finally {
       global.fetch = originalFetch;
     }
@@ -1204,7 +1257,7 @@ test('B3 RunningHub output filenames come only from verified media magic and sta
   assert.match(serverSource, /mountUserMediaStatic\('\/files\/output'/);
 });
 
-test('B3 RH media validation trusts verified magic for same-kind subtype drift and still rejects unsafe mismatches', () => {
+test('B3 media validation accepts stale MIME and unknown codecs while rejecting clear non-media or cross-kind input', () => {
   const png = Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     Buffer.alloc(16),
@@ -1257,36 +1310,68 @@ test('B3 RH media validation trusts verified magic for same-kind subtype drift a
       {
         allowedKinds: fixture.allowedKinds,
         maxBytes: 1024,
-        allowSameKindSubtypeMismatch: true,
       },
     );
     assert.equal(verified.detectedMime, fixture.detected);
     assert.equal(verified.contentType, fixture.detected);
+    assert.equal(verified.mediaKind, fixture.allowedKinds[0]);
     assert.equal(verified.contentTypeMismatch, true);
     assert.equal(proxyRouter._test.verifiedProxyMediaExtension(verified), fixture.extension);
   }
-  assert.throws(
-    () => proxyRouter._test.validateProxyMediaBuffer(png, 'image/jpeg', {
-      allowedKinds: ['image'],
-      maxBytes: 1024,
-    }),
-    /Content-Type.*子类型/,
-    'untrusted input uploads keep exact subtype checking unless a completed output explicitly opts in',
+
+  const staleCrossKindHeader = proxyRouter._test.validateProxyMediaBuffer(png, 'video/mp4', {
+    allowedKinds: ['image', 'video', 'audio'],
+    maxBytes: 1024,
+  });
+  assert.equal(staleCrossKindHeader.mediaKind, 'image');
+  assert.equal(staleCrossKindHeader.contentType, 'image/png');
+  assert.equal(staleCrossKindHeader.contentTypeMismatch, true);
+
+  const unknownImage = proxyRouter._test.validateProxyMediaBuffer(
+    Buffer.from([0x01, 0x02, 0x03, 0x04]),
+    'image/x-new-codec',
+    { allowedKinds: ['image'], maxBytes: 1024 },
   );
+  assert.equal(unknownImage.mediaKind, 'image');
+  assert.equal(unknownImage.contentType, 'image/x-new-codec');
+  assert.equal(proxyRouter._test.verifiedProxyMediaExtension(unknownImage), 'png');
+
+  const unknownMov = proxyRouter._test.validateProxyMediaBuffer(
+    Buffer.from([0x01, 0x02, 0x03, 0x04]),
+    'application/octet-stream',
+    { allowedKinds: ['video'], maxBytes: 1024, sourceName: 'signed-result.mov?token=redacted' },
+  );
+  assert.equal(unknownMov.mediaKind, 'video');
+  assert.equal(unknownMov.contentType, 'video/quicktime');
+  assert.equal(proxyRouter._test.verifiedProxyMediaExtension({ ...unknownMov, finalUrl: 'https://cdn.invalid/signed.mov?x=1' }), 'mov');
+
+  const unknownAudio = proxyRouter._test.validateProxyMediaBuffer(
+    Buffer.from([0x01, 0x02, 0x03, 0x04]),
+    'application/octet-stream',
+    { allowedKinds: ['audio'], maxBytes: 1024 },
+  );
+  assert.equal(unknownAudio.contentType, 'audio/mpeg');
+  assert.equal(proxyRouter._test.verifiedProxyMediaExtension(unknownAudio), 'mp3');
 
   for (const [bytes, declared, allowedKinds] of [
-    [png, 'video/mp4', ['image', 'video', 'audio']],
-    [mp3, 'image/png', ['image', 'video', 'audio']],
-    [quickTime, 'audio/mp4', ['image', 'video', 'audio']],
-    [png, 'text/html', ['image']],
+    [png, 'image/png', ['video']],
     [Buffer.from('<html>not media</html>'), 'image/png', ['image']],
+    [Buffer.from('{"error":"not media"}'), 'video/mp4', ['video']],
     [Buffer.concat([Buffer.from('PK\x03\x04', 'binary'), Buffer.alloc(16)]), 'application/octet-stream', ['image', 'video', 'audio']],
   ]) {
     assert.throws(
       () => proxyRouter._test.validateProxyMediaBuffer(bytes, declared, { allowedKinds, maxBytes: 1024 }),
-      /Content-Type|魔数|归档容器/,
+      /当前节点|HTML\/JSON|归档容器|支持范围/,
     );
   }
+
+  assert.throws(
+    () => proxyRouter._test.validateProxyMediaBuffer(Buffer.alloc(0), 'image/png', {
+      allowedKinds: ['image'],
+      maxBytes: 1024,
+    }),
+    /为空/,
+  );
 });
 
 test('B3 RunningHub materializes mixed image, video, and audio outputs despite same-kind CDN subtype drift', async () => {
@@ -1755,6 +1840,41 @@ test('B3 LLM JSON and SSE paths bound Provider bodies and expose only normalized
       assert.equal(Object.hasOwn(completed.data.data, 'raw'), false);
       assert.doesNotMatch(completed.text, /llm-provider-secret-key|usage-secret|provider-raw-secret/);
 
+      proxyRouter._test.setProxySafeRemoteTestOptions({ providerRetryDelayMs: 1 });
+      let recoveryCalls = 0;
+      const recoveryDispatchers = [];
+      const recoveryKeys = [];
+      global.fetch = async (_url, init = {}) => {
+        recoveryCalls += 1;
+        recoveryDispatchers.push(init.dispatcher);
+        recoveryKeys.push(new Headers(init.headers).get('Idempotency-Key'));
+        if (recoveryCalls === 1) {
+          throw Object.assign(new TypeError('fetch failed'), {
+            cause: Object.assign(new Error('stale route'), { code: 'ECONNRESET' }),
+          });
+        }
+        return new Response(JSON.stringify({
+          id: 'llm-recovered-request',
+          choices: [{ message: { content: 'recovered' }, finish_reason: 'stop' }],
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      };
+      const recovered = await requestJson(
+        appServer,
+        '/api/proxy/llm',
+        requestBody,
+        { 'x-t8-provider-submission': 'llm-node-run-attempt-0001' },
+      );
+      assert.equal(recovered.status, 200, recovered.text);
+      assert.equal(recovered.data.data.requestId, 'llm-recovered-request');
+      assert.equal(recoveryCalls, 2);
+      assert.equal(recoveryDispatchers[0], undefined);
+      assert.ok(recoveryDispatchers[1], 'the retry must use a fresh system-DNS connection');
+      assert.deepEqual(
+        recoveryKeys,
+        ['llm-node-run-attempt-0001', 'llm-node-run-attempt-0001'],
+        'LLM recovery must retain one stable submission identity',
+      );
+
       global.fetch = async () => new Response(
         'data: {"choices":[{"delta":{"content":"stream llm-provider-secret-key"}}],"token":"stream-debug-secret"}\n\n'
           + 'data: {"choices":[{"finish_reason":"stop"}],"provider_debug":"raw-stream-secret"}\n\n'
@@ -1777,6 +1897,43 @@ test('B3 LLM JSON and SSE paths bound Provider bodies and expose only normalized
       const stalled = await requestJson(appServer, '/api/proxy/llm', { ...requestBody, stream: true });
       assert.equal(stalled.status, 504, stalled.text);
       assert.ok(Date.now() - startedAt < 1_000, 'stalled LLM SSE must stop at its idle/deadline budget');
+    } finally {
+      global.fetch = originalFetch;
+      proxyRouter._test.setProxySafeRemoteTestOptions(null);
+    }
+  });
+});
+
+test('B3 completed task response stalls remain recoverable without resubmitting generation', async () => {
+  await withProxyFixture(async ({ appServer }) => {
+    const originalFetch = global.fetch;
+    let calls = 0;
+    proxyRouter._test.setProxySafeRemoteTestOptions({
+      providerDeadlineMs: 120,
+      idleTimeoutMs: 40,
+      providerRetryDelayMs: 1,
+    });
+    global.fetch = async () => {
+      calls += 1;
+      return new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(Buffer.from('{"status":"completed","data":'));
+        },
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    };
+    try {
+      const response = await requestGet(
+        appServer,
+        '/api/proxy/image/status/existing-completed-image-task?model=gpt-image-2',
+      );
+      assert.equal(response.status, 202, response.text);
+      assert.equal(response.data?.code, 'task_result_query_recovering');
+      assert.equal(response.data?.data?.taskId, 'existing-completed-image-task');
+      assert.equal(response.data?.data?.recoverable, true);
+      assert.equal(calls, 1, 'a stalled result body must continue the same query instead of submitting again');
     } finally {
       global.fetch = originalFetch;
       proxyRouter._test.setProxySafeRemoteTestOptions(null);

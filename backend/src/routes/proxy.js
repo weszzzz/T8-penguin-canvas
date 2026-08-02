@@ -20,6 +20,7 @@ const seedanceNz = require('../providers/seedanceNz');
 const {
   isT8LocalMediaPath,
   normalizeT8LocalMediaRef,
+  resolveMediaRef,
 } = require('../providers/mediaResolver');
 const {
   normalizeRhSite,
@@ -101,6 +102,12 @@ const PROXY_MEDIA_REFERENCE_MAX_BYTES = boundedProxyInteger(
   1024 * 1024,
   1024 * 1024 * 1024,
 );
+const RUNNINGHUB_TEXT_OUTPUT_MAX_BYTES = boundedProxyInteger(
+  process.env.T8_RUNNINGHUB_TEXT_OUTPUT_MAX_BYTES,
+  2 * 1024 * 1024,
+  16 * 1024,
+  16 * 1024 * 1024,
+);
 const PROXY_PROVIDER_JSON_MAX_BYTES = boundedProxyInteger(
   process.env.T8_PROXY_PROVIDER_JSON_MAX_BYTES,
   2 * 1024 * 1024,
@@ -126,7 +133,7 @@ const PROXY_REMOTE_IDLE_TIMEOUT_MS = boundedProxyInteger(
 );
 const PROVIDER_CONNECT_TIMEOUT_MS = boundedProxyInteger(
   process.env.T8_PROVIDER_CONNECT_TIMEOUT_MS,
-  3_000,
+  15_000,
   500,
   30_000,
 );
@@ -197,9 +204,11 @@ function providerPublicDnsLookup(
 function createProviderDispatcher(options = {}) {
   const usePublicDns = options.publicDns === true;
   return new UndiciAgent({
-    // A socket opened before a TUN/VPN route switch must never be reused for
-    // the next Provider call. Undici documents pipelining=0 as disabling
-    // keep-alive, so every request resolves and connects against current state.
+    // This dispatcher is a recovery path only. The first request deliberately
+    // uses the runtime's native fetch path (the same behavior as v2.5.3) so
+    // system proxies, transparent TUN routing and platform DNS keep working.
+    // A recovery socket must never reuse a connection opened before a route
+    // switch, therefore keep-alive is disabled here.
     pipelining: 0,
     connectTimeout: Math.min(PROXY_REMOTE_DEADLINE_MS, PROVIDER_CONNECT_TIMEOUT_MS),
     // Let Undici race usable IPv4/IPv6 addresses instead of getting stuck on
@@ -261,25 +270,26 @@ function isProviderNetworkError(error) {
 function providerNetworkFailure(error, label, options = {}) {
   const cause = providerNetworkCause(error);
   const causeCode = String(cause?.code || error?.code || '').trim().toUpperCase();
+  const diagnosticCode = causeCode || 'NETWORK_ERROR';
   const retryAttempted = options.retryAttempted === true;
   let message;
   if (['ENOTFOUND', 'EAI_AGAIN'].includes(causeCode)) {
     message = retryAttempted
-      ? `${label}：应用已用新连接和相同提交标识自动重试，但本机仍无法解析 API 平台域名。原任务不会重复提交，请在 3 秒后重试。`
-      : `${label}：本机当前无法解析 API 平台域名。应用已刷新网络连接；请在 3 秒后重试原节点。`;
+      ? `${label}：系统网络与全新连接仍无法解析 API 平台域名（${diagnosticCode}）。原任务不会重复提交，请在 3 秒后重试。`
+      : `${label}：系统网络暂时无法解析 API 平台域名（${diagnosticCode}）。应用已刷新连接；请在 3 秒后重试原节点。`;
   } else if (/certificate|cert_|self signed|unable to verify|tls|ssl/i.test(`${causeCode} ${cause?.message || ''}`)) {
     message = `${label}：HTTPS 证书校验失败。请检查系统时间、代理证书或安全软件的 HTTPS 扫描。`;
   } else {
     message = retryAttempted
-      ? `${label}：应用已在代理/TUN/VPN 切换后用新连接和相同提交标识自动恢复，但 API 平台仍不可达。原任务不会重复提交，请在 3 秒后重试。`
-      : `${label}：本机到 API 平台的连接中断。应用已刷新连接；请在 3 秒后重试原节点。`;
+      ? `${label}：系统网络与全新连接均未能访问 API 平台（${diagnosticCode}）。原任务不会重复提交，请在 3 秒后重试。`
+      : `${label}：本机到 API 平台的连接中断（${diagnosticCode}）。应用已刷新连接；请在 3 秒后重试原节点。`;
   }
   return providerResponseError(
     'provider_network_unavailable',
     message,
     {
       status: 503,
-      causeCode: causeCode || 'NETWORK_ERROR',
+      causeCode: diagnosticCode,
       recoverable: true,
       retryAfterMs: PROVIDER_NETWORK_RETRY_DELAY_MS,
       retryAttempted,
@@ -362,13 +372,24 @@ async function fetchProviderResponse(url, init = {}, label = 'Provider', options
     });
     try {
       const requestHeaders = providerIdempotencyHeaders(init?.headers, method);
+      const explicitDispatcher = init?.dispatcher;
+      const recoveryDispatcher = explicitDispatcher
+        || (attempt > 0 ? currentProviderDispatcher(false) : null);
+      const requestInit = {
+        ...init,
+        headers: requestHeaders,
+        signal: controller.signal,
+      };
+      // Do not force a custom Undici dispatcher on the primary request.
+      // Packaged Electron installs a fetch bridge before loading the backend,
+      // so this attempt uses Chromium's native networking stack and therefore
+      // the real Windows proxy/PAC/TUN/IPv4/IPv6 configuration. Standalone
+      // development retains Node fetch. The recovery request below deliberately
+      // uses an explicit Undici dispatcher and therefore a fresh Node socket.
+      if (recoveryDispatcher) requestInit.dispatcher = recoveryDispatcher;
+      else delete requestInit.dispatcher;
       const response = await Promise.race([
-        fetch(url, {
-          ...init,
-          headers: requestHeaders,
-          dispatcher: init?.dispatcher || currentProviderDispatcher(attempt > 0),
-          signal: controller.signal,
-        }),
+        fetch(url, requestInit),
         timeoutPromise,
       ]);
       if (response && typeof response === 'object') {
@@ -416,6 +437,7 @@ function isRecoverableTaskResultQueryError(error) {
   const code = String(error?.code || '').trim().toUpperCase();
   return error?.recoverable === true
     || code === 'PROVIDER_NETWORK_UNAVAILABLE'
+    || code === 'PROVIDER_RESPONSE_TIMEOUT'
     || code === 'SEEDANCE_UPSTREAM_UNAVAILABLE'
     || code === 'SEEDANCE_UPSTREAM_TIMEOUT'
     || code === 'SEEDANCE_REQUEST_ABORTED'
@@ -569,28 +591,40 @@ function declaredMediaKind(contentType) {
   return 'unsupported';
 }
 
-function mediaContentTypesCompatible(
-  declaredMime,
-  detectedMime,
-  declaredKind,
-  detectedKind,
-  allowSameKindSubtypeMismatch,
-) {
-  if (!declaredMime || declaredMime === 'application/octet-stream' || declaredMime === 'binary/octet-stream') {
+function proxyMediaKindForMime(contentType) {
+  const kind = declaredMediaKind(contentType);
+  return kind && kind !== 'unsupported' ? kind : null;
+}
+
+function proxyMediaFallbackMime(kind) {
+  if (kind === 'image') return 'image/png';
+  if (kind === 'video') return 'video/mp4';
+  if (kind === 'audio') return 'audio/mpeg';
+  return 'application/octet-stream';
+}
+
+function proxyMediaSourceHint(sourceName) {
+  const clean = String(sourceName || '').split(/[?#]/)[0];
+  const mime = normalizedContentType(mimeTypeForProxyFilename(clean));
+  const kind = proxyMediaKindForMime(mime);
+  return { mime: kind ? mime : '', kind };
+}
+
+function looksLikeProxyNonMediaResponse(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0 || buffer.includes(0)) return false;
+  const sample = buffer.subarray(0, Math.min(buffer.length, 4096)).toString('utf8').replace(/^\uFEFF/, '').trimStart();
+  const lower = sample.toLowerCase();
+  if (/^(?:<!doctype\s+html|<html\b|<head\b|<body\b)/.test(lower)) return true;
+  if (/^(?:error\b|failed\b|failure\b|invalid\b|forbidden\b|unauthorized\b|access denied\b|bad gateway\b|gateway timeout\b|service unavailable\b|upstream\b.*\berror\b|not\s+(?:an?\s+)?(?:image|video|audio|media)\b)/i.test(sample)) {
     return true;
   }
-  if (!detectedMime || declaredMime === detectedMime) return true;
-  // The file signature is authoritative for both the persisted extension and
-  // the media subtype. CDNs and RH workflows frequently serve a genuine media
-  // file with a stale/generic subtype (for example an ISO-BMFF QuickTime file
-  // as video/mp4, or a PNG as image/jpeg). Once both sides independently agree
-  // on the same safe top-level media kind, an exact subtype match adds no
-  // security value and incorrectly rejects valid outputs. Cross-kind
-  // declarations, HTML/JSON, archives and unknown signatures are still denied.
-  return allowSameKindSubtypeMismatch === true
-    && !!declaredKind
-    && declaredKind !== 'unsupported'
-    && declaredKind === detectedKind;
+  if (!sample.startsWith('{') && !sample.startsWith('[')) return false;
+  try {
+    JSON.parse(buffer.toString('utf8'));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function validateProxyMediaBuffer(buffer, contentType, options = {}) {
@@ -601,27 +635,39 @@ function validateProxyMediaBuffer(buffer, contentType, options = {}) {
   const detectedKind = detectProxyMediaKind(buffer);
   const detectedMime = detectProxyMediaMime(buffer);
   if (detectedKind === 'archive') throw new Error('远程素材不能是 ZIP/归档容器');
-  if (!mediaKindAllowed(detectedKind, allowedKinds)) throw new Error('远程素材魔数不是允许的媒体类型');
-  const declaredKind = declaredMediaKind(contentType);
-  if (declaredKind === 'unsupported' || (declaredKind && !mediaKindAllowed(detectedKind, new Set([declaredKind])))) {
-    throw new Error('远程素材 Content-Type 与文件魔数不一致');
-  }
-  if (declaredKind && !allowedKinds.has(declaredKind)) throw new Error('远程素材 Content-Type 不在允许范围内');
+  if (looksLikeProxyNonMediaResponse(buffer)) throw new Error('远程地址返回了 HTML/JSON 错误内容，不是媒体文件');
   const declaredMime = normalizedContentType(contentType);
-  if (!mediaContentTypesCompatible(
-    declaredMime,
-    detectedMime,
-    declaredKind,
-    detectedKind,
-    options.allowSameKindSubtypeMismatch,
-  )) {
-    throw new Error('远程素材 Content-Type 与文件魔数子类型不一致');
+  const sourceHint = proxyMediaSourceHint(options.sourceName);
+
+  // Compatibility-first, matching the v2.5.3 behaviour: a positive signature
+  // corrects stale MIME/filename metadata instead of rejecting readable media.
+  // Unknown legacy/new codecs fall back to MIME, filename, or caller context.
+  if (detectedKind && !mediaKindAllowed(detectedKind, allowedKinds)) {
+    throw new Error('素材实际类型与当前节点需要的媒体类型不一致');
   }
+  let mediaKind = detectedKind;
+  if (mediaKind === 'video-audio') {
+    const hintedKind = [proxyMediaKindForMime(declaredMime), sourceHint.kind]
+      .find((kind) => kind && allowedKinds.has(kind));
+    mediaKind = hintedKind || (allowedKinds.has('video') ? 'video' : 'audio');
+  }
+  if (!mediaKind) {
+    const hintedKind = [proxyMediaKindForMime(declaredMime), sourceHint.kind]
+      .find((kind) => kind && allowedKinds.has(kind));
+    mediaKind = hintedKind || (allowedKinds.size === 1 ? [...allowedKinds][0] : null);
+  }
+  if (!mediaKind && allowedKinds.size > 0) mediaKind = [...allowedKinds][0];
+  if (!mediaKindAllowed(mediaKind, allowedKinds)) throw new Error('素材类型不在当前节点支持范围内');
+  const effectiveMime = detectedMime
+    || (proxyMediaKindForMime(declaredMime) === mediaKind ? declaredMime : '')
+    || (sourceHint.kind === mediaKind ? sourceHint.mime : '')
+    || proxyMediaFallbackMime(mediaKind);
   return {
     detectedKind,
     detectedMime,
     declaredMime,
-    contentType: detectedMime || declaredMime,
+    mediaKind,
+    contentType: effectiveMime,
     contentTypeMismatch: !!declaredMime && !!detectedMime && declaredMime !== detectedMime,
   };
 }
@@ -637,6 +683,7 @@ async function fetchProxyRemoteMedia(url, options = {}) {
   const remote = await safeRemoteMediaFetch(url, proxySafeRemoteOptions({
     maxBytes: maximum,
     deadlineMs,
+    trustedProviderOutput: options.trustedProviderOutput === true,
     idleTimeoutMs,
     maxRedirects: 4,
     accept: options.accept || 'image/*,video/*,audio/*,application/octet-stream;q=0.5',
@@ -645,13 +692,14 @@ async function fetchProxyRemoteMedia(url, options = {}) {
   const verified = validateProxyMediaBuffer(remote.buffer, remote.contentType, {
     allowedKinds: options.allowedKinds,
     maxBytes: maximum,
-    allowSameKindSubtypeMismatch: options.allowSameKindSubtypeMismatch,
+    sourceName: remote.finalUrl || remote.url || url,
   });
   return { ...remote, ...verified };
 }
 
 async function fetchFalPollJson(url, apiKey) {
   return safeRemoteJsonFetch(url, proxySafeRemoteOptions({
+    trustedProviderOutput: true,
     maxBytes: FAL_POLL_MAX_BYTES,
     maxJsonDepth: FAL_POLL_MAX_JSON_DEPTH,
     maxJsonNodes: FAL_POLL_MAX_JSON_NODES,
@@ -889,9 +937,18 @@ function extFromContentType(contentType) {
 }
 
 function verifiedProxyMediaExtension(media) {
-  const extension = extFromContentType(media?.detectedMime || media?.contentType);
-  if (!extension) throw new Error('远程素材魔数没有安全的落盘扩展映射');
-  return extension;
+  const mimeExtension = extFromContentType(media?.detectedMime || media?.contentType);
+  if (mimeExtension) return mimeExtension;
+  const sourceMime = mimeTypeForProxyFilename(
+    media?.finalUrl || media?.url || media?.filename || media?.sourceName || '',
+  );
+  const sourceExtension = extFromContentType(sourceMime);
+  if (sourceExtension) return sourceExtension;
+  const kind = media?.mediaKind || media?.detectedKind;
+  if (kind === 'image') return 'png';
+  if (kind === 'video') return 'mp4';
+  if (kind === 'audio') return 'mp3';
+  throw new Error('素材无法确定可保存的媒体扩展名');
 }
 
 function mimeTypeForProxyFilename(filename) {
@@ -918,8 +975,31 @@ function mimeTypeForProxyFilename(filename) {
     '.flac': 'audio/flac',
     '.aac': 'audio/aac',
     '.wma': 'audio/x-ms-wma',
+    '.txt': 'text/plain; charset=utf-8',
+    '.md': 'text/markdown; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.csv': 'text/csv; charset=utf-8',
   };
   return map[ext] || 'application/octet-stream';
+}
+
+// Mounted canvas files have already crossed the app's controlled upload/output
+// boundary. Prefer recognized bytes, while allowing old/new codecs to fall back
+// to MIME, filename, or the media kind required by the consuming node.
+function validateMountedMediaBuffer(buffer, filename, options = {}) {
+  const verified = validateProxyMediaBuffer(
+    buffer,
+    mimeTypeForProxyFilename(filename),
+    {
+      allowedKinds: options.allowedKinds,
+      maxBytes: options.maxBytes,
+      sourceName: filename,
+    },
+  );
+  return {
+    ...verified,
+    contentType: verified.contentType,
+  };
 }
 
 function providerResponseError(code, message, details = {}) {
@@ -1151,6 +1231,131 @@ function collectRunningHubOutputItems(value, out = [], seen = new Set()) {
     collectRunningHubOutputItems(child, out, seen);
   }
   return out;
+}
+
+const RUNNINGHUB_TEXT_OUTPUT_TYPES = new Set([
+  'txt',
+  'text',
+  'string',
+  'md',
+  'markdown',
+  'json',
+  'csv',
+  'text/plain',
+  'text/markdown',
+  'text/csv',
+  'application/json',
+]);
+
+function normalizedRunningHubOutputType(item) {
+  return String(
+    item?.fileType
+      || item?.file_type
+      || item?.contentType
+      || item?.content_type
+      || item?.mimeType
+      || item?.mime_type
+      || item?.type
+      || '',
+  )
+    .trim()
+    .toLowerCase()
+    .replace(/^\./, '')
+    .split(';')[0]
+    .trim();
+}
+
+function runningHubOutputUrlExtension(item) {
+  const remote = String(
+    item?.fileUrl
+      || item?.file_url
+      || item?.downloadUrl
+      || item?.download_url
+      || item?.resultUrl
+      || item?.result_url
+      || item?.outputUrl
+      || item?.output_url
+      || item?.url
+      || '',
+  ).trim();
+  try {
+    return path.extname(new URL(remote).pathname).toLowerCase().replace(/^\./, '');
+  } catch (_) {
+    return '';
+  }
+}
+
+function isRunningHubTextOutputItem(item) {
+  const declared = normalizedRunningHubOutputType(item);
+  if (RUNNINGHUB_TEXT_OUTPUT_TYPES.has(declared) || declared.startsWith('text/')) return true;
+  return ['txt', 'md', 'markdown', 'json', 'csv'].includes(runningHubOutputUrlExtension(item));
+}
+
+function runningHubTextOutputExtension(item) {
+  const declared = normalizedRunningHubOutputType(item);
+  const extension = runningHubOutputUrlExtension(item);
+  if (declared === 'json' || declared === 'application/json' || extension === 'json') return 'json';
+  if (declared === 'csv' || declared === 'text/csv' || extension === 'csv') return 'csv';
+  if (declared === 'md' || declared === 'markdown' || declared === 'text/markdown' || ['md', 'markdown'].includes(extension)) {
+    return 'md';
+  }
+  return 'txt';
+}
+
+function decodeRunningHubTextOutput(buffer, contentType = '') {
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) throw new Error('RunningHub 文本输出为空');
+  if (buffer.length > RUNNINGHUB_TEXT_OUTPUT_MAX_BYTES) {
+    throw new Error(`RunningHub 文本输出超过 ${RUNNINGHUB_TEXT_OUTPUT_MAX_BYTES} bytes 限制`);
+  }
+  const declared = normalizedContentType(contentType);
+  if (declared === 'text/html' || declared === 'application/xhtml+xml') {
+    throw new Error('RunningHub 文本输出返回了 HTML 页面');
+  }
+
+  let text = '';
+  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+    text = buffer.subarray(2).toString('utf16le');
+  } else if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+    const swapped = Buffer.from(buffer.subarray(2));
+    for (let index = 0; index + 1 < swapped.length; index += 2) {
+      const left = swapped[index];
+      swapped[index] = swapped[index + 1];
+      swapped[index + 1] = left;
+    }
+    text = swapped.toString('utf16le');
+  } else {
+    if (buffer.includes(0)) throw new Error('RunningHub 文本输出包含二进制数据');
+    text = buffer.toString('utf8');
+  }
+
+  const normalized = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim();
+  if (!normalized) throw new Error('RunningHub 文本输出为空');
+  if (/^\s*<!doctype\s+html|^\s*<html[\s>]/i.test(normalized)) {
+    throw new Error('RunningHub 文本输出返回了 HTML 页面');
+  }
+  return normalized;
+}
+
+async function fetchRunningHubTextOutput(remote, item, materializationKey) {
+  const downloaded = await safeRemoteMediaFetch(remote, proxySafeRemoteOptions({
+    maxBytes: RUNNINGHUB_TEXT_OUTPUT_MAX_BYTES,
+    deadlineMs: PROXY_REMOTE_DEADLINE_MS,
+    trustedProviderOutput: true,
+    idleTimeoutMs: PROXY_REMOTE_IDLE_TIMEOUT_MS,
+    maxRedirects: 4,
+    accept: 'text/plain,text/markdown,text/csv,application/json,application/octet-stream;q=0.5',
+    userAgent: 'T8-PenguinCanvas-ProviderProxy/1.0',
+  }));
+  const text = decodeRunningHubTextOutput(downloaded.buffer, downloaded.contentType);
+  const extension = runningHubTextOutputExtension(item);
+  const utf8Buffer = Buffer.from(text, 'utf8');
+  const url = storeMaterializedOutputBuffer(
+    utf8Buffer,
+    'rh_text',
+    extension,
+    materializationKey,
+  );
+  return { text, url };
 }
 
 function summarizeRunningHubOutputShape(value, depth = 0, seen = new WeakSet()) {
@@ -1619,9 +1824,11 @@ const IMAGE_OUTPUT_MATERIALIZATION_DEADLINE_MS = boundedProxyInteger(
   1_000,
   90_000,
 );
+// Three seconds is the retry cadence, not a live CDN transfer timeout. Slow
+// proxy, TUN and IPv6 paths may legitimately pause between response chunks.
 const IMAGE_OUTPUT_MATERIALIZATION_IDLE_TIMEOUT_MS = boundedProxyInteger(
   process.env.T8_IMAGE_OUTPUT_MATERIALIZATION_IDLE_TIMEOUT_MS,
-  3_000,
+  15_000,
   1_000,
   30_000,
 );
@@ -1735,7 +1942,8 @@ function retryableRemoteOutputError(error) {
   if (code.startsWith('tun_dns_fallback_')) return true;
   if (code === 'remote_http_error') return status === 408 || status === 425 || status === 429 || status >= 500;
   return new Set([
-    'fetch_timeout', 'remote_response_aborted', 'ECONNREFUSED', 'ECONNRESET',
+    'system_network_fetch_failed', 'connect_timeout', 'fetch_timeout',
+    'remote_response_aborted', 'ECONNREFUSED', 'ECONNRESET',
     'EHOSTUNREACH', 'ENETUNREACH', 'ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'ESOCKETTIMEDOUT',
   ]).has(code);
 }
@@ -1764,8 +1972,8 @@ async function saveRemoteImageDetailed(url, _providerFetchImpl, materializationK
     try {
       const remote = await fetchProxyRemoteMedia(url, {
         allowedKinds: ['image'],
+        trustedProviderOutput: true,
         maxBytes: PROXY_IMAGE_REFERENCE_MAX_BYTES,
-        allowSameKindSubtypeMismatch: true,
         deadlineMs: remainingMs,
         idleTimeoutMs: Math.min(IMAGE_OUTPUT_MATERIALIZATION_IDLE_TIMEOUT_MS, remainingMs),
         accept: 'image/avif,image/webp,image/png,image/jpeg,image/gif,image/bmp,image/tiff;q=0.9',
@@ -1810,8 +2018,8 @@ async function saveRemoteAudioDetailed(url, materializationKey = '') {
     try {
       const remote = await fetchProxyRemoteMedia(url, {
         allowedKinds: ['audio'],
+        trustedProviderOutput: true,
         maxBytes: PROXY_AUDIO_REFERENCE_MAX_BYTES,
-        allowSameKindSubtypeMismatch: true,
         accept: 'audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/flac;q=0.9',
       });
       const buf = remote.buffer;
@@ -1888,22 +2096,6 @@ function aspectToGptSize(aspectRatio, sizeLevel) {
   return GPT_SIZE_MAP[key] || '1024x1024';
 }
 
-function imageMimeFromLocalPath(filePath) {
-  const ext = path.extname(filePath || '').toLowerCase().replace(/^\./, '');
-  const map = {
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    webp: 'image/webp',
-    gif: 'image/gif',
-    bmp: 'image/bmp',
-    avif: 'image/avif',
-    tif: 'image/tiff',
-    tiff: 'image/tiff',
-  };
-  return map[ext] || 'image/png';
-}
-
 function assertInsideDir(root, target) {
   const base = path.resolve(root);
   const full = path.resolve(target);
@@ -1917,12 +2109,15 @@ function toLocalPathnameIfSameApp(url) {
     const u = new URL(raw);
     const host = String(u.hostname || '').toLowerCase();
     const localHost = host === '127.0.0.1' || host === 'localhost' || host === '::1';
-    const expectedPort = String(Number(config.PORT) || 18766);
+    const allowedPorts = new Set([
+      String(Number(config.PORT) || 18766),
+      '11422',
+    ]);
     const actualPort = u.port || (u.protocol === 'http:' ? '80' : u.protocol === 'https:' ? '443' : '');
     if (
       localHost
       && u.protocol === 'http:'
-      && actualPort === expectedPort
+      && allowedPorts.has(actualPort)
       && !u.username
       && !u.password
       && !raw.includes('\\')
@@ -1954,17 +2149,14 @@ function readLocalImageRefBuffer(ref) {
     { prefixes: ['/files/thumbnails/'], root: config.THUMBNAILS_DIR },
   ], PROXY_IMAGE_REFERENCE_MAX_BYTES);
   if (!local) return null;
-  const full = local.filename;
-  const mime = imageMimeFromLocalPath(full);
-  const buf = local.buffer;
-  validateProxyMediaBuffer(buf, mime, {
+  const verified = validateMountedMediaBuffer(local.buffer, local.filename, {
     allowedKinds: ['image'],
     maxBytes: PROXY_IMAGE_REFERENCE_MAX_BYTES,
   });
   return {
-    buf,
-    mime,
-    ext: safeOutputExt(path.extname(full), 'png'),
+    buf: local.buffer,
+    mime: verified.contentType,
+    ext: verifiedProxyMediaExtension(verified),
   };
 }
 
@@ -1985,7 +2177,7 @@ function readResourceLibraryDbForProxy(root) {
   }
 }
 
-function resolveResourceImageRef(ref) {
+function resolveResourceMediaRef(ref, maximum = PROXY_MEDIA_REFERENCE_MAX_BYTES) {
   const clean = toLocalPathnameIfSameApp(ref).split(/[?#]/)[0];
   const fileMatch = /^\/api\/resources\/file\/([^/?#]+)/.exec(clean);
   const setFileMatch = /^\/api\/resources\/set-file\/([^/?#]+)\/(\d+)/.exec(clean);
@@ -2002,13 +2194,14 @@ function resolveResourceImageRef(ref) {
     const fileRel = String(item?.fileRel || '').trim();
     if (!item || !fileRel) return null;
     const resolved = realpathInsideRoot(root, path.join(root, fileRel));
-    if (!resolved || resolved.size > PROXY_IMAGE_REFERENCE_MAX_BYTES) return null;
+    if (!resolved || resolved.size > maximum) return null;
     const full = resolved.filename;
     return {
       full,
       resolved,
-      mime: item.mime || imageMimeFromLocalPath(full),
-      ext: safeOutputExt(path.extname(full), 'png'),
+      declaredMime: String(item.mime || '').trim(),
+      fileMime: mimeTypeForProxyFilename(full),
+      originalName: String(item.originalName || item.title || path.basename(full)).trim(),
     };
   }
 
@@ -2020,32 +2213,62 @@ function resolveResourceImageRef(ref) {
   const fileRel = String(child?.fileRel || '').trim();
   if (!child || !fileRel) return null;
   const resolved = realpathInsideRoot(root, path.join(root, fileRel));
-  if (!resolved || resolved.size > PROXY_IMAGE_REFERENCE_MAX_BYTES) return null;
+  if (!resolved || resolved.size > maximum) return null;
   const full = resolved.filename;
   return {
     full,
     resolved,
-    mime: child.mime || imageMimeFromLocalPath(full),
-    ext: safeOutputExt(path.extname(full), 'png'),
+    declaredMime: String(child.mime || '').trim(),
+    fileMime: mimeTypeForProxyFilename(full),
+    originalName: String(child.name || path.basename(full)).trim(),
   };
 }
 
-function readResourceImageRefBuffer(ref) {
-  const resolved = resolveResourceImageRef(ref);
-  const opened = readResolvedFile(resolved?.resolved, PROXY_IMAGE_REFERENCE_MAX_BYTES);
+function readResourceMediaRefBuffer(ref, options = {}) {
+  const allowedKinds = Array.isArray(options.allowedKinds) && options.allowedKinds.length > 0
+    ? options.allowedKinds
+    : ['image', 'video', 'audio'];
+  const maximum = Number(options.maxBytes) || PROXY_MEDIA_REFERENCE_MAX_BYTES;
+  const resolved = resolveResourceMediaRef(ref, maximum);
+  const opened = readResolvedFile(resolved?.resolved, maximum);
   if (!resolved || !opened) return null;
-  const mime = String(resolved.mime || imageMimeFromLocalPath(resolved.full)).toLowerCase();
-  if (mime && !mime.startsWith('image/')) return null;
   const buf = opened.buffer;
-  validateProxyMediaBuffer(buf, mime, {
+  const declaredMime = normalizedContentType(resolved.declaredMime);
+  const fileMime = normalizedContentType(resolved.fileMime);
+  // Old resource-library rows can contain an empty/generic/stale MIME. Prefer
+  // recognized bytes, but use the managed filename/caller kind for codecs whose
+  // signature detector does not know yet.
+  let verified;
+  try {
+    verified = validateProxyMediaBuffer(buf, declaredMime || fileMime, {
+      allowedKinds,
+      maxBytes: maximum,
+      sourceName: resolved.originalName || resolved.full,
+    });
+  } catch {
+    return null;
+  }
+  const mime = verified.contentType || fileMime || declaredMime;
+  const ext = extFromContentType(mime)
+    || safeOutputExt(path.extname(resolved.full), allowedKinds[0] === 'audio' ? 'mp3' : 'png');
+  return {
+    buf,
+    mime,
+    ext,
+    originalName: resolved.originalName || path.basename(resolved.full),
+    detectedKind: verified.detectedKind || verified.mediaKind,
+  };
+}
+
+function resolveResourceImageRef(ref) {
+  return resolveResourceMediaRef(ref, PROXY_IMAGE_REFERENCE_MAX_BYTES);
+}
+
+function readResourceImageRefBuffer(ref) {
+  return readResourceMediaRefBuffer(ref, {
     allowedKinds: ['image'],
     maxBytes: PROXY_IMAGE_REFERENCE_MAX_BYTES,
   });
-  return {
-    buf,
-    mime: resolved.mime || imageMimeFromLocalPath(resolved.full),
-    ext: resolved.ext || safeOutputExt(path.extname(resolved.full), 'png'),
-  };
 }
 
 // 将 base64 dataURL / http(s) URL 转成 multipart Buffer
@@ -2063,26 +2286,30 @@ async function refToBuffer(ref) {
     const ext = (mime.split('/')[1] || 'png').replace('jpeg', 'jpg');
     return { buf, mime, ext };
   }
-  if (
-    ref.startsWith('http://') ||
-    ref.startsWith('https://') ||
-    ref.startsWith('/files/') ||
-    ref.startsWith('/api/resources/file/') ||
-    ref.startsWith('/api/resources/set-file/')
-  ) {
-    const local = readLocalImageRefBuffer(ref);
-    if (local) return local;
-    const resource = readResourceImageRefBuffer(ref);
-    if (resource) return resource;
-    if (ref.startsWith('/')) return null;
-    const remote = await fetchProxyRemoteMedia(ref, {
+  const normalizedRef = normalizeT8LocalMediaRef(ref, {
+    allowedPorts: [config.PORT, 11422],
+  });
+  if (/^https?:\/\//i.test(normalizedRef) || isT8LocalMediaPath(normalizedRef)) {
+    const local = await readProviderLocalMediaRefBuffer(normalizedRef, {
+      allowedKinds: ['image'],
+      maxBytes: PROXY_IMAGE_REFERENCE_MAX_BYTES,
+    });
+    if (local) {
+      return {
+        buf: local.buffer,
+        mime: local.contentType,
+        ext: extFromContentType(local.contentType) || 'png',
+      };
+    }
+    if (normalizedRef.startsWith('/')) return null;
+    const remote = await fetchProxyRemoteMedia(normalizedRef, {
       allowedKinds: ['image'],
       maxBytes: PROXY_IMAGE_REFERENCE_MAX_BYTES,
       accept: 'image/avif,image/webp,image/png,image/jpeg,image/gif,image/bmp,image/tiff;q=0.9',
     });
     const ct = remote.contentType || 'image/png';
     const buf = remote.buffer;
-    const ext = (ct.split('/')[1] || 'png').replace('jpeg', 'jpg');
+    const ext = extFromContentType(ct) || (ct.split('/')[1] || 'png').replace('jpeg', 'jpg');
     return { buf, mime: ct, ext };
   }
   return null;
@@ -2148,14 +2375,9 @@ function appendConvertedImagesToForm(form, convertedRefs) {
 
 // 将 base64/URL 参考图转成 banana 希望的 dataURL 或保留外部 URL
 function isLocalImageDataRef(ref) {
-  return (
-    typeof ref === 'string' &&
-    (
-      ref.startsWith('/files/') ||
-      ref.startsWith('/api/resources/file/') ||
-      ref.startsWith('/api/resources/set-file/')
-    )
-  );
+  if (typeof ref !== 'string') return false;
+  const normalized = normalizeT8LocalMediaRef(ref, { allowedPorts: [config.PORT, 11422] });
+  return isT8LocalMediaPath(normalized);
 }
 
 async function localImageRefToDataUrl(ref) {
@@ -2183,17 +2405,12 @@ async function refToGrokImage(ref) {
     const converted = await refToBuffer(ref);
     return converted ? `data:${converted.mime};base64,${converted.buf.toString('base64')}` : null;
   }
-  if (
-    ref.startsWith('http://') ||
-    ref.startsWith('https://') ||
-    ref.startsWith('/files/') ||
-    ref.startsWith('/api/resources/file/') ||
-    ref.startsWith('/api/resources/set-file/')
-  ) {
+  const normalizedRef = normalizeT8LocalMediaRef(ref, { allowedPorts: [config.PORT, 11422] });
+  if (/^https?:\/\//i.test(normalizedRef) || isT8LocalMediaPath(normalizedRef)) {
     try {
-      if (isLocalImageDataRef(ref)) return await localImageRefToDataUrl(ref);
-      if (ref.startsWith('/')) return null;
-      const remote = await fetchProxyRemoteMedia(ref, {
+      if (isLocalImageDataRef(normalizedRef)) return await localImageRefToDataUrl(normalizedRef);
+      if (normalizedRef.startsWith('/')) return null;
+      const remote = await fetchProxyRemoteMedia(normalizedRef, {
         allowedKinds: ['image'],
         maxBytes: PROXY_IMAGE_REFERENCE_MAX_BYTES,
         accept: 'image/avif,image/webp,image/png,image/jpeg,image/gif,image/bmp,image/tiff;q=0.9',
@@ -2492,6 +2709,7 @@ async function saveRemoteSunoFileDetailed(url, materializationKey = '') {
     try {
       const remote = await safeRemoteMediaFetch(url, proxySafeRemoteOptions({
         maxBytes: PROXY_AUDIO_REFERENCE_MAX_BYTES,
+        trustedProviderOutput: true,
         deadlineMs: PROXY_REMOTE_DEADLINE_MS,
         idleTimeoutMs: PROXY_REMOTE_IDLE_TIMEOUT_MS,
         maxRedirects: 4,
@@ -3319,7 +3537,7 @@ router.post('/video/hailuo/submit', async (req, res) => {
     proxyRouteError('proxy/video/hailuo/submit 错误', error, [apiKey]);
     return res.status(status >= 400 && status < 600 ? status : 500).json({
       success: false,
-      error: proxyPublicError(error, 'Hailuo 2.3 请求失败', [apiKey]),
+      error: proxyPublicError(error, 'Hailuo 请求失败', [apiKey]),
       ...seedanceNzTrace(error),
     });
   }
@@ -3344,7 +3562,7 @@ router.get('/video/hailuo/status/:tid', async (req, res) => {
       progress: safeDiagnosticText(result.progress || '', 80, [apiKey]),
       videoUrl: materialized.url,
       failReason: result.status === 'failed'
-        ? safeDiagnosticText(result.failReason || 'Hailuo 2.3 任务失败', 240, [apiKey])
+        ? safeDiagnosticText(result.failReason || 'Hailuo 任务失败', 240, [apiKey])
         : '',
       model: remembered?.model || '',
       taskType: remembered?.taskType || '',
@@ -3353,7 +3571,7 @@ router.get('/video/hailuo/status/:tid', async (req, res) => {
     if (materialized.failure) {
       return sendCompletedRemoteOutputFailure(res, materialized.failure, responseData, {
         defaultCode: 'hailuo_output_unusable',
-        defaultMessage: 'Hailuo 2.3 视频结果无法保存。',
+        defaultMessage: 'Hailuo 视频结果无法保存。',
       });
     }
     return res.json({
@@ -3366,7 +3584,7 @@ router.get('/video/hailuo/status/:tid', async (req, res) => {
     if (sendTaskResultQueryRecovery(res, error, { taskId: req.params.tid })) return;
     return res.status(status >= 400 && status < 600 ? status : 500).json({
       success: false,
-      error: proxyPublicError(error, 'Hailuo 2.3 查询失败', [apiKey]),
+      error: proxyPublicError(error, 'Hailuo 查询失败', [apiKey]),
       ...seedanceNzTrace(error),
     });
   }
@@ -5091,30 +5309,17 @@ async function uploadRefToZhenzhen(ref, apiKey, label = '参考素材') {
     ext = extFromContentType(mime) || (mime.split('/')[1] || 'png').replace('jpeg', 'jpg');
   } else if (isT8LocalMediaPath(trimmed) || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     let sourceName = trimmed;
-    if (trimmed.startsWith('/api/resources/')) {
-      const resource = readResourceImageRefBuffer(trimmed);
-      if (!resource) throw new Error(`${label} 上传失败: 本地资源不存在或越出授权目录`);
-      buf = resource.buf;
-      mime = resource.mime;
-      ext = resource.ext;
-      validateProxyMediaBuffer(buf, mime, {
-        allowedKinds: ['image'],
-        maxBytes: PROXY_IMAGE_REFERENCE_MAX_BYTES,
-      });
-    } else if (trimmed.startsWith('/')) {
-      const local = readMountedFileReference(trimmed, [
-        { prefixes: ['/files/input/', '/input/'], root: config.INPUT_DIR },
-        { prefixes: ['/files/output/', '/output/'], root: config.OUTPUT_DIR },
-        { prefixes: ['/files/thumbnails/'], root: config.THUMBNAILS_DIR },
-      ], PROXY_MEDIA_REFERENCE_MAX_BYTES);
+    const local = isT8LocalMediaPath(trimmed)
+      ? await readProviderLocalMediaRefBuffer(trimmed, {
+        allowedKinds: ['image', 'video', 'audio'],
+        maxBytes: PROXY_MEDIA_REFERENCE_MAX_BYTES,
+      })
+      : null;
+    if (isT8LocalMediaPath(trimmed)) {
       if (!local) throw new Error(`${label} 上传失败: 本地资源不存在或越出授权目录`);
       sourceName = local.filename;
       buf = local.buffer;
-      mime = mimeTypeForProxyFilename(local.filename);
-      validateProxyMediaBuffer(buf, mime, {
-        allowedKinds: ['image', 'video', 'audio'],
-        maxBytes: PROXY_MEDIA_REFERENCE_MAX_BYTES,
-      });
+      mime = local.contentType;
     } else {
       const remote = await fetchProxyRemoteMedia(trimmed, {
         allowedKinds: ['image', 'video', 'audio'],
@@ -5122,6 +5327,7 @@ async function uploadRefToZhenzhen(ref, apiKey, label = '参考素材') {
       });
       buf = remote.buffer;
       mime = remote.contentType || 'application/octet-stream';
+      sourceName = remote.filename || sourceName;
     }
     const tailExt = sourceName.split(/[?#]/)[0].match(/\.([a-z0-9]{2,8})$/i)?.[1];
     ext = extFromContentType(mime) || tailExt || (mime.split('/')[1] || 'png').replace('jpeg', 'jpg');
@@ -5354,8 +5560,8 @@ async function saveRemoteVideoDetailed(url, _providerFetchImpl, materializationK
       try {
         const remote = await fetchProxyRemoteMedia(url, {
           allowedKinds: ['video'],
+          trustedProviderOutput: true,
           maxBytes: PROXY_MEDIA_REFERENCE_MAX_BYTES,
-          allowSameKindSubtypeMismatch: true,
           accept: 'video/mp4,video/webm,video/quicktime,video/x-matroska;q=0.9',
         });
         const buf = remote.buffer;
@@ -5801,6 +6007,7 @@ async function saveRemoteFalToolboxFile(url, kind, materializationKey = '') {
     }
     const remote = await safeRemoteMediaFetch(url, {
       maxBytes: PROXY_MEDIA_REFERENCE_MAX_BYTES,
+      trustedProviderOutput: true,
       deadlineMs: PROXY_REMOTE_DEADLINE_MS,
       idleTimeoutMs: PROXY_REMOTE_IDLE_TIMEOUT_MS,
       maxRedirects: 4,
@@ -7113,6 +7320,7 @@ router.post('/audio/upload', audioUpload.single('file'), async (req, res) => {
     verifiedAudio = validateProxyMediaBuffer(audioBuf, req.file.mimetype, {
       allowedKinds: ['audio'],
       maxBytes: 50 * 1024 * 1024,
+      sourceName: req.file.originalname,
     });
   } catch (_) {
     return res.status(400).json({
@@ -7121,11 +7329,14 @@ router.post('/audio/upload', audioUpload.single('file'), async (req, res) => {
       error: '上传文件不是受支持的音频内容，或声明类型与文件内容不一致',
     });
   }
-  const ext = extFromContentType(verifiedAudio.detectedMime);
+  const ext = verifiedProxyMediaExtension({
+    ...verifiedAudio,
+    filename: req.file.originalname,
+  });
   if (!ext || !new Set(['mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'wma']).has(ext)) {
     return res.status(400).json({ success: false, code: 'invalid_audio_upload', error: '上传音频格式不受支持' });
   }
-  const ct = verifiedAudio.detectedMime;
+  const ct = verifiedAudio.contentType;
   const filename = safeAudioUploadFilename(req.file.originalname, ext);
   const providerParams = parseProviderParams(req.body?.providerParams);
   if (!ensureKeyOrSelectedGroup(settings, res, 'suno', 'Suno', providerParams)) return;
@@ -7365,6 +7576,8 @@ router.get('/runninghub/query', async (req, res) => {
     const taskCode = String(data.code ?? '');
     let status = 'PENDING';
     let urls = [];
+    let texts = [];
+    let textUrls = [];
     if (taskCode === '0') {
       status = 'SUCCESS';
       const materializationFailures = [];
@@ -7396,10 +7609,20 @@ router.get('/runninghub/query', async (req, res) => {
         const remote = it?.fileUrl || it?.file_url || it?.downloadUrl || it?.download_url || it?.resultUrl || it?.result_url || it?.outputUrl || it?.output_url || it?.signedUrl || it?.signed_url || it?.publicUrl || it?.public_url || it?.previewUrl || it?.preview_url || it?.url;
         if (!remote) continue;
         try {
+          if (isRunningHubTextOutputItem(it)) {
+            const output = await fetchRunningHubTextOutput(
+              remote,
+              it,
+              `runninghub:${selectedCandidate.id}:${taskId}:text:${outputIndex}`,
+            );
+            texts.push(output.text);
+            textUrls.push(output.url);
+            continue;
+          }
           const downloaded = await fetchProxyRemoteMedia(remote, {
             allowedKinds: ['image', 'video', 'audio'],
+            trustedProviderOutput: true,
             maxBytes: PROXY_MEDIA_REFERENCE_MAX_BYTES,
-            allowSameKindSubtypeMismatch: true,
           });
           let buf = downloaded.buffer;
           let ext = verifiedProxyMediaExtension(downloaded);
@@ -7440,6 +7663,8 @@ router.get('/runninghub/query', async (req, res) => {
         return sendCompletedRemoteOutputFailure(res, failure, {
           taskId,
           urls,
+          texts,
+          textUrls,
           code: Number.isFinite(Number(data.code)) ? Number(data.code) : data.code,
           site: selectedCandidate.id,
           fallbackUsed: selectedCandidate.id !== requestedSite,
@@ -7449,6 +7674,8 @@ router.get('/runninghub/query', async (req, res) => {
           defaultMessage: 'RunningHub 结果无法保存。',
         });
       }
+      texts = [...new Set(texts)];
+      textUrls = [...new Set(textUrls)];
     } else if (taskCode === '804') status = 'RUNNING';
     else if (taskCode === '813') status = 'QUEUED';
     else if (taskCode === '805') status = 'FAILED';
@@ -7466,12 +7693,14 @@ router.get('/runninghub/query', async (req, res) => {
         failReasonStr = String(failReasonRaw);
       }
     }
-    console.log(`[RH/query] site=${selectedCandidate.id} taskId=${taskId} status=${status} code=${data.code} urls=${urls.length}${failReasonStr ? ` ${opaqueDiagnosticSummary('fail', failReasonStr)}` : ''}`);
+    console.log(`[RH/query] site=${selectedCandidate.id} taskId=${taskId} status=${status} code=${data.code} media=${urls.length} texts=${texts.length}${failReasonStr ? ` ${opaqueDiagnosticSummary('fail', failReasonStr)}` : ''}`);
     res.json({
       success: true,
       data: {
         status,
         urls,
+        texts,
+        textUrls,
         failReason: failReasonStr ? 'RunningHub 任务失败' : null,
         code: data.code,
         site: selectedCandidate.id,
@@ -7549,38 +7778,35 @@ router.post('/runninghub/upload-asset', express.json({ limit: '64kb', strict: tr
   if (!url) return res.status(400).json({ success: false, error: 'url 必填' });
   if (Buffer.byteLength(url, 'utf8') > 16_384) return res.status(400).json({ success: false, error: 'url 过长' });
   try {
+    const normalizedUrl = normalizeT8LocalMediaRef(url, {
+      allowedPorts: [config.PORT, 11422],
+    });
     // 1) 拿到 buffer + mime + filename
     let buf;
     let mime = 'application/octet-stream';
     let baseName = 'asset';
-    if (url.startsWith('/files/output/') || url.startsWith('/output/')
-      || url.startsWith('/files/input/') || url.startsWith('/input/')) {
-      const local = readMountedFileReference(url, [
-        { prefixes: ['/files/output/', '/output/'], root: config.OUTPUT_DIR },
-        { prefixes: ['/files/input/', '/input/'], root: config.INPUT_DIR },
-      ], PROXY_MEDIA_REFERENCE_MAX_BYTES);
+    if (isT8LocalMediaPath(normalizedUrl)) {
+      const local = await readProviderLocalMediaRefBuffer(normalizedUrl, {
+        allowedKinds: ['image', 'video', 'audio'],
+        maxBytes: PROXY_MEDIA_REFERENCE_MAX_BYTES,
+      });
       if (!local) {
         return res.status(404).json({ success: false, error: '本地素材不存在、超限或越出允许目录' });
       }
       buf = local.buffer;
-      mime = mimeTypeForProxyFilename(local.filename);
-      const verified = validateProxyMediaBuffer(buf, mime, {
-        allowedKinds: ['image', 'video', 'audio'],
-        maxBytes: PROXY_MEDIA_REFERENCE_MAX_BYTES,
-      });
-      mime = verified.contentType || mime;
+      mime = local.contentType;
       baseName = path.basename(local.filename);
-    } else if (/^https?:\/\//i.test(url)) {
-      const remote = await fetchProxyRemoteMedia(url, {
+    } else if (/^https?:\/\//i.test(normalizedUrl)) {
+      const remote = await fetchProxyRemoteMedia(normalizedUrl, {
         allowedKinds: ['image', 'video', 'audio'],
         maxBytes: PROXY_MEDIA_REFERENCE_MAX_BYTES,
       });
       buf = remote.buffer;
       mime = remote.contentType || mime;
-      const tail = url.split(/[?#]/)[0];
+      const tail = normalizedUrl.split(/[?#]/)[0];
       baseName = tail.split('/').pop() || baseName;
     } else {
-      return res.status(400).json({ success: false, error: '不支持的 url: ' + url });
+      return res.status(400).json({ success: false, error: '不支持的素材引用' });
     }
     // 2) MIME 只服从已验证的响应类型/魔数，扩展名不能反向覆盖它。
     const extMatch = baseName.match(/\.([a-zA-Z0-9]+)$/);
@@ -7659,12 +7885,16 @@ router.get('/runninghub/app-info', async (req, res) => {
 
 module.exports = router;
 module.exports._test = Object.freeze({
+  decodeRunningHubTextOutput,
   diagnosticDigest,
   FAL_TOOLBOX_AUTHORITY,
   currentProviderDispatcher,
   fetchProxyRemoteMedia,
+  fetchRunningHubTextOutput,
   fetchFalPollJson,
   storeMaterializedOutputBuffer,
+  refToBuffer,
+  validateMountedMediaBuffer,
   fetchProviderResponse,
   opaqueDiagnosticSummary,
   parseJsonResponse,
@@ -7674,10 +7904,16 @@ module.exports._test = Object.freeze({
   resetVideoMaterializationCacheForTests,
   resolveBuiltInLlmProvider,
   resolveMountedFileReference,
+  readResourceImageRefBuffer,
+  readResourceMediaRefBuffer,
+  readProviderLocalMediaRefBuffer,
   safeDiagnosticText,
   safeFalRequestId,
   saveRemoteVideo,
   setProxySafeRemoteTestOptions,
+  isRunningHubTextOutputItem,
+  normalizedRunningHubOutputType,
+  runningHubTextOutputExtension,
   summarizeImageRef,
   summarizeRunningHubOutputShape,
   trustedFalPollUrl,
@@ -7685,3 +7921,68 @@ module.exports._test = Object.freeze({
   validateProxyMediaBuffer,
   verifiedProxyMediaExtension,
 });
+
+async function readProviderLocalMediaRefBuffer(ref, options = {}) {
+  const allowedKinds = Array.isArray(options.allowedKinds) && options.allowedKinds.length > 0
+    ? options.allowedKinds
+    : ['image', 'video', 'audio'];
+  const maximum = Number(options.maxBytes) || PROXY_MEDIA_REFERENCE_MAX_BYTES;
+  const normalized = normalizeT8LocalMediaRef(ref, {
+    allowedPorts: [config.PORT, 11422],
+  });
+
+  if (normalized.startsWith('/api/resources/file/')
+    || normalized.startsWith('/api/resources/set-file/')) {
+    const resource = readResourceMediaRefBuffer(normalized, {
+      allowedKinds,
+      maxBytes: maximum,
+    });
+    if (!resource) return null;
+    return {
+      buffer: resource.buf,
+      contentType: resource.mime,
+      filename: resource.originalName || `resource.${resource.ext || 'bin'}`,
+      detectedKind: resource.detectedKind,
+    };
+  }
+
+  if (normalized.startsWith('/files/output/') || normalized.startsWith('/output/')
+    || normalized.startsWith('/files/input/') || normalized.startsWith('/input/')
+    || normalized.startsWith('/files/thumbnails/')) {
+    const local = readMountedFileReference(normalized, [
+      { prefixes: ['/files/output/', '/output/'], root: config.OUTPUT_DIR },
+      { prefixes: ['/files/input/', '/input/'], root: config.INPUT_DIR },
+      { prefixes: ['/files/thumbnails/'], root: config.THUMBNAILS_DIR },
+    ], maximum);
+    if (!local) return null;
+    const verified = validateMountedMediaBuffer(local.buffer, local.filename, {
+      allowedKinds,
+      maxBytes: maximum,
+    });
+    return {
+      buffer: local.buffer,
+      contentType: verified.contentType,
+      filename: path.basename(local.filename),
+      detectedKind: verified.detectedKind || verified.mediaKind,
+    };
+  }
+
+  if (normalized.startsWith('/api/project-assets/')) {
+    const resolved = await resolveMediaRef(normalized, { target: 'local-path' });
+    const stat = fs.statSync(resolved.path);
+    if (!stat.isFile() || stat.size > maximum) return null;
+    const buffer = fs.readFileSync(resolved.path);
+    const verified = validateProxyMediaBuffer(buffer, resolved.mime || mimeTypeForProxyFilename(resolved.path), {
+      allowedKinds,
+      maxBytes: maximum,
+      sourceName: resolved.name || resolved.path,
+    });
+    return {
+      buffer,
+      contentType: verified.contentType,
+      filename: resolved.name || path.basename(resolved.path),
+      detectedKind: verified.detectedKind || verified.mediaKind,
+    };
+  }
+  return null;
+}

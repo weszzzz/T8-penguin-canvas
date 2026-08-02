@@ -149,6 +149,21 @@ const HAILUO23_PROMPT_MAX_LENGTH = 2000;
 const HAILUO23_MIN_IMAGE_SHORT_EDGE = 301;
 const HAILUO23_MIN_ASPECT_RATIO = 2 / 5;
 const HAILUO23_MAX_ASPECT_RATIO = 5 / 2;
+const HAILUO_H3_T2V_MODEL = 'hailuo-h3-t2v';
+const HAILUO_H3_I2V_MODEL = 'hailuo-h3-i2v';
+const HAILUO_H3_MULTI_MODEL = 'hailuo-h3-multi';
+const HAILUO_H3_MODELS = new Set([
+  HAILUO_H3_T2V_MODEL,
+  HAILUO_H3_I2V_MODEL,
+  HAILUO_H3_MULTI_MODEL,
+]);
+const HAILUO_MODELS = new Set([...HAILUO23_MODELS, ...HAILUO_H3_MODELS]);
+const HAILUO_H3_SECONDS = new Set(Array.from({ length: 11 }, (_, index) => String(index + 5)));
+const HAILUO_H3_RESOLUTION = '2K';
+const HAILUO_H3_PROMPT_MAX_LENGTH = 20480;
+const HAILUO_H3_MAX_REFERENCE_IMAGES = 9;
+const HAILUO_H3_MAX_REFERENCE_VIDEOS = 3;
+const HAILUO_H3_MAX_REFERENCE_AUDIOS = 3;
 const VIDU_Q3_T2V_MODELS = new Set([
   'vidu-q3-pro-t2v',
   'vidu-q3-turbo-t2v',
@@ -481,7 +496,7 @@ sI1ANRYvqSFC2X1VRZfDg+wD6E21BccmifG4yWc=
 const seedanceDispatcher = new Agent({
   // Never carry an API socket across TUN/VPN route changes.
   pipelining: 0,
-  connectTimeout: 3_000,
+  connectTimeout: 15_000,
   autoSelectFamily: true,
   autoSelectFamilyAttemptTimeout: 250,
   connect: {
@@ -526,7 +541,7 @@ function seedancePublicDnsLookup(
 }
 const seedancePublicDnsDispatcher = new Agent({
   pipelining: 0,
-  connectTimeout: 3_000,
+  connectTimeout: 15_000,
   autoSelectFamily: true,
   autoSelectFamilyAttemptTimeout: 250,
   connect: {
@@ -540,6 +555,30 @@ const uploadCache = new Map();
 const uploadQueues = new Map();
 const responseBoundaries = new WeakMap();
 
+function seedanceNetworkCause(error) {
+  let current = error;
+  let depth = 0;
+  while (current?.cause && current.cause !== current && depth < 8) {
+    current = current.cause;
+    depth += 1;
+  }
+  return current || error;
+}
+
+function seedanceRetryIsKnownPreRequestFailure(error) {
+  const cause = seedanceNetworkCause(error);
+  const code = String(cause?.code || error?.code || '').trim().toUpperCase();
+  const message = String(cause?.message || error?.message || '');
+  return [
+    'CERT_HAS_EXPIRED',
+    'DEPTH_ZERO_SELF_SIGNED_CERT',
+    'SELF_SIGNED_CERT_IN_CHAIN',
+    'UNABLE_TO_GET_ISSUER_CERT',
+    'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+    'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  ].includes(code) || /certificate|self signed|unable to verify|issuer cert/i.test(message);
+}
+
 async function secureFetch(url, init = {}) {
   const method = String(init?.method || 'GET').toUpperCase();
   const request = {
@@ -547,19 +586,34 @@ async function secureFetch(url, init = {}) {
     headers: providerIdempotencyHeaders(init?.headers, method),
   };
   try {
-    return await undiciFetch(url, {
-      ...request,
-      dispatcher: seedanceDispatcher,
-    });
+    // Preserve the runtime/system network path first. This is the behavior
+    // users had before Provider-specific dispatchers were introduced and it
+    // keeps transparent TUN/VPN routing, system DNS and working IPv6 intact.
+    return await fetch(url, request);
   } catch (error) {
-    if (!['GET', 'HEAD'].includes(method) || init?.signal?.aborted) throw error;
-    // The task already exists. Re-query the same id through independent public
-    // DNS when the active TUN resolver left a stale Fake-IP or unusable IPv6
-    // route. This never resubmits a generation request.
-    return undiciFetch(url, {
-      ...request,
-      dispatcher: seedancePublicDnsDispatcher,
-    });
+    if (init?.signal?.aborted) throw error;
+    const safeRead = ['GET', 'HEAD'].includes(method);
+    const stableSubmission = Boolean(headerValue(request.headers, 'idempotency-key'));
+    // TLS trust can fail before an HTTP request exists on older Electron CA
+    // bundles. That case is safe to retry with the provider-pinned CA even
+    // when a legacy caller has no submission key.
+    if (!safeRead && !stableSubmission && !seedanceRetryIsKnownPreRequestFailure(error)) {
+      throw error;
+    }
+    try {
+      return await undiciFetch(url, {
+        ...request,
+        dispatcher: seedanceDispatcher,
+      });
+    } catch (recoveryError) {
+      if (!safeRead || init?.signal?.aborted) throw recoveryError;
+      // Public DNS is the final read-only fallback only. Generation writes
+      // never bypass the active system/TUN resolver and are never duplicated.
+      return undiciFetch(url, {
+        ...request,
+        dispatcher: seedancePublicDnsDispatcher,
+      });
+    }
   }
 }
 
@@ -1237,7 +1291,7 @@ async function mediaBuffer(source, kind, maxBytes, options = {}) {
     return {
       buffer,
       mime: resolved.mime || mimeFromPath(resolved.path, defaultMime(kind)),
-      fileName: path.basename(resolved.path),
+      fileName: path.basename(resolved.name || resolved.path),
     };
   }
 
@@ -2266,7 +2320,103 @@ async function validateHailuoFirstImage(buffer) {
 
 async function buildHailuoPayload(request, apiKey, options = {}) {
   const model = String(request.model || '').trim();
-  if (!HAILUO23_MODELS.has(model)) throw new Error(`未知 Hailuo 2.3 模型：${model || '(空)'}`);
+  if (!HAILUO_MODELS.has(model)) throw new Error(`未知 Hailuo 模型：${model || '(空)'}`);
+
+  if (HAILUO_H3_MODELS.has(model)) {
+    const prompt = String(request.prompt || '').trim();
+    if (prompt.length > HAILUO_H3_PROMPT_MAX_LENGTH) {
+      throw new Error(`Hailuo H3 提示词不能超过 ${HAILUO_H3_PROMPT_MAX_LENGTH} 字符`);
+    }
+    const taskType = model === HAILUO_H3_T2V_MODEL
+      ? 't2v'
+      : model === HAILUO_H3_I2V_MODEL ? 'i2v' : 'multi';
+    if (taskType !== 'i2v' && !prompt) {
+      throw new Error(`Hailuo H3 ${taskType === 'multi' ? '多模态参考' : '文生视频'}必须填写提示词`);
+    }
+
+    const seconds = String(request.duration ?? request.seconds ?? '5').trim();
+    if (!HAILUO_H3_SECONDS.has(seconds)) throw new Error('Hailuo H3 时长只支持 5-15 秒');
+    const requestedResolution = String(request.resolution || HAILUO_H3_RESOLUTION).trim().toUpperCase();
+    if (requestedResolution !== HAILUO_H3_RESOLUTION) throw new Error('Hailuo H3 分辨率固定为 2K');
+
+    const payload = {
+      model,
+      seconds,
+      metadata: { resolution: HAILUO_H3_RESOLUTION },
+    };
+    if (taskType === 't2v') {
+      payload.metadata.ratio = normalizeRatio(request.ratio || '16:9');
+      payload.prompt = prompt;
+      return { payload, model, taskType };
+    }
+
+    const imageSources = normalizeList(request.images || request.refImages);
+    if (taskType === 'i2v') {
+      if (imageSources.length === 0) throw new Error('Hailuo H3 图生视频必须提供第 1 张首帧图');
+      if (imageSources.length > 2) throw new Error('Hailuo H3 图生视频最多支持 2 张首尾帧图片');
+      const images = [];
+      for (const source of imageSources) {
+        images.push(await uploadMedia(source, 'image', apiKey, {
+          ...options,
+          maxBytes: 30 * 1024 * 1024,
+          allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
+          cacheVariant: 'hailuo-h3-i2v-image-v1',
+        }));
+      }
+      payload.images = images;
+      if (prompt) payload.prompt = prompt;
+      return { payload, model, taskType };
+    }
+
+    const videoSources = normalizeList(request.videos || request.videoUrls || request.video_url);
+    const audioSources = normalizeList(request.audios || request.audioUrls || request.audio_url);
+    if (imageSources.length === 0 && videoSources.length === 0 && audioSources.length === 0) {
+      throw new Error('Hailuo H3 多模态参考至少需要 1 个图片、视频或音频素材');
+    }
+    if (imageSources.length > HAILUO_H3_MAX_REFERENCE_IMAGES) {
+      throw new Error(`Hailuo H3 多模态参考最多支持 ${HAILUO_H3_MAX_REFERENCE_IMAGES} 张图片`);
+    }
+    if (videoSources.length > HAILUO_H3_MAX_REFERENCE_VIDEOS) {
+      throw new Error(`Hailuo H3 多模态参考最多支持 ${HAILUO_H3_MAX_REFERENCE_VIDEOS} 个视频`);
+    }
+    if (audioSources.length > HAILUO_H3_MAX_REFERENCE_AUDIOS) {
+      throw new Error(`Hailuo H3 多模态参考最多支持 ${HAILUO_H3_MAX_REFERENCE_AUDIOS} 个音频`);
+    }
+
+    const images = [];
+    for (const source of imageSources) {
+      images.push(await uploadMedia(source, 'image', apiKey, {
+        ...options,
+        maxBytes: 30 * 1024 * 1024,
+        allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
+        cacheVariant: 'hailuo-h3-multi-image-v1',
+      }));
+    }
+    const videos = [];
+    for (const source of videoSources) {
+      videos.push(await uploadMedia(source, 'video', apiKey, {
+        ...options,
+        maxBytes: 50 * 1024 * 1024,
+        allowedMimes: ['video/mp4'],
+        cacheVariant: 'hailuo-h3-multi-video-v1',
+      }));
+    }
+    const audios = [];
+    for (const source of audioSources) {
+      audios.push(await uploadMedia(source, 'audio', apiKey, {
+        ...options,
+        maxBytes: 50 * 1024 * 1024,
+        allowedMimes: ['audio/mpeg', 'audio/wav', 'audio/x-wav'],
+        cacheVariant: 'hailuo-h3-multi-audio-v1',
+      }));
+    }
+    payload.prompt = prompt;
+    payload.metadata.ratio = normalizeRatio(request.ratio || '16:9');
+    if (images.length) payload.images = images;
+    if (videos.length) payload.metadata.video_url = videos;
+    if (audios.length) payload.metadata.audio_url = audios;
+    return { payload, model, taskType };
+  }
 
   const prompt = String(request.prompt || '').trim();
   if (prompt.length > HAILUO23_PROMPT_MAX_LENGTH) {
@@ -2611,10 +2761,10 @@ async function submitHailuoTask(request, apiKey, options = {}) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(built.payload),
-  }, options, 'seedance.nz Hailuo 2.3 任务提交');
-  const data = await responseJson(response, 'seedance.nz Hailuo 2.3 任务提交');
+  }, options, 'seedance.nz Hailuo 任务提交');
+  const data = await responseJson(response, 'seedance.nz Hailuo 任务提交');
   if (!response.ok) throw createUpstreamError(data, response);
-  const taskId = requiredTaskId(data?.id || data?.task_id || data?.data?.id, 'seedance.nz Hailuo 2.3 任务提交', response);
+  const taskId = requiredTaskId(data?.id || data?.task_id || data?.data?.id, 'seedance.nz Hailuo 任务提交', response);
   return { taskId, model: built.model, taskType: built.taskType, ...safeProviderTrace(response, data, { pollCount: 0 }) };
 }
 
@@ -3277,6 +3427,12 @@ module.exports = {
   HAILUO23_RESOLUTIONS,
   HAILUO23_SECONDS,
   HAILUO23_T2V_MODELS,
+  HAILUO_H3_I2V_MODEL,
+  HAILUO_H3_MODELS,
+  HAILUO_H3_MULTI_MODEL,
+  HAILUO_H3_SECONDS,
+  HAILUO_H3_T2V_MODEL,
+  HAILUO_MODELS,
   KLING_EDIT_MODELS,
   KLING_I2V_MODELS,
   KLING_MODELS,

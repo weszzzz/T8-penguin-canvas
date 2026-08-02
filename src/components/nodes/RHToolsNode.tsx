@@ -64,6 +64,7 @@ import {
   rhParamKey,
   type RhParamValue,
 } from '../../utils/rhTextBinding';
+import { isProviderUploadMediaReference } from '../../utils/providerMediaReference';
 import ResizableCorners from './ResizableCorners';
 import RHToolEditorModal from './RHToolEditorModal';
 import type { RHTool, RHToolsBackup } from '../../services/api';
@@ -508,12 +509,7 @@ const RHToolsNode = ({ id, data, selected }: NodeProps) => {
           logBus.warn(`多行 fieldValue 检测到-${fieldName}，仅保留首行`, src);
           v = first;
         }
-        const isUrlLike0 =
-          /^https?:\/\//i.test(v) ||
-          v.startsWith('/files/output/') ||
-          v.startsWith('/output/') ||
-          v.startsWith('/files/input/') ||
-          v.startsWith('/input/');
+        const isUrlLike0 = isProviderUploadMediaReference(v);
         if (!isUrlLike0) {
           const k = paramKey(nodeId, fieldName);
           const cur = paramValues[k];
@@ -526,12 +522,7 @@ const RHToolsNode = ({ id, data, selected }: NodeProps) => {
           }
         }
         if (!v) continue;
-        const isUrlLike =
-          /^https?:\/\//i.test(v) ||
-          v.startsWith('/files/output/') ||
-          v.startsWith('/output/') ||
-          v.startsWith('/files/input/') ||
-          v.startsWith('/input/');
+        const isUrlLike = isProviderUploadMediaReference(v);
         if (isUrlLike) {
           const r = await uploadRhAsset(v, activeRhSiteRef.current);
           if (r.site) activeRhSiteRef.current = r.site;
@@ -612,7 +603,7 @@ const RHToolsNode = ({ id, data, selected }: NodeProps) => {
             pollLimit: MAX,
             status: r.status,
             code: r.code,
-            outputCount: Array.isArray(r.urls) ? r.urls.length : 0,
+            outputCount: (Array.isArray(r.urls) ? r.urls.length : 0) + (Array.isArray(r.texts) ? r.texts.length : 0),
           });
           if (elapsed % 6 === 0) {
             logBus.debug(`[${elapsed * 5}s] status=${r.status} code=${r.code} urls=${r.urls?.length || 0}`, src);
@@ -628,6 +619,10 @@ const RHToolsNode = ({ id, data, selected }: NodeProps) => {
             }
           } else if (normalizedStatus === 'SUCCESS') {
             const list: string[] = Array.isArray(r.urls) ? r.urls : [];
+            const textOutputs = (Array.isArray(r.texts) ? r.texts : [])
+              .map((value) => String(value || '').trim())
+              .filter(Boolean);
+            const textValue = textOutputs.join('\n\n');
             const isImg = (u: string) => /\.(png|jpe?g|webp|gif|bmp|avif)$/i.test(u);
             const isVid = (u: string) => /\.(mp4|webm|mov|m4v|mkv)$/i.test(u);
             const isAud = (u: string) => /\.(mp3|wav|ogg|m4a|flac|aac)$/i.test(u);
@@ -645,12 +640,19 @@ const RHToolsNode = ({ id, data, selected }: NodeProps) => {
               upstreamHttpStatus: r.upstreamHttpStatus,
               usage: r.usage,
               pollCount: elapsed,
+              textUrls: Array.isArray(r.textUrls) ? r.textUrls : [],
             };
+            if (textValue) {
+              patch.outputText = textValue;
+              patch.text = textValue;
+              patch.texts = textOutputs;
+              patch.textSegments = textOutputs;
+            }
             if (firstImg) patch.imageUrl = firstImg;
             if (firstVid) patch.videoUrl = firstVid;
             if (firstAud) patch.audioUrl = firstAud;
             if (!firstImg && !firstVid && !firstAud && list[0]) patch.imageUrl = list[0];
-            logBus.success(`任务完成 · ${list.length} 个输出 → ${list[0] || ''}`, src);
+            logBus.success(`任务完成 · ${list.length + textOutputs.length} 个输出`, src);
             update(patch);
             await reporter?.providerResponse({
               provider: 'runninghub',

@@ -197,6 +197,10 @@ import NodeActionBar from './NodeActionBar';
 import RadialNodeMenu from './RadialNodeMenu';
 import RadialMenuSettingsModal from './RadialMenuSettingsModal';
 import MaterialDragOverlay from './MaterialDragOverlay';
+import {
+  MATERIAL_CANVAS_DROP_EVENT,
+  type MaterialCanvasDropEventDetail,
+} from '../stores/dragMaterial';
 import ThemeMusicToggle from './ThemeMusicToggle';
 import CreativeDeskLayer from './CreativeDeskLayer';
 import FarmCanvasLayer, { type FarmCanvasFloatingFeedback } from './FarmCanvasLayer';
@@ -1656,8 +1660,8 @@ function withNodeSerialBadge(Component: ComponentType<any>): ComponentType<any> 
 
 // 节点初始 data(用于区分共享组件的 kind/preset/model 等)
 const INITIAL_DATA: Record<string, Record<string, any>> = {
-  image: { model: 'gpt-image-2', aspectRatio: '1:1', sizeLevel: '1K', gptImageQuality: 'auto', gptImageModeration: 'auto', referenceImages: [], imageOnlyOutput: true, reuseResult: false },
-  edit: { mode: 'edit', model: 'gpt-image-2', aspectRatio: '1:1', sizeLevel: '1K', gptImageQuality: 'auto', gptImageModeration: 'auto', referenceImages: [], imageOnlyOutput: true, reuseResult: false },
+  image: { model: 'gpt-image-2', apiModel: 'gpt-image-2', aspectRatio: '1:1', sizeLevel: '1K', gptImageQuality: 'auto', gptImageModeration: 'auto', referenceImages: [], imageOnlyOutput: true, reuseResult: false },
+  edit: { mode: 'edit', model: 'gpt-image-2', apiModel: 'gpt-image-2', aspectRatio: '1:1', sizeLevel: '1K', gptImageQuality: 'auto', gptImageModeration: 'auto', referenceImages: [], imageOnlyOutput: true, reuseResult: false },
   video: { reuseResult: false },
   'video-edit': { ...DEFAULT_VIDEO_EDIT_DATA, clips: [], settings: { ...DEFAULT_VIDEO_EDIT_DATA.settings }, job: { ...DEFAULT_VIDEO_EDIT_DATA.job } },
   seedance: {
@@ -2852,7 +2856,7 @@ export interface AddNodeOptions {
   data?: Record<string, any>;
 }
 
-export type AddNodeFn = (type: NodeType, options?: AddNodeOptions) => void;
+export type AddNodeFn = (type: NodeType, options?: AddNodeOptions) => string;
 
 interface RadialMenuSession {
   anchor: RadialMenuPoint;
@@ -5604,12 +5608,41 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef }: CanvasInnerProps) {
       };
       setNodes((prev) => [...prev, ...assignActiveNodeSerials([newNode], prev)]);
       trackAchievementEvent({ type: 'node.created', theme: visualStyle, nodeType: type });
+      return id;
     },
     [screenToFlowPosition, nodes, getViewport, setCenter, assignActiveNodeSerials, visualStyle]
   );
 
   const handleCreateGenerationTarget = useCallback(() => {
     addNode(CREATIVE_TARGET_NODE_TYPE as NodeType);
+  }, [addNode]);
+
+  useEffect(() => {
+    const onResourceCanvasDrop = (event: Event) => {
+      const detail = (event as CustomEvent<MaterialCanvasDropEventDetail>).detail;
+      const payload = detail?.payload;
+      if (
+        !payload ||
+        payload.sourceNodeId !== 'resource-library' ||
+        !payload.url ||
+        payload.kind === 'text'
+      ) {
+        return;
+      }
+      addNode('upload', {
+        atScreen: { x: detail.clientX, y: detail.clientY },
+        data: createUploadDataFromItems(payload.kind, [{
+          kind: payload.kind,
+          url: payload.url,
+          name: payload.name || fileNameFromUrl(payload.url),
+          size: payload.size,
+          mime: payload.mime,
+        }]),
+      });
+      logBus.success(`已从资源库插入${payload.kind === 'image' ? '图像' : payload.kind === 'video' ? '视频' : '音频'}素材`, '资源库');
+    };
+    window.addEventListener(MATERIAL_CANVAS_DROP_EVENT, onResourceCanvasDrop);
+    return () => window.removeEventListener(MATERIAL_CANVAS_DROP_EVENT, onResourceCanvasDrop);
   }, [addNode]);
 
   const handleOpenVibeXWorkbench = useCallback(() => {
@@ -13074,6 +13107,20 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef }: CanvasInnerProps) {
     };
   }, [edgeMotionMode, heavyEdgeMotion, isDecorativeEdgeVisual]);
 
+  // Keep every CanvasInner hook above the empty-canvas early return. activeId can
+  // briefly become empty while canvases are loaded or switched; placing this
+  // hook below that return changes the hook count between adjacent renders and
+  // causes React error #310 in production builds.
+  const creatorCanvasContext = useMemo(() => buildCreatorCanvasContext(
+    nodes,
+    edges,
+    getViewport(),
+    {
+      width: typeof window === 'undefined' ? 1440 : window.innerWidth,
+      height: typeof window === 'undefined' ? 900 : window.innerHeight,
+    },
+  ), [edges, getViewport, nodes, viewportMoving]);
+
   if (!activeId) {
     return (
       <div
@@ -13323,16 +13370,6 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef }: CanvasInnerProps) {
       )}
     </>
   );
-
-  const creatorCanvasContext = useMemo(() => buildCreatorCanvasContext(
-    nodes,
-    edges,
-    getViewport(),
-    {
-      width: typeof window === 'undefined' ? 1440 : window.innerWidth,
-      height: typeof window === 'undefined' ? 900 : window.innerHeight,
-    },
-  ), [edges, getViewport, nodes, viewportMoving]);
 
   return (
     <div
