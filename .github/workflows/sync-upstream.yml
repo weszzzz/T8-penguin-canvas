@@ -22,6 +22,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          lfs: true
 
       - name: Safely merge upstream
         shell: bash
@@ -30,6 +31,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git lfs install --local
           git remote add upstream https://github.com/T8mars/T8-penguin-canvas.git
           git fetch --no-tags upstream main
 
@@ -42,9 +44,31 @@ jobs:
             tools/ffmpeg-runtime/ffmpeg.exe \
             tools/remove-ai-watermarks-runtime/README.md)"
           if [[ -n "$protected_changes" ]]; then
-            echo "Refusing to update protected files:" >&2
-            printf '%s\n' "$protected_changes" >&2
-            exit 1
+            if printf '%s\n' "$protected_changes" | grep -Fxq 'tools/remove-ai-watermarks-runtime/README.md'; then
+              echo "Refusing to update protected files:" >&2
+              printf '%s\n' "$protected_changes" >&2
+              exit 1
+            fi
+
+            expected_oid="754a10ce2fc4a8c974ff492b351f58c02d35124d1d602fcf30f561fb1bd0f579"
+            expected_size="143314432"
+            printf '%s\n' "$(git show upstream/main:tools/ffmpeg-runtime/ffmpeg.exe)" \
+              | node scripts/verify-lfs-runtime.cjs --pointer-stdin --oid "$expected_oid" --size "$expected_size"
+            git lfs fetch upstream main --include='tools/ffmpeg-runtime/ffmpeg.exe'
+
+            verify_dir="$(mktemp -d)"
+            cleanup_verify_dir() {
+              git worktree remove --force "$verify_dir" >/dev/null 2>&1 || true
+            }
+            trap cleanup_verify_dir EXIT
+            git worktree add --detach "$verify_dir" upstream/main >/dev/null
+            git -C "$verify_dir" lfs checkout -- tools/ffmpeg-runtime/ffmpeg.exe
+            node scripts/verify-lfs-runtime.cjs \
+              --file "$verify_dir/tools/ffmpeg-runtime/ffmpeg.exe" \
+              --oid "$expected_oid" \
+              --size "$expected_size"
+            trap - EXIT
+            cleanup_verify_dir
           fi
 
           if ! git merge --no-commit --no-ff upstream/main; then
@@ -54,4 +78,5 @@ jobs:
           fi
 
           git commit --no-edit
+          git lfs push origin HEAD
           git push origin HEAD:main
