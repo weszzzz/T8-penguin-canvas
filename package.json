@@ -57,6 +57,7 @@
     "dist:release": "node scripts/dist-release.cjs",
     "release:github": "node scripts/release-github.cjs",
     "release:verify": "node scripts/verify-github-release.cjs",
+    "sync:platform": "node scripts/sync-platform.cjs",
     "worktree:check": "node scripts/worktree-role.cjs inspect",
     "worktree:development": "node scripts/worktree-role.cjs development",
     "worktree:core": "node scripts/worktree-role.cjs core",

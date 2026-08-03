@@ -68,6 +68,12 @@ npm run worktree:development
 - 不用目录复制同步源码，不在历史 integration 与当前仓库同时改同一功能。
 - build、打包、版本升级、提交、推送、tag 和发布仍需单独明确授权。
 
+### 跨平台同步
+
+- macOS 开发使用 `npm run sync:platform`。该入口会设置本仓库 `lfs.skipSmudge=true`，跳过 Windows `ffmpeg.exe` / `ffprobe.exe` 的大文件 materialize，并验证本机可用的原生 `ffmpeg`。
+- Windows 发布或打包工作树使用 `npm run sync:platform`，自动恢复完整 Git LFS materialize；不得在发布前设置 `GIT_LFS_SKIP_SMUDGE=1`。
+- 不要在 macOS 开发树直接使用裸 `git pull` 拉取受保护 Windows LFS 运行时；源码提交仍会正常快进，Windows 发布资源由 GitHub Actions 和 Windows 工作树校验。
+
 ## 危险边界
 
 - 禁止 reset、clean、checkout 覆盖和整树 ours/theirs。
