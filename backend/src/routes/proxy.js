@@ -125,6 +125,16 @@ const PROXY_REMOTE_DEADLINE_MS = boundedProxyInteger(
   1_000,
   5 * 60_000,
 );
+// Seedream V5 Pro is a synchronous image endpoint. High-resolution requests
+// can legitimately take longer than the generic Provider boundary before the
+// first response header arrives, so only this protocol receives a longer
+// deadline. All other Provider calls retain the 90-second default above.
+const SEEDREAM_V5_RESPONSE_DEADLINE_MS = boundedProxyInteger(
+  process.env.T8_SEEDREAM_V5_RESPONSE_DEADLINE_MS,
+  5 * 60_000,
+  30_000,
+  10 * 60_000,
+);
 const PROXY_REMOTE_IDLE_TIMEOUT_MS = boundedProxyInteger(
   process.env.T8_PROXY_REMOTE_IDLE_TIMEOUT_MS,
   15_000,
@@ -313,12 +323,12 @@ function setProxySafeRemoteTestOptions(options) {
   proxySafeRemoteTestOptions = options && typeof options === 'object' ? { ...options } : null;
 }
 
-function providerFetchDeadlineMs() {
+function providerFetchDeadlineMs(options = {}) {
   return boundedProxyInteger(
-    proxySafeRemoteTestOptions?.providerDeadlineMs,
+    proxySafeRemoteTestOptions?.providerDeadlineMs ?? options?.deadlineMs,
     PROXY_REMOTE_DEADLINE_MS,
     10,
-    5 * 60_000,
+    10 * 60_000,
   );
 }
 
@@ -341,7 +351,7 @@ function replayableProviderBody(body) {
 }
 
 async function fetchProviderResponse(url, init = {}, label = 'Provider', options = {}) {
-  const deadlineMs = providerFetchDeadlineMs();
+  const deadlineMs = providerFetchDeadlineMs(options);
   const deadlineAt = Date.now() + deadlineMs;
   const upstreamSignal = init?.signal;
   const method = String(init?.method || 'GET').trim().toUpperCase();
@@ -2952,6 +2962,8 @@ async function callImageUpstreamAsync({ apiKey, finalApiModel, paramKind, prompt
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: auth },
       body: JSON.stringify(body),
+    }, 'Seedream V5 Pro', {
+      deadlineMs: SEEDREAM_V5_RESPONSE_DEADLINE_MS,
     });
   }
 
@@ -4985,6 +4997,11 @@ function hasLlmVideoParts(messages) {
 }
 
 const MINIMAX_H3_REQUEST_PROFILE = 'minimax-h3-prompt-enhancer';
+const SEEDANCE20_REQUEST_PROFILE = 'seedance20-prompt-enhancer';
+const PROMPT_ENHANCER_REQUEST_PROFILES = new Set([
+  MINIMAX_H3_REQUEST_PROFILE,
+  SEEDANCE20_REQUEST_PROFILE,
+]);
 const MINIMAX_H3_MEDIA_MAX_BYTES = 50 * 1024 * 1024;
 const MINIMAX_H3_VIDEO_MIMES = [
   'video/mp4',
@@ -4993,7 +5010,7 @@ const MINIMAX_H3_VIDEO_MIMES = [
   'video/x-matroska',
 ];
 
-async function uploadMiniMaxH3MessageMedia(messages, provider) {
+async function uploadMiniMaxH3MessageMedia(messages, provider, requestProfile = MINIMAX_H3_REQUEST_PROFILE) {
   const output = [];
   let pictureIndex = 0;
   let videoIndex = 0;
@@ -5013,7 +5030,7 @@ async function uploadMiniMaxH3MessageMedia(messages, provider) {
           maxBytes: MINIMAX_H3_MEDIA_MAX_BYTES,
           normalizeImagePng: true,
           fileName: `picture_${pictureIndex}.png`,
-          cacheVariant: `minimax-h3-picture-${pictureIndex}`,
+          cacheVariant: `${requestProfile}-picture-${pictureIndex}`,
         });
         content.push({ ...part, image_url: { ...part.image_url, url } });
         continue;
@@ -5024,7 +5041,7 @@ async function uploadMiniMaxH3MessageMedia(messages, provider) {
           baseUrl: provider.baseUrl,
           maxBytes: MINIMAX_H3_MEDIA_MAX_BYTES,
           allowedMimes: MINIMAX_H3_VIDEO_MIMES,
-          cacheVariant: `minimax-h3-video-${videoIndex}`,
+          cacheVariant: `${requestProfile}-video-${videoIndex}`,
         });
         content.push({ ...part, video_url: { ...part.video_url, url } });
         continue;
@@ -5212,11 +5229,12 @@ router.post('/llm', async (req, res) => {
   //   - 图片: 本地 /files/* 转 base64 dataURL
   //   - 视频: 默认用项目内置 ffmpeg 抽关键帧转 image_url；或按用户选择发送原视频 Base64 / URL
   // 避免上游 LLM 服务拿着本地相对路径报 convert_request_failed。
-  const minimaxH3Profile = req.body?.requestProfile === MINIMAX_H3_REQUEST_PROFILE;
+  const requestProfile = String(req.body?.requestProfile || '').trim();
+  const promptEnhancerProfile = PROMPT_ENHANCER_REQUEST_PROFILES.has(requestProfile);
   let normalizedMessages;
   try {
-    normalizedMessages = minimaxH3Profile && provider.source === 'seedance-nz'
-      ? await uploadMiniMaxH3MessageMedia(messages, provider)
+    normalizedMessages = promptEnhancerProfile && provider.source === 'seedance-nz'
+      ? await uploadMiniMaxH3MessageMedia(messages, provider, requestProfile)
       : await normalizeLlmMessageMedia(messages, req.body || {}, {
           baseUrl: `http://127.0.0.1:${config.PORT}`,
         });
@@ -5241,7 +5259,7 @@ router.post('/llm', async (req, res) => {
         Authorization: `Bearer ${provider.apiKey}`,
       },
       body: JSON.stringify(payload),
-    }, 'Provider', { noRetry: minimaxH3Profile });
+    }, 'Provider', { noRetry: promptEnhancerProfile });
 
     // ===== 流式分支:SSE pass-through =====
     if (payload.stream) {
@@ -7566,7 +7584,7 @@ router.post('/runninghub/submit', async (req, res) => {
       if (instanceType) body.instanceType = instanceType;
       const r = await fetchProviderResponse(`${candidate.baseUrl}/task/openapi/ai-app/run`, {
         method: 'POST',
-        headers: { Host: candidate.host, 'Content-Type': 'application/json', Authorization: `Bearer ${candidate.apiKey}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${candidate.apiKey}` },
         body: JSON.stringify(body),
       });
       const data = await parseJsonResponse(r, `RH ${candidate.label}提交接口`);
@@ -7616,7 +7634,7 @@ router.get('/runninghub/query', async (req, res) => {
       const candidate = candidates[index];
       const r = await fetchProviderResponse(`${candidate.baseUrl}/task/openapi/outputs`, {
         method: 'POST',
-        headers: { Host: candidate.host, 'Content-Type': 'application/json', Authorization: `Bearer ${candidate.apiKey}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${candidate.apiKey}` },
         body: JSON.stringify({ apiKey: candidate.apiKey, taskId }),
       }, `RH ${candidate.label}查询接口`, { retryNetwork: true });
       const data = await parseJsonResponse(r, `RH ${candidate.label}查询接口`);
@@ -7791,7 +7809,7 @@ router.post('/runninghub/cancel', async (req, res) => {
       const candidate = candidates[index];
       const r = await fetchProviderResponse(`${candidate.baseUrl}/task/openapi/cancel`, {
         method: 'POST',
-        headers: { Host: candidate.host, 'Content-Type': 'application/json', Authorization: `Bearer ${candidate.apiKey}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${candidate.apiKey}` },
         body: JSON.stringify({ apiKey: candidate.apiKey, taskId }),
       });
       const data = await parseJsonResponse(r, `RH ${candidate.label}取消接口`);
@@ -7881,7 +7899,7 @@ router.post('/runninghub/upload-asset', express.json({ limit: '64kb', strict: tr
       fd.append('file', new Blob([buf], { type: mime }), baseName);
       const r = await fetchProviderResponse(`${candidate.baseUrl}/task/openapi/upload`, {
         method: 'POST',
-        headers: { Host: candidate.host, Authorization: `Bearer ${candidate.apiKey}` },
+        headers: { Authorization: `Bearer ${candidate.apiKey}` },
         body: fd,
       });
       const data = await parseJsonResponse(r, `RH ${candidate.label}上传接口`);
@@ -7914,7 +7932,7 @@ router.get('/runninghub/app-info', async (req, res) => {
     for (let index = 0; index < candidates.length; index += 1) {
       const candidate = candidates[index];
       const url = `${candidate.baseUrl}/api/webapp/apiCallDemo?apiKey=${encodeURIComponent(candidate.apiKey)}&webappId=${encodeURIComponent(webappId)}`;
-      const r = await fetchProviderResponse(url, { method: 'GET', headers: { Host: candidate.host, Authorization: `Bearer ${candidate.apiKey}` } });
+      const r = await fetchProviderResponse(url, { method: 'GET', headers: { Authorization: `Bearer ${candidate.apiKey}` } });
       const data = await parseJsonResponse(r, `RH ${candidate.label}应用参数接口`);
       lastData = data;
       if (String(data?.code) === '0') {

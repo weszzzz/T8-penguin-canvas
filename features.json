@@ -1,7 +1,56 @@
 {
   "$schema": "本文件为 T8-penguin-canvas 节点清单防丢失锁,任何节点删减都需要在 roadmap.md 中说明并更新本文件。",
-  "version": "2.7.8",
-  "lastUpdated": "2026-08-05-v2.7.8-release",
+  "version": "2.8.0",
+  "lastUpdated": "2026-08-05-v2.8.0-release-published",
+  "runningHubCrossSiteWebappLookup": {
+    "status": "released-v2.8.0",
+    "date": "2026-08-05",
+    "releaseIncluded": true,
+    "highlights": [
+      "修复 RH WebApp ID 在所选站点返回 HTTP 200 + code=901 且缺少可识别错误文本时不尝试另一站的问题；共享站点分类器现在识别 423、802、806、807、811、901、1002、1004 这组站点身份、Key、WebApp 或任务归属错误码。",
+      "只对明确不可能已创建付费任务的站点归属/身份错误回退；参数校验、余额、并发、限流、超时、5xx、生成失败和其他结果不自动重放，继续保持单次提交与费用安全边界。",
+      "普通 RunningHub、RH 钱包、RH 工具、自定义 RH 应用和 RH 工具箱能力层共用同一路由修复；app-info、提交、查询、取消、上传均可继承，RH 工具编辑器也会持久化查询实际解析出的 cn 或 intl 站点。",
+      "海外 WebApp 仍优先并保持 runninghub.ai；只有实际返回站点归属错误时才按已配置 Key 回退，不把所有海外应用强制切到国内站。"
+    ],
+    "verification": [
+      "真实只读 Provider 实测：海外 WebApp 2075149522166181890 在 site=intl 下直接成功、rhSite=intl、无回退并返回 4 个字段；国内 WebApp 2084704734417612802 在 site=intl 下先返回 901，修复后一次回退到 cn 成功、rhSite=cn 并返回 6 个字段。",
+      "RunningHub 站点定向回归 6/6、app-info 路由与脱敏回归 2/2、TypeScript type-check 通过。",
+      "该修复已随 v2.8.0 唯一正式 Electron/NSIS 自动更新流程发布；真实付费任务、反馈用户安装环境与外部 VPN 证据仍按授权发布后补，延期不记为通过。"
+    ]
+  },
+  "providerGenerationDownloadHardening": {
+    "status": "released-v2.8.0",
+    "date": "2026-08-05",
+    "releaseIncluded": true,
+    "basedOn": "PenguinCanvas-v2.7.4-故障原因与修复报告-匿名版-20260801.md",
+    "highlights": [
+      "复核 v2.7.9 后保留现有 Chromium 系统代理、TUN、VPN、IPv4/IPv6 首选链路、可信 Provider 结果安全下载、同一 taskId 恢复、RunningHub Chromium 禁止 Host 头与 CanvasInner Hook 顺序修复，不回退后续节点、模型、协议或用户数据。",
+      "fetchProviderResponse 支持每次调用的 deadlineMs；只有同步 Seedream V5 Pro /v1/images/generations 使用 5 分钟总时限，其他 Provider 仍使用 90 秒通用默认，不改变请求路径、请求体、参考图、返回格式或轮询协议。",
+      "Creator 在线回复保留首个 SSE 片段即时持久化，后续小片段按约 320 字符合并，并在完成或停止前冲刷尾部；超过会话层 256 个上游细片段时仍逐字一致且不触发 CREATOR_RESPONSE_DELTA_INVALID。",
+      "seedance.nz 媒体上传默认总时限提升到 120 秒、空闲读取时限提升到 30 秒；只对上游明确返回 HTTP 429 的上传重试，超时、中止、连接不可用和 5xx 等接收结果不明确的上传不自动重放，避免重复远程文件和潜在重复费用。"
+    ],
+    "verification": [
+      "Seedream、Creator、Seedance 上传、Canvas Hook、Provider 系统网络、提交幂等、完成任务原 taskId 恢复以及图像/视频/音频/RunningHub 安全下载扩展专项与相邻回归 153/153 通过。",
+      "TypeScript type-check、feature-sync:check、public:check、rh-toolbox:check 与生产 build 通过；能力图保持 31 actions、200 runtime entries、74/74 nodes accounted、0 public gaps，Vite 转换 2857 个模块。",
+      "该加固已随 v2.8.0 唯一正式 Electron/NSIS 自动更新流程发布；真实付费 Provider、反馈用户的 VPN/安装环境、协作多端与安装升级证据继续发布后补，不得外推为所有外部网络环境已经验证。"
+    ]
+  },
+  "runningHubChromiumForbiddenHeaderCompatibility": {
+    "status": "released-v2.7.9",
+    "date": "2026-08-05",
+    "releaseIncluded": true,
+    "highlights": [
+      "修复部分安装环境在 Electron Chromium 系统网络栈下查询自定义 RunningHub WebApp ID 时返回 net::ERR_INVALID_ARGUMENT：app-info、提交、查询、取消和上传五条 RH 上游链路均不再手写 Host，由目标 URL 唯一决定 authority。",
+      "共享 Chromium fetch 桥非破坏性清理 Chromium 管理的 authority、连接和请求体分帧请求头，同时保留 Authorization、Content-Type 等 Provider 语义头；支持 Headers、键值对数组和普通对象三种 RequestInit.headers 形态。",
+      "带 Node stream 或 dispatcher/agent 的请求继续走 Node fetch 并保留必要的 Content-Length；DNS 固定安全媒体传输使用独立原始 socket，其 Host/Connection/Content-Length 不经过 Chromium 桥且不得误删。",
+      "渲染进程访问 http://127.0.0.1:18766/api/proxy/runninghub/* 是桌面端受控本机后端入口，真实 RunningHub 上游由后端站点候选 URL 决定；不改为前端直连，以继续隔离 API Key、CORS 和安全下载边界。"
+    ],
+    "verification": [
+      "新增 Chromium 请求头清理和 Node stream Content-Length 保留回归；与 RunningHub 五条上游路径不含手写 Host 的路由合同合计 17/17 通过。",
+      "RunningHub 站点、文本输出、RH 工具箱、文本绑定与抠图相邻回归 42/42 通过；系统网络、可信 Provider 输出、安全远程媒体、日志脱敏与提交幂等相邻回归 74/74 通过。",
+      "TypeScript type-check、feature-sync:check、public:check、JSON/diff 检查与生产前端 build 通过；该修复已随 v2.7.9 唯一正式 Electron/NSIS 自动更新流程发布，反馈用户的具体 VPN、安装版本和远程 Provider 环境仍按授权后补，延期不得记录为通过。"
+    ]
+  },
   "previsStudioCapability": {
     "status": "released-v2.7.8",
     "date": "2026-08-05",
@@ -44,42 +93,42 @@
     ]
   },
   "release": {
-    "status": "released-v2.7.8",
-    "version": "2.7.8",
+    "status": "released-v2.8.0",
+    "version": "2.8.0",
     "date": "2026-08-05",
-    "publishedAt": "2026-08-05T05:35:38Z",
-    "tag": "v2.7.8",
+    "publishedAt": "2026-08-05T14:43:39Z",
+    "tag": "v2.8.0",
     "latest": true,
-    "sourceCommit": "2048a00273353ce7b82837be734a58f578d06408",
-    "url": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v2.7.8",
+    "sourceCommit": "2b984be4696a9abe3627832e3d39ba02f7338fdb",
+    "url": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v2.8.0",
     "artifacts": {
       "installer": {
-        "name": "T8-PenguinCanvas-Setup-2.7.8.exe",
-        "size": 1295691506,
-        "sha256": "14b5cf9e3d21b43a1aced96d2332d5453e4e10dd6cac256ad3fded65fbc47163"
+        "name": "T8-PenguinCanvas-Setup-2.8.0.exe",
+        "size": 1317437404,
+        "sha256": "4daf8baaa995e8b96b868b5202041b1f27bcd68df6f349b189c05815c9e4392e"
       },
       "blockmap": {
-        "name": "T8-PenguinCanvas-Setup-2.7.8.exe.blockmap",
-        "size": 1350223,
-        "sha256": "b5856c61757b6cb5c218e737b14613e06d7e935e8db0a7a74804d6cce5be38e3"
+        "name": "T8-PenguinCanvas-Setup-2.8.0.exe.blockmap",
+        "size": 1372947,
+        "sha256": "c4efcfb24db6d8638d79f33601ed80063b61f92e29b452b0852c9dc982a5511a"
       },
       "updateManifest": {
         "name": "latest.yml",
         "size": 362,
-        "sha256": "7656cabf0953168958a190171fd83a08bb260a3737d0e58e68c47b62d496b641"
+        "sha256": "d023c4c3ef8995875c78d16c1feac757fd60bda6c1df4a8081dde4d00941f344"
       }
     },
     "verification": [
-      "v2.7.8 发布范围固定为 MiniMax H3 AUTO/1–20 镜头数量、RH 工具箱持久化智能翻译，以及带出处致谢的完整白模预演工作台。",
-      "白模预演专项回归 6/6、RH 智能翻译专项 24/24 与相邻回归 53/53、H3 定向回归 7/7 与相关权威回归 71/71；TypeScript、能力目录、公开面与生产前端构建通过。",
-      "固定 source commit 上的唯一正式流程已完成 Electron/NSIS、post-build、provenance、sealed recovery、GitHub 三项自动更新资产上传、发布前完整远端回下载、固定 Tag、非草稿/非预发布、Latest 与发布后元数据核验；成功后 recovery 已清除。",
-      "用户已明确授权先发布、后补真实 Provider、协作多端、安装升级与外部环境证据；协作证据门仅允许缺失清单按 owner-approved-post-release-v2.7.8 延期，不能把延期标记为已通过。"
+      "v2.8.0 发布范围固定为 RunningHub 国内/海外 WebApp 自动识别与 Provider 生成、流式持久化及结果下载稳定性加固，不回退 v2.7.4 之后的系统代理、TUN、VPN、IPv4/IPv6 和后续节点、模型、协议能力。",
+      "Provider 生成/下载与相邻回归 153/153、RunningHub 跨站定向 6/6、app-info 路由/脱敏 2/2 通过；TypeScript、能力同步、公开面、RH 工具箱与生产前端构建通过。",
+      "固定提交 2b984be4696a9abe3627832e3d39ba02f7338fdb 上的唯一正式流程完成 Electron/NSIS、4426 模块生产构建、私有后端加密、post-build、provenance、sealed recovery、GitHub 自动更新三资产、发布前完整远端回下载、固定 Tag、非草稿/非预发布、Latest 与 recovery 清理核验。",
+      "用户已明确授权先发布、后补真实 Provider、反馈用户 VPN/安装环境、协作多端与安装升级证据；协作证据门仅允许缺失清单按 owner-approved-post-release-v2.8.0 延期，不能把延期标记为已通过。"
     ]
   },
   "versionSequencePolicy": {
     "status": "active",
     "date": "2026-07-30",
-    "currentVersion": "2.7.8",
+    "currentVersion": "2.8.0",
     "rules": [
       "版本号每一段只使用 0-9；v2.6.9 的下一正式版本固定为 v2.7.0。",
       "禁止创建、打包、推送、打 tag、发布或写入自动更新元数据为 v2.6.10。",
@@ -90,6 +139,8 @@
       "v2.7.5 的下一正式版本固定为 v2.7.6。",
       "v2.7.6 的下一正式版本固定为 v2.7.7。",
       "v2.7.7 的下一正式版本固定为 v2.7.8。",
+      "v2.7.8 的下一正式版本固定为 v2.7.9。",
+      "v2.7.9 的下一正式版本固定为 v2.8.0，禁止创建 v2.7.10。",
       "后续改版本前必须同步核对 package.json、package-lock.json、README、features.json、项目 SKILL.md、Release notes、自动更新元数据和 Git tag。"
     ]
   },
@@ -6392,11 +6443,11 @@
       "T8_ENABLE_LOCAL_PRIVATE": "开发环境和普通本机构建可选；0=关闭本机 local-private/extensions 私有扩展。正式 dist:release 固定为 1，不能被父环境降级。GitHub/clean clone 因为没有 local-private 目录，不包含充值实现。",
       "T8_DISABLE_LOCAL_EXTENSIONS": "开发环境可选；1=关闭本地扩展。正式 dist:release 固定为 0，确保本机私有 sidecar 参与加密打包与后置校验。"
     },
-    "version": "2.7.8",
-    "semverVersion": "2.7.8",
+    "version": "2.8.0",
+    "semverVersion": "2.8.0",
     "versionNumberPolicy": "T8 版本号仍采用 x.y.z 三段，但每一段只允许 0-9；任一段到 9 后下一次发布必须向左进位，禁止任一段出现两位数字。例：1.9.9 的下一版必须是 2.0.0。",
-    "versionNote": "v1.3.0 起统一采用三段阶段号 x.y.z；v2.7.8 已正式发布，聚焦白模预演、RH 智能翻译与 MiniMax H3 镜头数量控制。公开源码继续排除本地私有计费/支付/充值/分组令牌实现。",
-    "installer": "v2.7.8 正式 Electron/NSIS 安装包为 1295691506 bytes / SHA-256 14b5cf9e3d21b43a1aced96d2332d5453e4e10dd6cac256ad3fded65fbc47163；blockmap 为 1350223 bytes / SHA-256 b5856c61757b6cb5c218e737b14613e06d7e935e8db0a7a74804d6cce5be38e3；latest.yml 为 362 bytes / SHA-256 7656cabf0953168958a190171fd83a08bb260a3737d0e58e68c47b62d496b641。Tag/Release target 固定为 2048a00273353ce7b82837be734a58f578d06408，Release 非草稿、非预发布且为 Latest。",
+    "versionNote": "v1.3.0 起统一采用三段阶段号 x.y.z；v2.8.0 已正式发布，包含 RunningHub 国内/海外 WebApp 自动识别与 Provider 生成下载稳定性加固。公开源码继续排除本地私有计费/支付/充值/分组令牌实现。",
+    "installer": "v2.8.0 已从固定 source commit 2b984be4696a9abe3627832e3d39ba02f7338fdb 的唯一 dist:release 流程生成并发布：安装包 1,317,437,404 bytes / SHA-256 4daf8baaa995e8b96b868b5202041b1f27bcd68df6f349b189c05815c9e4392e；blockmap 1,372,947 bytes / SHA-256 c4efcfb24db6d8638d79f33601ed80063b61f92e29b452b0852c9dc982a5511a；latest.yml 362 bytes / SHA-256 d023c4c3ef8995875c78d16c1feac757fd60bda6c1df4a8081dde4d00941f344。post-build、provenance、sealed recovery、GitHub digest/size、完整远端回下载、Tag/target 与 Latest 均通过，recovery 已清除。",
     "updaterInstallMode": "自动更新下载完成后不得静默安装：main.cjs 必须设置 autoInstallOnAppQuit=false，显式安装调用 quitAndInstall(false,true)；electron/build-resources/installer.nsh 通过 SetSilent normal 让新版 NSIS 安装器即使收到旧客户端传入的 /S 也尽量切回前台安装向导。",
     "installerShortcutPolicy": "安装完成后必须创建桌面和开始菜单快捷方式：package.json build.nsis.createDesktopShortcut 必须为 \"always\"，createStartMenuShortcut 必须为 true；electron/build-resources/installer.nsh 必须保留 customInstall 兜底 CreateShortCut \"$newStartMenuLink\" 与 \"$DESKTOP\\${SHORTCUT_NAME}.lnk\"，防止更新安装/keepShortcuts 路径遗漏入口。",
     "updaterEntryPolicy": "顶栏桌面更新入口不得只因 window.t8pc.updater 缺失就静默消失；Electron UA 或 t8pc.getInfo/openExternal 可用时必须显示诊断入口，提示重新安装完整桌面包，Web/纯浏览器环境才隐藏。状态为 not-available 时按钮仍保留“更新”字样，避免用户误以为自动更新入口被删除。",
@@ -7111,6 +7162,51 @@
     "boundaries": [
       "扩展 Provider 的凭据、Base URL 和模型清单继续由全局 API 设置管理，不保存到节点、画布、能力图或日志。",
       "真实 Provider 质量、费率、联网可用性与安装版视觉验收按 owner-approved-post-release-v2.7.7 后补；延期项目不冒充已通过证据。"
+    ]
+  },
+  "seedance20PromptEnhancerNode": {
+    "status": "released-v2.7.9",
+    "date": "2026-08-05",
+    "releaseIncluded": true,
+    "nodeType": "seedance20-prompt-enhancer",
+    "category": "inspiration",
+    "referenceImplementation": "F:/AI-T8-video-onekey/ComfyUI/custom_nodes/comfyui-minimax-h3-prompt-enhancer-T8/seedance20.py",
+    "defaultProvider": "贞贞的平价AI小屋",
+    "defaultModel": "bytedance/doubao-seed-2.1-pro",
+    "highlights": [
+      "无限画布新增独立 Seedance 2.0 提示词增强器，与 MiniMax H3 节点并存且协议完全隔离；支持 AUTO、T2V、I2V、FL-I2V、多模态参考、视频编辑、视频延长、轨道补齐和组合任务。",
+      "节点提供 AUTO/4-15 秒目标时长、AUTO/1-20 镜头数量、简单/复杂分镜、严格/均衡/创意改写、输出详略、中英文、官方优化/模板融合、两套引用语法、字幕与稳定性策略和 80-4000 软长度目标。",
+      "输入为 text/image/video、输出为 text，明确不接受音频；图片最多 9 张、视频最多 3 个、合计最多 12 项，单视频 2-15 秒且视频总时长不超过 15 秒，完整视频作为时序证据传给 LLM。",
+      "默认渠道保持贞贞的平价AI小屋，默认模型固定 bytedance/doubao-seed-2.1-pro；同时支持贞贞的AI工坊和所有已启用、具备 LLM 能力的扩展 Provider，失效渠道或模型失败关闭且不静默回退。",
+      "内置提示词增强请求统一使用受控真实媒体上传和单次正式 LLM 请求；节点只保存选择与结果，不保存 API Key、Base URL 或原始 Provider 响应。"
+    ],
+    "sourceFiles": [
+      "backend/src/shared/seedance20PromptEnhancerContract.json",
+      "src/utils/seedance20PromptEnhancer.ts",
+      "src/components/nodes/Seedance20PromptEnhancerNode.tsx",
+      "src/components/Canvas.tsx",
+      "src/services/generation.ts",
+      "backend/src/routes/proxy.js",
+      "backend/src/collaboration/runIntentAuthority.js",
+      "src/utils/runPreflightContext.ts",
+      "src/utils/workflowDoctor.ts",
+      "backend/src/shared/canvasNodeSchema.json",
+      "tools/zcanvas-cli/creativeCapabilityManifest.json",
+      "tests/seedance20PromptEnhancer.test.ts",
+      "tests/seedance20CanvasIntegration.test.ts",
+      "tests/seedance20RunIntentAuthority.test.cjs"
+    ],
+    "verification": [
+      "Seedance 2.0 合同、任务/媒体矩阵、镜头边界、引用语法、无音频声明、安全输入与源码接线定向回归 6/6 通过；Canvas 预检与 Workflow Doctor 集成回归 2/2 通过。",
+      "Seedance 2.0 RunIntent Provider/模型权威 2/2 通过；与 MiniMax H3 合并权威回归 5/5 通过。",
+      "节点连接端口与 Canvas Run 执行权威审计 15/15、能力清单与动态覆盖审计 10/10 通过；TypeScript、feature-sync:check、public:check、JSON 与 diff 检查通过。",
+      "生产前端 build 通过并生成独立 Seedance20PromptEnhancerNode chunk；能力图已由源清单重新生成，31 项动作、200 项运行目录、74/74 节点已解释、0 公共缺口。",
+      "该节点已随 v2.7.9 唯一正式 Electron/NSIS 自动更新流程发布，包内独立 Seedance 2.0 节点 chunk 与发布门禁通过；真实或付费 Provider、安装版视觉与外部环境证据按用户授权发布后补录，延期不记为通过。"
+    ],
+    "boundaries": [
+      "参考实现默认的 bytedance/doubao-seed-evolving 未复制到画布默认值；按产品要求继续固定贞贞平价小屋 bytedance/doubao-seed-2.1-pro。",
+      "Seedance 2.0 输出不得包含 H3 字段、[Shot N] 标签、毫秒时间戳或首尾帧对齐句；镜头数量只约束同一次 LLM 输出，不增加修复请求。",
+      "扩展 Provider 是否真正支持图片或完整视频由其已配置模型能力决定；平台缺失、模型缺失或上游拒绝多模态时明确失败，不静默替换 Provider 或模型。"
     ]
   },
   "scriptMasterWorkbenchReadability": {

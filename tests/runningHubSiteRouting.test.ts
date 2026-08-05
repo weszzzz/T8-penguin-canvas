@@ -16,12 +16,32 @@ test('RunningHub site routing keeps the legacy key on the domestic site', () => 
   const overseas = routing.getRhSiteConfig(settings, 'intl');
 
   assert.equal(domestic.baseUrl, 'https://www.runninghub.cn');
-  assert.equal(domestic.host, 'www.runninghub.cn');
+  assert.equal(Object.prototype.hasOwnProperty.call(domestic, 'host'), false);
   assert.equal(domestic.apiKey, 'cn-key');
   assert.equal(overseas.baseUrl, 'https://www.runninghub.ai');
-  assert.equal(overseas.host, 'www.runninghub.ai');
+  assert.equal(Object.prototype.hasOwnProperty.call(overseas, 'host'), false);
   assert.equal(overseas.apiKey, 'intl-key');
   assert.equal(routing.normalizeRhSite(undefined), 'cn');
+});
+
+test('RunningHub URL owns the upstream authority and no route hand-writes Host', () => {
+  const proxyRoute = readFileSync(new URL('../backend/src/routes/proxy.js', import.meta.url), 'utf8');
+  const start = proxyRoute.indexOf("router.post('/runninghub/submit'");
+  const end = proxyRoute.indexOf('module.exports = router;', start);
+  assert.ok(start > 0 && end > start, 'RunningHub route block must remain discoverable');
+  const runningHubRoutes = proxyRoute.slice(start, end);
+
+  assert.doesNotMatch(runningHubRoutes, /\bHost\s*:/);
+  assert.doesNotMatch(runningHubRoutes, /candidate\.host/);
+  for (const path of [
+    '/task/openapi/ai-app/run',
+    '/task/openapi/outputs',
+    '/task/openapi/cancel',
+    '/task/openapi/upload',
+    '/api/webapp/apiCallDemo',
+  ]) {
+    assert.match(runningHubRoutes, new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
 });
 
 test('RunningHub site candidates prefer the selected site and can use the configured alternate', () => {
@@ -38,6 +58,9 @@ test('RunningHub site candidates prefer the selected site and can use the config
 
 test('RunningHub automatic site fallback is limited to credentials and missing app or task errors', () => {
   assert.equal(routing.shouldRetryRhSiteResponse({ status: 401 }, {}), true);
+  assert.equal(routing.shouldRetryRhSiteResponse({ status: 200 }, { code: 901 }), true);
+  assert.equal(routing.shouldRetryRhSiteResponse({ status: 200 }, { code: 1002 }), true);
+  assert.equal(routing.shouldRetryRhSiteResponse({ status: 200 }, { code: 1004 }), true);
   assert.equal(routing.shouldRetryRhSiteResponse({ status: 200 }, { msg: 'API key invalid' }), true);
   assert.equal(routing.shouldRetryRhSiteResponse({ status: 200 }, { msg: 'webapp does not exist' }), true);
   assert.equal(routing.shouldRetryRhSiteResponse({ status: 200 }, { msg: 'task not found' }), true);
@@ -86,6 +109,7 @@ test('RunningHub settings and RH node surfaces expose independent domestic and o
   assert.match(rhToolsNode, /resolveRunningHubDisplaySite\(configuredRhSite, webappId, appInfo\)/);
   assert.match(rhToolsNode, /displayedRhSite === 'intl' \? '海外站' : '国内站'/);
   assert.match(rhToolsEditor, /aria-label="RunningHub 站点"/);
+  assert.match(rhToolsEditor, /data\?\.rhSite === 'intl' \|\| data\?\.rhSite === 'cn'/);
   assert.match(rhToolsEditor, /import \{ createPortal \} from 'react-dom'/);
   assert.match(rhToolsEditor, /createPortal\(modal, document\.body\)/);
   assert.match(rhToolsEditor, /data-rh-tool-editor-modal="true"/);
