@@ -2,6 +2,8 @@
 
 在修改代码、架构、配置、测试、UI、部署、GitHub 或技术文档前，完整阅读本文件、`SKILL.md`、`features.json`、`roadmap.md`、`package.json`、相关源码/测试，以及当前交接记录。项目没有 `meta.json`。
 
+涉及上游同步、fork 合并、LFS 保护或合并冲突时，额外阅读 `.agents/skills/upstream-sync-merge/SKILL.md`。
+
 ## 当前权威开发路径
 
 - 当前宿主的权威路径先读 `PROJECT-RUNBOOK.md`，不得把另一操作系统的绝对路径套到本机。
