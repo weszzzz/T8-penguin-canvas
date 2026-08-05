@@ -1,2 +1,13 @@
 tools/ffmpeg-runtime/ffmpeg.exe filter=lfs diff=lfs merge=lfs -text
 tools/ffmpeg-runtime/ffprobe.exe filter=lfs diff=lfs merge=lfs -text
+
+# These files define the local macOS/Windows development integration. Keep the
+# local side when upstream changes overlap; shared product code remains normal
+# three-way merge input.
+start-dev.command merge=keep-local
+PROJECT-RUNBOOK.md merge=keep-local
+scripts/sync-platform.cjs merge=keep-local
+scripts/verify-lfs-runtime.cjs merge=keep-local
+tests/syncPlatform.test.cjs merge=keep-local
+tests/verifyLfsRuntime.test.cjs merge=keep-local
+.github/workflows/sync-upstream.yml merge=keep-local

@@ -1,4 +1,4 @@
-name: Sync upstream
+name: Sync upstream safely
 
 on:
   schedule:
@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+  issues: write
 
 concurrency:
   group: sync-upstream-main
@@ -16,6 +18,9 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    outputs:
+      conflict: ${{ steps.merge.outputs.conflict }}
+      upstream_sha: ${{ steps.merge.outputs.upstream_sha }}
     steps:
       - name: Check out main
         uses: actions/checkout@v4
@@ -24,7 +29,8 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Safely merge upstream
+      - name: Prepare and safely merge upstream
+        id: merge
         shell: bash
         run: |
           set -euo pipefail
@@ -32,13 +38,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git lfs install --local
+          git config merge.keep-local.driver true
           git remote add upstream https://github.com/T8mars/T8-penguin-canvas.git
           git fetch --no-tags upstream main
 
           if git merge-base --is-ancestor upstream/main HEAD; then
             echo "Upstream is already included at $(git rev-parse --short HEAD)."
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
+            echo "upstream_sha=$(git rev-parse upstream/main)" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
+          echo "upstream_sha=$(git rev-parse upstream/main)" >> "$GITHUB_OUTPUT"
 
           protected_changes="$(git diff --name-only HEAD..upstream/main -- \
             tools/ffmpeg-runtime/ffmpeg.exe \
@@ -72,11 +83,98 @@ jobs:
           fi
 
           if ! git merge --no-commit --no-ff upstream/main; then
-            git merge --abort || true
-            echo "Refusing to synchronize because the merge has conflicts." >&2
-            exit 1
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+            echo "Upstream merge has conflicts; preserving the worktree for read-only advice."
+            exit 0
           fi
 
           git commit --no-edit
+          branch="sync/upstream-$(date -u +%Y%m%dT%H%M%SZ)"
+          git branch -f "$branch" HEAD
           git lfs push origin HEAD
-          git push origin HEAD:main
+          git push origin "$branch"
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "sync: merge upstream/main" \
+            --body "Automated clean three-way merge from upstream/main at $(git rev-parse upstream/main). Local platform-owned paths use the keep-local merge driver."
+          echo "conflict=false" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  merge-advice:
+    needs: sync
+    if: needs.sync.outputs.conflict == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    outputs:
+      advice: ${{ steps.codex.outputs.final-message || steps.fallback.outputs.advice }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+          lfs: true
+          persist-credentials: false
+
+      - name: Reproduce the conflict without changing tracked files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config merge.keep-local.driver true
+          git remote add upstream https://github.com/T8mars/T8-penguin-canvas.git
+          git fetch --no-tags upstream main
+          git merge --no-commit --no-ff upstream/main || true
+          test -n "$(git diff --name-only --diff-filter=U)"
+
+      - name: Ask Codex for merge advice
+        id: codex
+        if: env.OPENAI_API_KEY != ''
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          safety-strategy: read-only
+          allow-bots: true
+          prompt-file: .github/codex/prompts/upstream-merge-advisor.md
+
+      - name: Record unavailable Codex advice
+        id: fallback
+        if: steps.codex.outputs.final-message == ''
+        run: |
+          echo 'advice=No merge advice was generated. Configure repository secret OPENAI_API_KEY and rerun the workflow.' >> "$GITHUB_OUTPUT"
+
+  publish-merge-advice:
+    needs: [sync, merge-advice]
+    if: needs.sync.outputs.conflict == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open a review issue with the read-only merge advice
+        uses: actions/github-script@v7
+        env:
+          UPSTREAM_SHA: ${{ needs.sync.outputs.upstream_sha }}
+          ADVICE: ${{ needs.merge-advice.outputs.advice }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const title = `sync: upstream merge needs review (${process.env.UPSTREAM_SHA.slice(0, 12)})`;
+            const body = [
+              'The scheduled three-way merge found shared-file conflicts.',
+              '',
+              'Codex was run read-only and did not edit, stage, commit, or push source files.',
+              '',
+              '## Merge advice',
+              process.env.ADVICE || 'No advice output was returned.',
+              '',
+              'Apply an approved decision on a dedicated `codex/*` branch, then run the relevant checks before opening the sync PR.',
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+            });
