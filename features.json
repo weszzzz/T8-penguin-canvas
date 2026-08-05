@@ -1,45 +1,85 @@
 {
   "$schema": "本文件为 T8-penguin-canvas 节点清单防丢失锁,任何节点删减都需要在 roadmap.md 中说明并更新本文件。",
-  "version": "2.7.6",
-  "lastUpdated": "2026-08-02-v2.7.6-released",
+  "version": "2.7.8",
+  "lastUpdated": "2026-08-05-v2.7.8-release",
+  "previsStudioCapability": {
+    "status": "released-v2.7.8",
+    "date": "2026-08-05",
+    "releaseIncluded": true,
+    "source": {
+      "repository": "https://github.com/GuiYi-Xi/monoform-previs-studio",
+      "commit": "77f4bae83eeee550a6f416757231f438155bf674",
+      "author": "GuiYi-Xi"
+    },
+    "highlights": [
+      "新增可执行 `previs-studio` 白模预演节点，完整移植人物、基础几何体、外部 GLB/GLTF、摄像机、姿态、骨骼、物体/镜头关键帧、时间线、撤销重做、工程导入导出、PNG 与 MP4 导出工作台；节点页和全屏工作台均显示出处并感谢原作者。",
+      "紧凑节点不常驻 WebGL，完整工作台按需拆包并通过 Shadow DOM 隔离原项目样式；工程同时保存到节点数据与节点独立 localStorage，画布关闭或应用重启后可恢复，外部模型通过 T8 受控上传落盘。",
+      "输入端口接受 `model3d`，输出端口提供标准 `image`、`video`、`text`、`metadata`；当前帧输出构图参考 PNG，动画输出 5 秒、24 FPS、H.264 MP4，可直接作为 Seedance 2.0 图像或运动/镜头视频参考。",
+      "导出接入 Canvas Run/NodeRun/Attempt 生命周期和全局 STOP；取消会中断逐帧编码并失败关闭，不会把停止后的资源误写为成功，输出附带 `t8-previs-output-v1` 尺寸、帧率、时间、用途、工程修订和固定上游提交。"
+    ],
+    "verification": [
+      "Canvas Node Schema、节点注册、端口、初始数据与能力图已同步，73/73 节点均被解释且生成图无缺口。",
+      "白模节点专项回归 6/6 通过，覆盖注册、按需加载、完整工作台表面、PNG/MP4/停止合同、归属信息、受控 output 归档、显式权威 output 事件和固定二进制摘要。",
+      "实际 Chromium 在 1280×720 下加载 3 个场景对象、1 个人物和 2 个 WebGL 画布，左栏/主视口/右侧属性/时间线与出处/导出区重叠均为 0；真实生成并回显 1280×720 PNG 与 120 帧、5 秒、24 FPS H.264 MP4，二者均落在 `/files/output/previs/` 且运行中心没有输出证据错误。",
+      "真实全局 STOP 在动画导出过程中使节点显示已停止，受控输出链接数量未增加；TypeScript、能力目录、公开面与生产前端构建通过。该能力已随 v2.7.8 唯一正式 Electron/NSIS 自动更新流程发布，安装升级与外部设备证据继续按授权后补。"
+    ]
+  },
+  "smartTranslationCapability": {
+    "status": "released-v2.7.8",
+    "date": "2026-08-04",
+    "releaseIncluded": true,
+    "provider": "runninghub",
+    "webappId": "2084616885802463233",
+    "capability": "text.translate",
+    "highlights": [
+      "RH工具箱正式内置“智能翻译”，把早期制作器误识别的 image.cutout / 图片输出合同纠正为 node #5 prompt 文本输入与 text-only 文本输出；源 manifest、本机持久化清单和服务端持久化归一使用同一合同。",
+      "共享 runRhTextTranslation 能力只在一次用户点击时提交一次 RunningHub 任务，不自动重放；文本节点、LLM/Vision 用户输入和输出素材文本区共用同一入口，不各自直连 Provider。",
+      "三个节点新增紧凑“译”按钮：中英文自动互译，其他语言默认译为中文；成功结果写回节点的权威文本字段，并把脱敏后的 Provider、toolId、taskId、requestId、原文、译文与完成状态持久化到 smartTranslation。",
+      "翻译期间原文发生变化时结果标为 stale 且不覆盖新内容；文本/LLM 中的 @ 素材引用先替换为受保护占位符，远端未完整保留引用时失败关闭，避免翻译破坏素材绑定。"
+    ],
+    "verification": [
+      "RH工具箱 manifest、旧错误合同迁移、引用保护、共享 service 与三个 UI 接线专项回归 24/24 通过。",
+      "RH工具箱、Prompt 编辑、文本节点尺寸、LLM 视频输入/模型选择、输出素材持久化与 RunningHub 文本输出相邻回归 53/53 通过。",
+      "TypeScript、能力目录同步、公开源码检查、生产前端构建与构建产物 RH 能力标记检查通过；该能力已随 v2.7.8 正式发布，真实 RunningHub WebApp 与安装版证据按用户授权在发布后补录。"
+    ]
+  },
   "release": {
-    "status": "released-v2.7.6",
-    "version": "2.7.6",
-    "date": "2026-08-02",
-    "publishedAt": "2026-08-02T15:53:29Z",
-    "tag": "v2.7.6",
+    "status": "released-v2.7.8",
+    "version": "2.7.8",
+    "date": "2026-08-05",
+    "publishedAt": "2026-08-05T05:35:38Z",
+    "tag": "v2.7.8",
     "latest": true,
-    "sourceCommit": "d123252ca8919e49a0a4e3f87c7f3934aaf2451d",
-    "url": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v2.7.6",
+    "sourceCommit": "2048a00273353ce7b82837be734a58f578d06408",
+    "url": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v2.7.8",
     "artifacts": {
       "installer": {
-        "name": "T8-PenguinCanvas-Setup-2.7.6.exe",
-        "size": 1304733546,
-        "sha256": "8775160eb23558798fa64ed34f504b8ca80a9dc89b2822cc7abe954b2b009e2c"
+        "name": "T8-PenguinCanvas-Setup-2.7.8.exe",
+        "size": 1295691506,
+        "sha256": "14b5cf9e3d21b43a1aced96d2332d5453e4e10dd6cac256ad3fded65fbc47163"
       },
       "blockmap": {
-        "name": "T8-PenguinCanvas-Setup-2.7.6.exe.blockmap",
-        "size": 1359603,
-        "sha256": "a619e0acc09b6b87277d020f74016fa5481d9c7991ade94aaa4bb46d52f201a9"
+        "name": "T8-PenguinCanvas-Setup-2.7.8.exe.blockmap",
+        "size": 1350223,
+        "sha256": "b5856c61757b6cb5c218e737b14613e06d7e935e8db0a7a74804d6cce5be38e3"
       },
       "updateManifest": {
         "name": "latest.yml",
         "size": 362,
-        "sha256": "c73ad70b527727d6ab06570584bd4aab44d924213c03d05e0824811a99cba31e"
+        "sha256": "7656cabf0953168958a190171fd83a08bb260a3737d0e58e68c47b62d496b641"
       }
     },
     "verification": [
-      "v2.7.6 发布范围固定为剧本大师专业工作台和 VPN / 代理远程媒体声明长度兼容修复。",
-      "剧本大师聚焦回归 30/30、相邻回归 226/226，VPN 声明长度聚焦回归 30/30、相邻系统网络与 Provider 回归 111/111；TypeScript 与能力目录检查通过。",
-      "固定并推送 source commit d123252ca8919e49a0a4e3f87c7f3934aaf2451d 后，从独立 release worktree 完成 Vite、加密、运行时归档、Electron 原生模块与 NSIS 正式流程；前端/应用构建只执行一次，首次原生模块重建因后台开发端占用 better_sqlite3.node 中断，关闭该项目进程后从原生步骤续跑，electron-builder 与最终安装包只执行一次。",
-      "post-build、release provenance、sealed recovery、三项 GitHub digest/size、发布前完整远端回下载、固定 Tag、非草稿/非预发布、Latest 与发布后 metadata-only 复核通过；发布成功后 recovery 已清除。",
-      "用户已明确授权先发布、后补真实 Provider、协作多端与安装升级证据；协作证据门仅允许缺失清单按 owner-approved-post-release-v2.7.6 延期，不能把延期标记为已通过。"
+      "v2.7.8 发布范围固定为 MiniMax H3 AUTO/1–20 镜头数量、RH 工具箱持久化智能翻译，以及带出处致谢的完整白模预演工作台。",
+      "白模预演专项回归 6/6、RH 智能翻译专项 24/24 与相邻回归 53/53、H3 定向回归 7/7 与相关权威回归 71/71；TypeScript、能力目录、公开面与生产前端构建通过。",
+      "固定 source commit 上的唯一正式流程已完成 Electron/NSIS、post-build、provenance、sealed recovery、GitHub 三项自动更新资产上传、发布前完整远端回下载、固定 Tag、非草稿/非预发布、Latest 与发布后元数据核验；成功后 recovery 已清除。",
+      "用户已明确授权先发布、后补真实 Provider、协作多端、安装升级与外部环境证据；协作证据门仅允许缺失清单按 owner-approved-post-release-v2.7.8 延期，不能把延期标记为已通过。"
     ]
   },
   "versionSequencePolicy": {
     "status": "active",
     "date": "2026-07-30",
-    "currentVersion": "2.7.6",
+    "currentVersion": "2.7.8",
     "rules": [
       "版本号每一段只使用 0-9；v2.6.9 的下一正式版本固定为 v2.7.0。",
       "禁止创建、打包、推送、打 tag、发布或写入自动更新元数据为 v2.6.10。",
@@ -48,6 +88,8 @@
       "v2.7.3 的下一正式版本固定为 v2.7.4。",
       "v2.7.4 的下一正式版本固定为 v2.7.5。",
       "v2.7.5 的下一正式版本固定为 v2.7.6。",
+      "v2.7.6 的下一正式版本固定为 v2.7.7。",
+      "v2.7.7 的下一正式版本固定为 v2.7.8。",
       "后续改版本前必须同步核对 package.json、package-lock.json、README、features.json、项目 SKILL.md、Release notes、自动更新元数据和 Git tag。"
     ]
   },
@@ -6350,11 +6392,11 @@
       "T8_ENABLE_LOCAL_PRIVATE": "开发环境和普通本机构建可选；0=关闭本机 local-private/extensions 私有扩展。正式 dist:release 固定为 1，不能被父环境降级。GitHub/clean clone 因为没有 local-private 目录，不包含充值实现。",
       "T8_DISABLE_LOCAL_EXTENSIONS": "开发环境可选；1=关闭本地扩展。正式 dist:release 固定为 0，确保本机私有 sidecar 参与加密打包与后置校验。"
     },
-    "version": "2.7.6",
-    "semverVersion": "2.7.6",
+    "version": "2.7.8",
+    "semverVersion": "2.7.8",
     "versionNumberPolicy": "T8 版本号仍采用 x.y.z 三段，但每一段只允许 0-9；任一段到 9 后下一次发布必须向左进位，禁止任一段出现两位数字。例：1.9.9 的下一版必须是 2.0.0。",
-    "versionNote": "v1.3.0 起统一采用三段阶段号 x.y.z；当前正式版本为 v2.7.6，聚焦剧本大师专业工作台与 VPN / 代理远程媒体声明长度兼容。公开源码继续排除本地私有计费/支付/充值/分组令牌实现。",
-    "installer": "v2.7.6 已从固定 source d123252ca8919e49a0a4e3f87c7f3934aaf2451d 正式发布；安装包 1304733546 bytes / SHA-256 8775160eb23558798fa64ed34f504b8ca80a9dc89b2822cc7abe954b2b009e2c，blockmap 1359603 bytes / SHA-256 a619e0acc09b6b87277d020f74016fa5481d9c7991ade94aaa4bb46d52f201a9，latest.yml 362 bytes / SHA-256 c73ad70b527727d6ab06570584bd4aab44d924213c03d05e0824811a99cba31e。完整远端回下载、GitHub digest/size、Tag、Latest 与最终元数据复核通过；用户授权的证据延期不改变未完成证据状态。",
+    "versionNote": "v1.3.0 起统一采用三段阶段号 x.y.z；v2.7.8 已正式发布，聚焦白模预演、RH 智能翻译与 MiniMax H3 镜头数量控制。公开源码继续排除本地私有计费/支付/充值/分组令牌实现。",
+    "installer": "v2.7.8 正式 Electron/NSIS 安装包为 1295691506 bytes / SHA-256 14b5cf9e3d21b43a1aced96d2332d5453e4e10dd6cac256ad3fded65fbc47163；blockmap 为 1350223 bytes / SHA-256 b5856c61757b6cb5c218e737b14613e06d7e935e8db0a7a74804d6cce5be38e3；latest.yml 为 362 bytes / SHA-256 7656cabf0953168958a190171fd83a08bb260a3737d0e58e68c47b62d496b641。Tag/Release target 固定为 2048a00273353ce7b82837be734a58f578d06408，Release 非草稿、非预发布且为 Latest。",
     "updaterInstallMode": "自动更新下载完成后不得静默安装：main.cjs 必须设置 autoInstallOnAppQuit=false，显式安装调用 quitAndInstall(false,true)；electron/build-resources/installer.nsh 通过 SetSilent normal 让新版 NSIS 安装器即使收到旧客户端传入的 /S 也尽量切回前台安装向导。",
     "installerShortcutPolicy": "安装完成后必须创建桌面和开始菜单快捷方式：package.json build.nsis.createDesktopShortcut 必须为 \"always\"，createStartMenuShortcut 必须为 true；electron/build-resources/installer.nsh 必须保留 customInstall 兜底 CreateShortCut \"$newStartMenuLink\" 与 \"$DESKTOP\\${SHORTCUT_NAME}.lnk\"，防止更新安装/keepShortcuts 路径遗漏入口。",
     "updaterEntryPolicy": "顶栏桌面更新入口不得只因 window.t8pc.updater 缺失就静默消失；Electron UA 或 t8pc.getInfo/openExternal 可用时必须显示诊断入口，提示重新安装完整桌面包，Web/纯浏览器环境才隐藏。状态为 not-available 时按钮仍保留“更新”字样，避免用户误以为自动更新入口被删除。",
@@ -7001,6 +7043,96 @@
       "自动更新到带新影片的版本后，旧成就数据仍能解锁并播放新资源。"
     ]
   },
+  "minimaxH3ShotCountControl": {
+    "status": "released-v2.7.8",
+    "date": "2026-08-04",
+    "releaseIncluded": true,
+    "nodeType": "minimax-h3-prompt-enhancer",
+    "highlights": [
+      "MiniMax H3 提示词增强器新增“镜头数量”LIST：默认“自动判断”，并提供 1-20 个镜头的固定选项；旧画布未保存该字段时继续使用自动判断，不改变既有结果倾向。",
+      "固定数量会同时进入 LLM system 约束与 user 参数摘要，要求从 [Shot 1] 到 [Shot N] 连续编号、标签各出现一次，后续镜头时间码严格递增且小于目标时长。",
+      "固定镜头数量优先于基础提示词或参考模板中的模糊数量范围；AUTO 仍由模型结合用户意图、参考素材、目标时长、动作密度和节奏判断，并优先避免无意义切镜。",
+      "镜头数量只作为传给 LLM 的明确生成约束，不增加第二次请求，也不把本地返回镜头计数升级为成功条件。"
+    ],
+    "sourceFiles": [
+      "backend/src/shared/minimaxH3PromptEnhancerContract.json",
+      "src/utils/minimaxH3PromptEnhancer.ts",
+      "src/components/nodes/MiniMaxH3PromptEnhancerNode.tsx",
+      "src/components/Canvas.tsx",
+      "backend/src/shared/canvasNodeSchema.json",
+      "tests/minimaxH3PromptEnhancer.test.ts"
+    ],
+    "verification": [
+      "原 ComfyUI 参考节点使用整合包内置 Python 完整回归 46/46 通过，包含 AUTO / 固定镜头约束进入模型、1-20 边界、旧位置参数兼容及示例工作流字段。",
+      "H3 定向回归 7/7 通过，覆盖共享合同、AUTO、固定 12 镜头、1-20 边界、越界/小数失败关闭、节点 LIST、Canvas 默认值与 Creator/CLI Schema 字段。",
+      "H3、RunIntent、精确端口、能力图、Seedance LLM 与 Workflow Doctor 相关回归 71/71 通过；TypeScript type-check、feature-sync、public:check、git diff-check 与 Vite 生产构建通过。",
+      "扩展执行入口套件 6 项中 5 项通过，唯一失败定位到未改动的 BatchTaggerNode 既有源码顺序断言，与 H3 镜头数量无关；该功能已随 v2.7.8 正式发布，真实或付费 Provider 证据按授权在发布后补录。"
+    ],
+    "boundaries": [
+      "内部值 0 仅表示 AUTO；用户可固定的镜头数量严格为 1-20。",
+      "固定镜头数量影响传给 LLM 的提示词，不绕过现有 Provider、模型、凭据、媒体、Run 生命周期或一次付费请求边界。"
+    ]
+  },
+  "minimaxH3PromptEnhancerNode": {
+    "status": "released-v2.7.7",
+    "date": "2026-08-04",
+    "releaseIncluded": true,
+    "nodeType": "minimax-h3-prompt-enhancer",
+    "category": "inspiration",
+    "referenceImplementation": "F:/AI-T8-video-onekey/ComfyUI/custom_nodes/comfyui-minimax-h3-prompt-enhancer-T8",
+    "defaultProvider": "贞贞的平价AI小屋",
+    "defaultModel": "bytedance/doubao-seed-2.1-pro",
+    "highlights": [
+      "无限画布新增 MiniMax H3提示词增强器，按参考节点合同支持 T2VA、I2VA、FL2VA、L2VA 与 Ref2VA，保留严格、均衡、创意三档改写温度、中文/英文输出、官方与参考模板融合模式。",
+      "默认渠道保持贞贞的平价AI小屋，默认模型固定 bytedance/doubao-seed-2.1-pro；同时接入贞贞的AI工坊和当前设置中全部已启用、具备 LLM 能力的扩展 Provider。",
+      "I2VA/L2VA 固定 1 图，FL2VA 按连接顺序固定首尾 2 图，Ref2VA 支持最多 9 图、3 个完整视频且视频总时长不超过 15 秒；图片上传前转为 PNG，单个媒体继续受 50MB 上限约束。",
+      "H3 请求只提交一次生成调用，不自动重放可能产生费用的请求；已保存 Provider 或模型失效时明确失败关闭，不静默切换渠道或模型，API Key 只从全局设置读取。",
+      "节点接入共享 Node Schema、端口权威、Run/NodeRun/Attempt 生命周期、Provider/模型追踪、Run 前凭据体检、远程 Run 权威和 Creator Agent create.script 能力。"
+    ],
+    "sourceFiles": [
+      "backend/src/shared/minimaxH3PromptEnhancerContract.json",
+      "src/utils/minimaxH3PromptEnhancer.ts",
+      "src/components/nodes/MiniMaxH3PromptEnhancerNode.tsx",
+      "backend/src/routes/proxy.js",
+      "backend/src/providers/seedanceNz.js",
+      "backend/src/collaboration/runIntentAuthority.js",
+      "backend/src/shared/canvasNodeSchema.json",
+      "tools/zcanvas-cli/creativeCapabilityManifest.json",
+      "tests/minimaxH3PromptEnhancer.test.ts",
+      "tests/minimaxH3RunIntentAuthority.test.cjs"
+    ],
+    "verification": [
+      "H3 合同、媒体边界、消息编译、字段顺序与源码接线定向回归 6/6 通过；RunIntent Provider/模型权威定向回归 3/3 通过。",
+      "72 个生产节点端口合同 8/8、53 个可执行节点权威 3/3 通过；能力图同步为 31 项动作、200 项运行目录、72/72 节点已解释，MiniMax H3 的 create.script Run 覆盖为 true。",
+      "扩展 Provider、完整视频多模态、Run 体检、Seedance LLM 与 Workflow Doctor 相邻回归 83/83 通过；H3/RunIntent/Agent/端口/执行权威合并回归 41/41 通过。",
+      "TypeScript type-check、feature-sync、public:check、worktree development 门、git diff-check 与 Vite 生产前端 build 通过，构建产物包含独立 MiniMaxH3PromptEnhancerNode 懒加载 chunk。",
+      "未调用真实付费 Provider；源码与本地合同验证已随 v2.7.7 正式发布，Electron/NSIS、自动更新资产与 GitHub Latest Release 已由唯一正式发布流程生成并核验。"
+    ],
+    "boundaries": [
+      "扩展 Provider 的凭据、Base URL 和模型清单继续由全局 API 设置管理，不保存到节点、画布、能力图或日志。",
+      "真实 Provider 质量、费率、联网可用性与安装版视觉验收按 owner-approved-post-release-v2.7.7 后补；延期项目不冒充已通过证据。"
+    ]
+  },
+  "scriptMasterWorkbenchReadability": {
+    "status": "released-v2.7.7",
+    "date": "2026-08-03",
+    "releaseIncluded": true,
+    "highlights": [
+      "剧本大师全屏工作台不再沿用节点卡片的 8-10px 微型字号：辅助信息最低 12px，常规说明 13-15px，表单与按钮最低 14px，区块标题和镜头标题形成 16-26px 的清晰层级。",
+      "顶部栏增高并允许右侧操作区安全横向滚动；三栏在 1024、1280 与 1536px 以上使用分级宽度，左侧素材、中央预览和右侧检查器保持独立边界，不因文字放大互相覆盖。",
+      "素材虚拟列表行距由 98px 扩至 124px，卡片、缩略图和绑定控件同步放大；时间线标尺、轨道行和标签列分别调整为 36px、48px 与 240px。",
+      "时间线工具栏改为最小 48px 高且横向可滚动，轨道画布保留至少 900px 编辑宽度；窄窗口只滚动工具，不压缩或堆叠操作文字。"
+    ],
+    "verification": [
+      "剧本大师节点与可读性布局定向测试 5/5、TypeScript type-check、feature-sync 与生产前端 build 通过。",
+      "隔离无头 Chrome 在 2048x1024、100% 缩放且静音条件下完成真实页面检查：可见文字最小 12px、表单与按钮最小 14px、三栏/顶部/时间线/状态栏重叠为 0、五条可见时间线轨道均为 48px。",
+      "验收只使用临时画布和临时用户数据；未启动正式 Electron 桌面端、未播放主题音乐、未调用 Provider。"
+    ],
+    "boundaries": [
+      "本轮只调整剧本大师的字体、间距、栏宽、素材卡和时间线显示密度，不改变确定性解析、稳定 ID、素材绑定、编译、CanvasPatch、项目数据或 Provider 行为。",
+      "可读性调整已随 v2.7.7 正式发布；Electron/NSIS、自动更新资产与 GitHub Latest Release 已由唯一正式发布流程生成并核验。"
+    ]
+  },
   "scriptMasterNodeDev": {
     "status": "released-v2.7.6",
     "date": "2026-08-02",
@@ -7032,7 +7164,7 @@
       "编译、质检、下游预览和确认写节点都不等于视频、配音、音乐或成片已经生成；冻结验收中的结构化评分由 Codex 开发审阅完成，并明确不冒充真人艺术质量评审。"
     ]
   },
-  "totalNodes": 56,
+  "totalNodes": 57,
   "phases": {
     "phase0": {
       "label": "基础设施",
@@ -9158,7 +9290,7 @@
     },
     "inspiration": {
       "label": "灵感之源",
-      "count": 2,
+      "count": 3,
       "nodes": [
         {
           "type": "artist-style-master",
@@ -9169,6 +9301,11 @@
           "type": "anime-tag-master",
           "label": "动漫标签大师",
           "description": "基于 comfyui-anima-t8 的 Danbooru / Gelbooru 懒加载图库思路，支持动漫标签搜索、按分类/来源筛选、在线预览、lightbox、复制标签提示词、自定义分类/标签保存、图片上传、导入导出，并可运行输出标签或参考图"
+        },
+        {
+          "type": "minimax-h3-prompt-enhancer",
+          "label": "MiniMax H3提示词增强器",
+          "description": "参考 comfyui-minimax-h3-prompt-enhancer-T8 的 H3 合同，支持 T2VA/I2VA/FL2VA/L2VA/Ref2VA、多图片与完整视频理解、全部扩展 LLM 渠道；默认贞贞的平价AI小屋 bytedance/doubao-seed-2.1-pro"
         }
       ]
     },
