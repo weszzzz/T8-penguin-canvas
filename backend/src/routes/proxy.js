@@ -125,6 +125,16 @@ const PROXY_REMOTE_DEADLINE_MS = boundedProxyInteger(
   1_000,
   5 * 60_000,
 );
+// Seedream V5 Pro is a synchronous image endpoint. High-resolution requests
+// can legitimately take longer than the generic Provider boundary before the
+// first response header arrives, so only this protocol receives a longer
+// deadline. All other Provider calls retain the 90-second default above.
+const SEEDREAM_V5_RESPONSE_DEADLINE_MS = boundedProxyInteger(
+  process.env.T8_SEEDREAM_V5_RESPONSE_DEADLINE_MS,
+  5 * 60_000,
+  30_000,
+  10 * 60_000,
+);
 const PROXY_REMOTE_IDLE_TIMEOUT_MS = boundedProxyInteger(
   process.env.T8_PROXY_REMOTE_IDLE_TIMEOUT_MS,
   15_000,
@@ -313,12 +323,12 @@ function setProxySafeRemoteTestOptions(options) {
   proxySafeRemoteTestOptions = options && typeof options === 'object' ? { ...options } : null;
 }
 
-function providerFetchDeadlineMs() {
+function providerFetchDeadlineMs(options = {}) {
   return boundedProxyInteger(
-    proxySafeRemoteTestOptions?.providerDeadlineMs,
+    proxySafeRemoteTestOptions?.providerDeadlineMs ?? options?.deadlineMs,
     PROXY_REMOTE_DEADLINE_MS,
     10,
-    5 * 60_000,
+    10 * 60_000,
   );
 }
 
@@ -341,7 +351,7 @@ function replayableProviderBody(body) {
 }
 
 async function fetchProviderResponse(url, init = {}, label = 'Provider', options = {}) {
-  const deadlineMs = providerFetchDeadlineMs();
+  const deadlineMs = providerFetchDeadlineMs(options);
   const deadlineAt = Date.now() + deadlineMs;
   const upstreamSignal = init?.signal;
   const method = String(init?.method || 'GET').trim().toUpperCase();
@@ -2952,6 +2962,8 @@ async function callImageUpstreamAsync({ apiKey, finalApiModel, paramKind, prompt
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: auth },
       body: JSON.stringify(body),
+    }, 'Seedream V5 Pro', {
+      deadlineMs: SEEDREAM_V5_RESPONSE_DEADLINE_MS,
     });
   }
 
@@ -7917,26 +7929,41 @@ router.get('/runninghub/app-info', async (req, res) => {
   if (!webappId) return res.status(400).json({ success: false, error: 'webappId 必填' });
   try {
     let lastData = null;
+    let lastError = null;
     for (let index = 0; index < candidates.length; index += 1) {
       const candidate = candidates[index];
-      const url = `${candidate.baseUrl}/api/webapp/apiCallDemo?apiKey=${encodeURIComponent(candidate.apiKey)}&webappId=${encodeURIComponent(webappId)}`;
-      const r = await fetchProviderResponse(url, { method: 'GET', headers: { Authorization: `Bearer ${candidate.apiKey}` } });
-      const data = await parseJsonResponse(r, `RH ${candidate.label}应用参数接口`);
-      lastData = data;
-      if (String(data?.code) === '0') {
-        return res.json({
-          success: true,
-          data: {
-            ...normalizeRhAppInfo(data.data || {}, webappId, [candidate.apiKey]),
-            rhSite: candidate.id,
-            rhFallbackUsed: candidate.id !== requestedSite,
-          },
-        });
+      try {
+        const url = `${candidate.baseUrl}/api/webapp/apiCallDemo?apiKey=${encodeURIComponent(candidate.apiKey)}&webappId=${encodeURIComponent(webappId)}`;
+        const r = await fetchProviderResponse(url, { method: 'GET', headers: { Authorization: `Bearer ${candidate.apiKey}` } });
+        const data = await parseJsonResponse(r, `RH ${candidate.label}应用参数接口`);
+        lastData = data;
+        if (String(data?.code) === '0') {
+          return res.json({
+            success: true,
+            data: {
+              ...normalizeRhAppInfo(data.data || {}, webappId, [candidate.apiKey]),
+              rhSite: candidate.id,
+              rhFallbackUsed: candidate.id !== requestedSite,
+            },
+          });
+        }
+        const next = candidates[index + 1];
+        if (!next) break;
+        // app-info is a read-only lookup. Exhaust the other configured site on
+        // every non-success instead of guessing the meaning of opaque Provider
+        // codes such as 332. Paid submit/upload paths keep their narrow replay
+        // classifier so this lookup tolerance cannot cause duplicate charges.
+        logRhSiteFallback('app-info', candidate, next, data?.msg || `Provider code ${data?.code ?? 'unknown'}`);
+      } catch (candidateError) {
+        lastError = candidateError;
+        const next = candidates[index + 1];
+        if (!next) throw candidateError;
+        // Do not include the upstream error text here: transport errors may
+        // contain a URL whose query string carries the Provider credential.
+        logRhSiteFallback('app-info', candidate, next, 'read-only lookup transport failure');
       }
-      const next = candidates[index + 1];
-      if (!next || !shouldRetryRhSiteResponse(r, data)) break;
-      logRhSiteFallback('app-info', candidate, next, data?.msg || `HTTP ${r.status}`);
     }
+    if (!lastData && lastError) throw lastError;
     const code = String(lastData?.code ?? '').replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 32) || 'unknown';
     return res.status(400).json({ success: false, error: `RH 查询失败 code=${code}` });
   } catch (e) {
