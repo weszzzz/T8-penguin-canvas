@@ -15,17 +15,17 @@ conflicts; it must not invent or edit product code.
 
 1. Start from a clean `main` and fetch `upstream/main`. Do not copy directory
    trees, reset, or overwrite a working tree.
-2. Work on a temporary `codex/*` branch. Run `npm run worktree:check` and
-   `npm run worktree:development` before modifying code.
+2. Perform the sync merge directly on `main`; a temporary development branch is
+   not required for an upstream merge. Run `npm run worktree:check` before
+   modifying the merge state.
 3. Let Git attempt the three-way merge with `merge.keep-local.driver=true`.
    The local-owned paths in `.gitattributes` retain the local side.
-4. If there is no conflict, verify the merge, open a sync PR, and keep `main`
-   unchanged until the PR is accepted.
+4. If there is no conflict, verify the merge on `main`.
 5. If conflicts remain, use `.github/codex/prompts/upstream-merge-advisor.md`.
    Codex may inspect only `:1`, `:2`, and `:3` Git stages and return an
    `ours`, `theirs`, or `combine-existing-hunks` decision for each path.
-6. Apply only an approved decision on a `codex/*` branch. Never turn merge
-   advice into a feature request or refactor.
+6. Apply only an approved decision on `main`. Never turn merge advice into a
+   feature request or refactor.
 
 ## Boundaries
 
@@ -35,8 +35,8 @@ conflicts; it must not invent or edit product code.
   pointer or materialized hash before an upstream merge can continue.
 - A model is read-only: no file writes, staging, commits, pushes, release work,
   secrets, or network-provider calls.
-- An automatic clean merge opens a PR. A conflict opens a review issue with
-  advice; it does not modify `main`.
+- A clean merge may remain on `main`; do not commit or push without explicit
+  user authorization. A conflict receives review advice before resolution.
 
 ## Verification
 
