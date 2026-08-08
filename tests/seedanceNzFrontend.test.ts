@@ -36,7 +36,7 @@ test('SD2 node exposes built-in provider choices and preserves provider during p
   assert.match(node, /主力 API（自动：优先平价AI小屋）/);
   assert.match(node, /贞贞的平价AI小屋 · api\.seedance\.nz/);
   assert.match(node, /贞贞的AI工坊（海外） · ai\.t8star\.org/);
-  assert.match(node, /taskProvider: builtinSource/);
+  assert.match(node, /taskProvider:\s*isSeedance25\s*\?\s*'seedance-nz'\s*:\s*builtinSource/);
   assert.match(node, /querySeedance\(tid, taskProvider\)/);
   assert.match(node, /lastTaskProvider/);
   assert.match(generation, /taskProvider=\$\{encodeURIComponent\(taskProvider\)\}/);
@@ -176,20 +176,23 @@ test('video node exposes Hailuo 2.3 and H3 as one isolated budget-house family',
     'hailuo-h3-t2v',
     'hailuo-h3-i2v',
     'hailuo-h3-multi',
+    'hailuo-h3-global-t2v',
+    'hailuo-h3-global-i2v',
+    'hailuo-h3-global-multi',
   ]) {
     assert.match(models, new RegExp(model.replaceAll('.', '\\.')));
   }
   assert.match(models, /label: 'Hailuo'/);
   assert.match(models, /durations: \[6, 10\]/);
   assert.match(models, /resolutions: \['768p', '1080p'\]/);
-  assert.match(models, /Hailuo H3 多模态参考；最多 9 图、3 视频、3 音频，固定 2K/);
+  assert.match(models, /Hailuo H3 国内多模态参考；最多 9 图、3 视频、3 音频，支持 768P\/2K/);
   assert.match(node, /submitHailuo/);
   assert.match(node, /queryHailuo/);
   assert.match(node, /hailuoMode === 'multi'/);
   assert.match(node, /imageUrls\.slice\(0, 9\)/);
   assert.match(node, /videoUrls\.slice\(0, 3\)/);
   assert.match(node, /audioUrls\.slice\(0, 3\)/);
-  assert.match(node, /固定 2K/);
+  assert.match(node, /768P \/ 2K/);
   assert.match(node, /首帧图短边需大于 300px/);
   assert.match(node, /1080p 仅 6 秒/);
   assert.match(generation, /\/api\/proxy\/video\/hailuo\/submit/);
