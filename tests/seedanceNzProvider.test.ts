@@ -36,6 +36,28 @@ const TINY_PNG_B = 'data:image/png;base64,iVBORw0KGgox';
 const TINY_MP3 = 'data:audio/mpeg;base64,SUQzAwAAAAA=';
 const TINY_MP4 = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb20=';
 
+test('seedance.nz provider boundary forwards options.signal and aborts a hanging poll', async () => {
+  const controller = new AbortController();
+  let observedSignal: AbortSignal | undefined;
+  const pending = seedanceNz.queryTask('task-abort', 'test-key', {
+    baseUrl: 'https://api.seedance.nz',
+    signal: controller.signal,
+    providerDeadlineMs: 5_000,
+    fetchImpl: (_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
+      observedSignal = init?.signal as AbortSignal | undefined;
+      if (init?.signal?.aborted) {
+        reject(new DOMException('Aborted', 'AbortError'));
+        return;
+      }
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+    }),
+  });
+  controller.abort(new Error('test-client-stop'));
+  await assert.rejects(pending, (error: any) => error?.code === 'SEEDANCE_REQUEST_ABORTED' && error?.status === 499);
+  assert.ok(observedSignal);
+  assert.equal(observedSignal?.aborted, true);
+});
+
 test('seedance.nz Suno catalog is an explicit 31-action whitelist', () => {
   const operations = Object.keys(seedanceNz.SUNO_ACTION_SPECS);
   assert.equal(operations.length, 31);
@@ -1757,7 +1779,7 @@ test('seedance.nz never reflects plain-text or JSON upstream secrets in errors',
     },
   ));
 
-  assert.equal(plainError.code, 'SEEDANCE_INVALID_RESPONSE');
+  assert.equal(plainError.code, 'SEEDANCE_UPSTREAM_ERROR');
   assert.equal(plainError.status, 502);
   assert.equal(plainError.requestId, 'req-plain-safe');
   assert.match(String(plainError.bodyDigest), /^sha256:[a-f0-9]{16}$/);
