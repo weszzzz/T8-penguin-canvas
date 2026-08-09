@@ -1,6 +1,8 @@
 const crypto = require('crypto');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const net = require('node:net');
+const os = require('os');
 const path = require('path');
 const sharp = require('sharp');
 const tls = require('tls');
@@ -18,6 +20,8 @@ const {
   safeRemoteMediaFetch,
 } = require('../utils/safeRemoteMediaFetch');
 const { providerIdempotencyHeaders } = require('../services/providerSubmissionContext');
+const { resolveBundledFfprobe } = require('./llmMedia');
+const { withFfmpegProcessSlot } = require('../utils/ffmpegProcessQueue');
 
 const PROVIDER_ID = 'seedance-nz';
 const BASE_URL = config.ZHENZHEN_SD2_BASE_URL;
@@ -25,6 +29,41 @@ const TASK_TYPES = new Set(['t2v', 'i2v', 'multi']);
 const TIERS = new Set(['standard', 'fast', 'mini']);
 const RATIOS = new Set(['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16', '21:9']);
 const RESOLUTIONS = new Set(['480p', '720p', '1080p', '2k', '4k', 'native1080p', 'native4k']);
+const SEEDANCE25_T2V_MODELS = new Set([
+  'seedance-2.5-global-standard-t2v',
+  'seedance-2.5-standard-t2v',
+]);
+const SEEDANCE25_I2V_MODELS = new Set([
+  'seedance-2.5-global-standard-i2v',
+  'seedance-2.5-standard-i2v',
+]);
+const SEEDANCE25_MULTI_MODELS = new Set([
+  'seedance-2.5-global-standard-multi',
+  'seedance-2.5-standard-multi',
+]);
+const SEEDANCE25_MODELS = new Set([
+  ...SEEDANCE25_T2V_MODELS,
+  ...SEEDANCE25_I2V_MODELS,
+  ...SEEDANCE25_MULTI_MODELS,
+]);
+const SEEDANCE25_RESOLUTIONS = new Set(['480p', '720p', '1080p', '2k', '4k']);
+const SEEDANCE25_PROMPT_MAX_LENGTH = 20480;
+const SEEDANCE25_DEFAULT_SECONDS = 5;
+const SEEDANCE25_DEFAULT_RESOLUTION = '720p';
+const SEEDANCE25_REFERENCE_MIN_SECONDS = 2;
+const SEEDANCE25_REFERENCE_MAX_SECONDS = 30;
+const SEEDANCE25_REFERENCE_TOTAL_SECONDS = 30;
+const SEEDANCE25_IMAGE_MAX_BYTES = 30 * 1024 * 1024;
+const SEEDANCE25_MEDIA_MAX_BYTES = 50 * 1024 * 1024;
+const SEEDANCE25_IMAGE_MIMES = Object.freeze(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+const SEEDANCE25_VIDEO_MIMES = Object.freeze(['video/mp4']);
+const SEEDANCE25_AUDIO_MIMES = Object.freeze(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/wave']);
+const SEEDANCE25_MULTI_LIMITS = Object.freeze({
+  images: 30,
+  videos: 10,
+  audios: 10,
+  total: 50,
+});
 const IMAGE_MODEL_PAIRS = {
   domestic: ['seedream-v5-pro-t2i', 'seedream-v5-pro-i2i'],
   overseas: ['dola-seedream-5.0-pro-t2i', 'dola-seedream-5.0-pro-i2i'],
@@ -82,6 +121,11 @@ const QWEN_IMAGE_30_RATIOS = new Set([
 const QWEN_IMAGE_30_PROMPT_MIN_LENGTH = 5;
 const QWEN_IMAGE_30_PROMPT_MAX_LENGTH = 2000;
 const QWEN_IMAGE_30_MAX_REFERENCE_IMAGES = 3;
+const SEEDREAM_LAYER_DECOMPOSITION_MODEL = 'seedream-v5-pro-layer-decomposition';
+const SEEDREAM_LAYER_RESOLUTIONS = new Set(['auto', '1k', '1.5k', '2k']);
+const SEEDREAM_LAYER_OUTPUT_FORMATS = new Set(['jpeg', 'png']);
+const SEEDREAM_LAYER_PROMPT_MAX_LENGTH = 2000;
+const SEEDREAM_LAYER_SOURCE_MAX_BYTES = 30 * 1024 * 1024;
 const ZHENZHEN_VIDEO_G_OMNI_FLASH_MODEL = 'zhenzhen-video-g-omni-flash';
 const ZHENZHEN_VIDEO_GK_V15_MODEL = 'zhenzhen-video-gk-v15';
 const ZHENZHEN_VIDEO_V31_FAST_MODEL = 'zhenzhen-video-v31-fast';
@@ -116,6 +160,7 @@ const IMAGE_MODELS = new Set([
   ...ZHENZHEN_IMAGE_G2_MODELS,
   ...ZHENZHEN_APIMART_IMAGE_MODELS,
   ...QWEN_IMAGE_30_MODELS,
+  SEEDREAM_LAYER_DECOMPOSITION_MODEL,
 ]);
 const IMAGE_RESOLUTIONS = new Set(['1k', '2k']);
 const IMAGE_OUTPUT_FORMATS = new Set(['jpeg', 'png']);
@@ -183,18 +228,40 @@ const HAILUO23_MAX_ASPECT_RATIO = 5 / 2;
 const HAILUO_H3_T2V_MODEL = 'hailuo-h3-t2v';
 const HAILUO_H3_I2V_MODEL = 'hailuo-h3-i2v';
 const HAILUO_H3_MULTI_MODEL = 'hailuo-h3-multi';
+const HAILUO_H3_GLOBAL_T2V_MODEL = 'hailuo-h3-global-t2v';
+const HAILUO_H3_GLOBAL_I2V_MODEL = 'hailuo-h3-global-i2v';
+const HAILUO_H3_GLOBAL_MULTI_MODEL = 'hailuo-h3-global-multi';
+const HAILUO_H3_T2V_MODELS = new Set([HAILUO_H3_T2V_MODEL, HAILUO_H3_GLOBAL_T2V_MODEL]);
+const HAILUO_H3_I2V_MODELS = new Set([HAILUO_H3_I2V_MODEL, HAILUO_H3_GLOBAL_I2V_MODEL]);
+const HAILUO_H3_MULTI_MODELS = new Set([HAILUO_H3_MULTI_MODEL, HAILUO_H3_GLOBAL_MULTI_MODEL]);
 const HAILUO_H3_MODELS = new Set([
-  HAILUO_H3_T2V_MODEL,
-  HAILUO_H3_I2V_MODEL,
-  HAILUO_H3_MULTI_MODEL,
+  ...HAILUO_H3_T2V_MODELS,
+  ...HAILUO_H3_I2V_MODELS,
+  ...HAILUO_H3_MULTI_MODELS,
 ]);
 const MINIMAX_H3_OW_T2V_MODEL = 'minimax-h3-ow-t2v';
 const MINIMAX_H3_OW_R2V_MODEL = 'minimax-h3-ow-r2v';
 const MINIMAX_H3_OW_I2V_MODEL = 'minimax-h3-ow-i2v';
+const MINIMAX_H3_OW_FAST_I2V_MODEL = 'minimax-h3-ow-i2v-fast';
+const MINIMAX_H3_OW_FAST_R2V_MODEL = 'minimax-h3-ow-r2v-fast';
+const MINIMAX_H3_OW_R2V_MODELS = new Set([
+  MINIMAX_H3_OW_R2V_MODEL,
+  MINIMAX_H3_OW_FAST_R2V_MODEL,
+]);
+const MINIMAX_H3_OW_I2V_MODELS = new Set([
+  MINIMAX_H3_OW_I2V_MODEL,
+  MINIMAX_H3_OW_FAST_I2V_MODEL,
+]);
+const MINIMAX_H3_OW_FAST_MODELS = new Set([
+  MINIMAX_H3_OW_FAST_I2V_MODEL,
+  MINIMAX_H3_OW_FAST_R2V_MODEL,
+]);
 const MINIMAX_H3_OW_MODELS = new Set([
   MINIMAX_H3_OW_T2V_MODEL,
   MINIMAX_H3_OW_R2V_MODEL,
   MINIMAX_H3_OW_I2V_MODEL,
+  MINIMAX_H3_OW_FAST_I2V_MODEL,
+  MINIMAX_H3_OW_FAST_R2V_MODEL,
 ]);
 const MINIMAX_H3_OW_SECONDS = new Set(['5', '10', '15']);
 const MINIMAX_H3_OW_RESOLUTIONS = new Set(['480p', '720p']);
@@ -203,11 +270,30 @@ const MINIMAX_H3_OW_RATIOS = new Set([
 ]);
 const HAILUO_MODELS = new Set([...HAILUO23_MODELS, ...HAILUO_H3_MODELS, ...MINIMAX_H3_OW_MODELS]);
 const HAILUO_H3_SECONDS = new Set(Array.from({ length: 11 }, (_, index) => String(index + 5)));
-const HAILUO_H3_RESOLUTION = '2K';
+const HAILUO_H3_RESOLUTIONS = new Set(['768P', '2K']);
 const HAILUO_H3_PROMPT_MAX_LENGTH = 20480;
 const HAILUO_H3_MAX_REFERENCE_IMAGES = 9;
 const HAILUO_H3_MAX_REFERENCE_VIDEOS = 3;
 const HAILUO_H3_MAX_REFERENCE_AUDIOS = 3;
+const FLUX3_T2V_MODELS = new Set(['flux-3-video-t2v', 'flux-3-video-global-t2v']);
+const FLUX3_I2V_MODELS = new Set(['flux-3-video-i2v', 'flux-3-video-global-i2v']);
+const FLUX3_V2V_MODELS = new Set(['flux-3-video-v2v', 'flux-3-video-global-v2v']);
+const FLUX3_DRAFT_ENHANCE_MODELS = new Set([
+  'flux-3-video-draft-enhance',
+  'flux-3-video-global-draft-enhance',
+]);
+const FLUX3_VIDEO_MODELS = new Set([
+  ...FLUX3_T2V_MODELS,
+  ...FLUX3_I2V_MODELS,
+  ...FLUX3_V2V_MODELS,
+  ...FLUX3_DRAFT_ENHANCE_MODELS,
+]);
+const FLUX3_SECONDS = new Set(Array.from({ length: 16 }, (_, index) => String(index + 5)));
+const FLUX3_RESOLUTIONS = new Set(['hd', 'fhd']);
+const FLUX3_RATIOS = new Set(['auto', '21:9', '2:1', '16:9', '4:3', '1:1', '3:4', '9:16']);
+const FLUX3_MAX_REFERENCE_IMAGES = 10;
+const FLUX3_PROMPT_MAX_LENGTH = 20480;
+const FLUX3_DRAFT_CACHE_MAX_LENGTH = 262144;
 const VIDU_Q3_T2V_MODELS = new Set([
   'vidu-q3-pro-t2v',
   'vidu-q3-turbo-t2v',
@@ -862,7 +948,7 @@ function finishResponseBoundary(boundary) {
 async function fetchProviderResponse(fetchImpl, url, init = {}, options = {}, label = 'seedance.nz 请求') {
   const limits = providerBoundaryOptions(options);
   const controller = new AbortController();
-  const externalSignal = init?.signal;
+  const externalSignal = init?.signal || options?.signal;
   let externalAborted = externalSignal?.aborted === true;
   const forwardAbort = () => {
     externalAborted = true;
@@ -989,9 +1075,11 @@ async function readBoundedResponse(response, label, maxBytesOverride) {
         totalBytes += byteLength;
       }
     }
-    if (identityEncoded && Number.isFinite(advertisedLength) && advertisedLength >= 0 && totalBytes !== advertisedLength) {
-      throw invalidResponseError(label, response);
-    }
+    // Chromium/system proxies may legally normalize transfer encodings while
+    // preserving an upstream Content-Length that no longer matches the
+    // decoded body. The byte ceiling above remains authoritative; JSON callers
+    // still reject truncated bodies during parsing, so an exact equality check
+    // here only creates false negatives for otherwise complete responses.
     return Buffer.concat(chunks, totalBytes);
   } catch (error) {
     cancelBodyReader(reader, error?.code || 'response rejected');
@@ -1029,6 +1117,16 @@ function normalizeSeconds(value) {
     throw new Error('seedance.nz 时长只支持 4-15 秒或 -1 自动时长');
   }
   return String(seconds);
+}
+
+function normalizeSeedance25Seconds(value) {
+  const raw = String(value ?? SEEDANCE25_DEFAULT_SECONDS).trim();
+  if (raw === '-1') return -1;
+  const seconds = Number(raw);
+  if (!Number.isInteger(seconds) || seconds < 4 || seconds > 30) {
+    throw new Error('Seedance 2.5 时长只支持 4-30 秒或 -1 自动时长');
+  }
+  return seconds;
 }
 
 function normalizeHappyHorseSeconds(value) {
@@ -1239,6 +1337,14 @@ async function responseJson(response, label) {
   try {
     return JSON.parse(text);
   } catch {
+    // Gateways and CDN edges sometimes return branded HTML for a real 4xx/5xx.
+    // Preserve the HTTP status without reflecting the untrusted body; callers
+    // will normalize it through createUpstreamError immediately afterwards.
+    if (response && response.ok === false) {
+      return {
+        __t8BodyDigest: `sha256:${crypto.createHash('sha256').update(body).digest('hex').slice(0, 16)}`,
+      };
+    }
     throw invalidResponseError(label, response, body);
   }
 }
@@ -1257,6 +1363,9 @@ function createUpstreamError(data, responseOrStatus) {
     trace,
   );
   if (upstreamCode) error.upstreamCode = upstreamCode;
+  if (/^sha256:[a-f0-9]{16}$/.test(String(data?.__t8BodyDigest || ''))) {
+    error.bodyDigest = data.__t8BodyDigest;
+  }
   return error;
 }
 
@@ -1288,11 +1397,23 @@ function uploadUrlFromResponse(data) {
   ).trim();
 }
 
-async function sleep(ms) {
-  await new Promise((resolve) => setTimeout(resolve, ms));
+async function sleep(ms, signal) {
+  if (signal?.aborted) throw boundaryError('seedance.nz 请求已取消', 'SEEDANCE_REQUEST_ABORTED', 499);
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal?.removeEventListener?.('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener?.('abort', onAbort);
+      reject(boundaryError('seedance.nz 请求已取消', 'SEEDANCE_REQUEST_ABORTED', 499));
+    };
+    signal?.addEventListener?.('abort', onAbort, { once: true });
+  });
 }
 
-async function withUploadQueue(apiKey, intervalMs, task) {
+async function withUploadQueue(apiKey, intervalMs, task, signal) {
   const queueKey = hashKey(apiKey);
   const state = uploadQueues.get(queueKey) || { tail: Promise.resolve(), lastAt: 0 };
   let release;
@@ -1303,7 +1424,7 @@ async function withUploadQueue(apiKey, intervalMs, task) {
   await previous;
   try {
     const waitMs = Math.max(0, Number(intervalMs || 0) - (Date.now() - state.lastAt));
-    if (waitMs > 0) await sleep(waitMs);
+    if (waitMs > 0) await sleep(waitMs, signal);
     return await task();
   } finally {
     state.lastAt = Date.now();
@@ -1377,6 +1498,7 @@ async function mediaBuffer(source, kind, maxBytes, options = {}) {
       maxRedirects: options.remoteMaxRedirects,
       lookupImpl: options.lookupImpl,
       allowPrivateForTests: options.allowPrivateForTests,
+      signal: options.signal,
     });
   } catch (error) {
     throw normalizeRemoteMediaError(error, kind, max);
@@ -1400,8 +1522,9 @@ async function uploadMedia(source, kind, apiKey, options = {}) {
   const baseUrl = cleanBaseUrl(options.baseUrl);
   const intervalMs = options.uploadIntervalMs ?? DEFAULT_UPLOAD_INTERVAL_MS;
   const ttlMs = options.uploadCacheTtlMs ?? DEFAULT_UPLOAD_CACHE_TTL_MS;
+  const cacheEnabled = Number(ttlMs) > 0;
   const cacheKey = `${hashKey(apiKey)}:${kind}:${Number(options.maxBytes) || 0}:${String(options.cacheVariant || '')}:${hashKey(text)}`;
-  const cached = uploadCache.get(cacheKey);
+  const cached = cacheEnabled ? uploadCache.get(cacheKey) : null;
   if (cached && Date.now() - cached.createdAt < ttlMs) return cached.promise;
 
   const promise = withUploadQueue(apiKey, intervalMs, async () => {
@@ -1432,7 +1555,7 @@ async function uploadMedia(source, kind, apiKey, options = {}) {
           method: 'POST',
           headers: { Authorization: `Bearer ${apiKey}` },
           body: form,
-        }, uploadBoundaryOptions, 'seedance.nz 文件上传');
+        }, { ...uploadBoundaryOptions, signal: options.signal }, 'seedance.nz 文件上传');
         const data = await responseJson(response, 'seedance.nz 文件上传');
         if (!response.ok) {
           throw createUpstreamError(data, response);
@@ -1444,17 +1567,17 @@ async function uploadMedia(source, kind, apiKey, options = {}) {
         lastError = error;
         const retryable = retryableProviderUploadError(error);
         if (!retryable || attempt === 2) break;
-        await sleep(1000 * (2 ** attempt));
+        await sleep(1000 * (2 ** attempt), options.signal);
       }
     }
     throw lastError || new Error('seedance.nz 文件上传失败');
-  });
+  }, options.signal);
 
-  uploadCache.set(cacheKey, { createdAt: Date.now(), promise });
+  if (cacheEnabled) uploadCache.set(cacheKey, { createdAt: Date.now(), promise });
   try {
     return await promise;
   } catch (error) {
-    uploadCache.delete(cacheKey);
+    if (cacheEnabled) uploadCache.delete(cacheKey);
     throw error;
   }
 }
@@ -1967,10 +2090,234 @@ async function queryMidjourneyTask(taskId, apiKey, options = {}) {
   };
 }
 
+function seedance25TaskTypeFromModel(model) {
+  if (SEEDANCE25_T2V_MODELS.has(model)) return 't2v';
+  if (SEEDANCE25_I2V_MODELS.has(model)) return 'i2v';
+  if (SEEDANCE25_MULTI_MODELS.has(model)) return 'multi';
+  throw new Error(`未知 Seedance 2.5 模型：${model || '(空)'}`);
+}
+
+function seedance25ProbeExtension(file, kind) {
+  const fromName = path.extname(String(file?.fileName || '')).replace(/^\./, '').toLowerCase();
+  if (/^[a-z0-9]{1,8}$/.test(fromName)) return fromName;
+  return String(extensionFromMime(file?.mime, kind) || `.${kind === 'audio' ? 'mp3' : 'mp4'}`).replace(/^\./, '');
+}
+
+async function probeSeedance25ReferenceDuration(buffer, file, kind, options = {}) {
+  if (typeof options.seedance25DurationProbe === 'function') {
+    const injected = Number(await options.seedance25DurationProbe(buffer, file, kind));
+    if (!Number.isFinite(injected) || injected <= 0) {
+      throw new Error(`无法读取 Seedance 2.5 参考${mediaKindLabel(kind)}时长`);
+    }
+    return injected;
+  }
+
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 't8-seedance25-probe-'));
+  const inputPath = path.join(tempDir, `reference.${seedance25ProbeExtension(file, kind)}`);
+  const ffprobe = options.ffprobePath || resolveBundledFfprobe();
+  const timeoutMs = Math.max(5_000, Math.min(60_000, Number(options.ffprobeTimeoutMs) || 30_000));
+  try {
+    await fs.promises.writeFile(inputPath, buffer);
+    return await withFfmpegProcessSlot(() => new Promise((resolve, reject) => {
+      let settled = false;
+      let stdout = '';
+      let stderr = '';
+      const child = spawn(ffprobe, [
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'json',
+        inputPath,
+      ], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+      const finish = (error, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        options.signal?.removeEventListener?.('abort', onAbort);
+        if (error) reject(error);
+        else resolve(value);
+      };
+      const onAbort = () => {
+        try { child.kill('SIGKILL'); } catch {}
+        finish(new Error('任务已取消'));
+      };
+      const timer = setTimeout(() => {
+        try { child.kill('SIGKILL'); } catch {}
+        finish(new Error(`读取 Seedance 2.5 参考${mediaKindLabel(kind)}时长超时`));
+      }, timeoutMs);
+      child.stdout.on('data', (chunk) => {
+        if (stdout.length < 64 * 1024) stdout += chunk.toString('utf8');
+      });
+      child.stderr.on('data', (chunk) => {
+        if (stderr.length < 8 * 1024) stderr += chunk.toString('utf8');
+      });
+      child.once('error', () => finish(new Error(`无法读取 Seedance 2.5 参考${mediaKindLabel(kind)}时长`)));
+      child.once('close', (code) => {
+        if (code !== 0) {
+          finish(new Error(`无法读取 Seedance 2.5 参考${mediaKindLabel(kind)}时长${stderr ? '，请检查文件是否完整' : ''}`));
+          return;
+        }
+        try {
+          const duration = Number(JSON.parse(stdout)?.format?.duration);
+          if (!Number.isFinite(duration) || duration <= 0) throw new Error('invalid duration');
+          finish(null, duration);
+        } catch {
+          finish(new Error(`无法读取 Seedance 2.5 参考${mediaKindLabel(kind)}时长`));
+        }
+      });
+      if (options.signal?.aborted) onAbort();
+      else options.signal?.addEventListener?.('abort', onAbort, { once: true });
+    }), { isCancelled: () => options.signal?.aborted === true });
+  } finally {
+    await fs.promises.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+async function validateSeedance25ReferenceDuration(buffer, file, kind, durationState, options = {}) {
+  const duration = await probeSeedance25ReferenceDuration(buffer, file, kind, options);
+  if (duration < SEEDANCE25_REFERENCE_MIN_SECONDS || duration > SEEDANCE25_REFERENCE_MAX_SECONDS) {
+    throw new Error(
+      `Seedance 2.5 单个参考${mediaKindLabel(kind)}时长必须为 ${SEEDANCE25_REFERENCE_MIN_SECONDS}-${SEEDANCE25_REFERENCE_MAX_SECONDS} 秒`,
+    );
+  }
+  durationState.total += duration;
+  if (durationState.total > SEEDANCE25_REFERENCE_TOTAL_SECONDS + 0.001) {
+    throw new Error(`Seedance 2.5 参考视频与音频总时长不得超过 ${SEEDANCE25_REFERENCE_TOTAL_SECONDS} 秒`);
+  }
+}
+
+async function buildSeedance25Payload(request, apiKey, options = {}) {
+  const model = String(request.model || '').trim().toLowerCase();
+  const taskType = seedance25TaskTypeFromModel(model);
+  const prompt = normalizePromptMentions(request.prompt).trim();
+  if (prompt.length > SEEDANCE25_PROMPT_MAX_LENGTH) {
+    throw new Error(`Seedance 2.5 prompt 最多 ${SEEDANCE25_PROMPT_MAX_LENGTH} 字符`);
+  }
+  if ((taskType === 't2v' || taskType === 'multi') && !prompt) {
+    throw new Error(`${taskType} 任务的 prompt 不得为空`);
+  }
+
+  const firstFrame = String(request.firstFrame || '').trim();
+  const lastFrame = String(request.lastFrame || '').trim();
+  const refImages = normalizeList(request.refImages);
+  const videos = normalizeList(request.videos);
+  const audios = normalizeList(request.audios);
+  const allImages = [firstFrame, lastFrame, ...refImages].filter(Boolean);
+  const mediaCount = allImages.length + videos.length + audios.length;
+
+  if (taskType === 't2v' && mediaCount > 0) {
+    throw new Error('Seedance 2.5 t2v 不接受图片、视频或音频素材');
+  }
+  if (taskType === 'i2v') {
+    if (allImages.length < 1 || allImages.length > 2) {
+      throw new Error('Seedance 2.5 i2v 只支持 1-2 张首尾帧图片');
+    }
+    if (videos.length > 0 || audios.length > 0) {
+      throw new Error('Seedance 2.5 i2v 不接受视频或音频素材');
+    }
+  }
+  if (taskType === 'multi') {
+    if (mediaCount < 1) throw new Error('Seedance 2.5 multi 至少需要 1 个参考素材');
+    if (allImages.length > SEEDANCE25_MULTI_LIMITS.images) {
+      throw new Error(`Seedance 2.5 multi 最多支持 ${SEEDANCE25_MULTI_LIMITS.images} 张图片`);
+    }
+    if (videos.length > SEEDANCE25_MULTI_LIMITS.videos) {
+      throw new Error(`Seedance 2.5 multi 最多支持 ${SEEDANCE25_MULTI_LIMITS.videos} 个视频`);
+    }
+    if (audios.length > SEEDANCE25_MULTI_LIMITS.audios) {
+      throw new Error(`Seedance 2.5 multi 最多支持 ${SEEDANCE25_MULTI_LIMITS.audios} 个音频`);
+    }
+    if (mediaCount > SEEDANCE25_MULTI_LIMITS.total) {
+      throw new Error(`Seedance 2.5 multi 参考素材合计最多 ${SEEDANCE25_MULTI_LIMITS.total} 个`);
+    }
+  }
+
+  const resolution = String(request.resolution || SEEDANCE25_DEFAULT_RESOLUTION).trim().toLowerCase();
+  if (!SEEDANCE25_RESOLUTIONS.has(resolution)) {
+    throw new Error(`Seedance 2.5 不支持分辨率 ${request.resolution || '(空)'}`);
+  }
+  const seconds = normalizeSeedance25Seconds(request.duration);
+  const payload = {
+    model,
+    metadata: {
+      resolution,
+      ratio: normalizeRatio(request.ratio),
+      generate_audio: request.generate_audio !== false,
+      return_last_frame: request.return_last_frame === true,
+    },
+  };
+  if (seconds === -1) payload.metadata.duration = -1;
+  else payload.seconds = String(seconds);
+  if (prompt) payload.prompt = prompt;
+  if (Number.isFinite(Number(request.seed)) && Number(request.seed) >= 0) {
+    payload.metadata.seed = Number(request.seed);
+  }
+
+  if (taskType === 'i2v') {
+    payload.images = [];
+    for (const source of allImages) {
+      payload.images.push(await uploadMedia(source, 'image', apiKey, {
+        ...options,
+        maxBytes: SEEDANCE25_IMAGE_MAX_BYTES,
+        allowedMimes: SEEDANCE25_IMAGE_MIMES,
+        cacheVariant: 'seedance25-image-v2',
+      }));
+    }
+  } else if (taskType === 'multi') {
+    payload.metadata.content = [];
+    const durationState = { total: 0 };
+    for (const source of allImages) {
+      const url = await uploadMedia(source, 'image', apiKey, {
+        ...options,
+        maxBytes: SEEDANCE25_IMAGE_MAX_BYTES,
+        allowedMimes: SEEDANCE25_IMAGE_MIMES,
+        cacheVariant: 'seedance25-image-v2',
+      });
+      payload.metadata.content.push({ type: 'image_url', image_url: { url } });
+    }
+    for (const source of videos) {
+      const url = await uploadMedia(source, 'video', apiKey, {
+        ...options,
+        maxBytes: SEEDANCE25_MEDIA_MAX_BYTES,
+        allowedMimes: SEEDANCE25_VIDEO_MIMES,
+        uploadCacheTtlMs: 0,
+        validateBuffer: (buffer, file) => validateSeedance25ReferenceDuration(
+          buffer,
+          file,
+          'video',
+          durationState,
+          options,
+        ),
+      });
+      payload.metadata.content.push({ type: 'video_url', video_url: { url } });
+    }
+    for (const source of audios) {
+      const url = await uploadMedia(source, 'audio', apiKey, {
+        ...options,
+        maxBytes: SEEDANCE25_MEDIA_MAX_BYTES,
+        allowedMimes: SEEDANCE25_AUDIO_MIMES,
+        uploadCacheTtlMs: 0,
+        validateBuffer: (buffer, file) => validateSeedance25ReferenceDuration(
+          buffer,
+          file,
+          'audio',
+          durationState,
+          options,
+        ),
+      });
+      payload.metadata.content.push({ type: 'audio_url', audio_url: { url } });
+    }
+  }
+
+  return { payload, taskType, model };
+}
+
 async function buildPayload(request, apiKey, options = {}) {
   const requestedModel = String(request.model || '').trim().toLowerCase();
   if (ZHENZHEN_APIMART_VIDEO_MODELS.has(requestedModel)) {
     return buildApimartVideoPayload(request, apiKey, options);
+  }
+  if (SEEDANCE25_MODELS.has(requestedModel)) {
+    return buildSeedance25Payload(request, apiKey, options);
   }
   const taskType = deriveTaskType(request);
   ensureMediaLimits(taskType, request);
@@ -2290,6 +2637,9 @@ async function buildZhenzhenImageG2Payload(request, apiKey, options = {}) {
 
 async function buildImagePayload(request, apiKey, options = {}) {
   const requestedModel = String(request.model || '').trim().toLowerCase();
+  if (requestedModel === SEEDREAM_LAYER_DECOMPOSITION_MODEL) {
+    return buildSeedreamLayerDecompositionPayload(request, apiKey, options);
+  }
   if (QWEN_IMAGE_30_MODELS.has(requestedModel)) {
     return buildQwenImage30Payload(request, apiKey, options);
   }
@@ -2333,6 +2683,40 @@ async function buildImagePayload(request, apiKey, options = {}) {
     }
   }
   return { payload, model, taskType: refs.length ? 'i2i' : 't2i' };
+}
+
+async function buildSeedreamLayerDecompositionPayload(request, apiKey, options = {}) {
+  const model = String(request.model || '').trim().toLowerCase();
+  if (model !== SEEDREAM_LAYER_DECOMPOSITION_MODEL) {
+    throw new Error(`未知 Seedream 分层模型：${model || '(空)'}`);
+  }
+  const refs = normalizeList(request.images || request.refImages);
+  if (refs.length !== 1) throw new Error('Seedream 分层必须且只能提供 1 张源图');
+  const prompt = String(request.prompt || '').trim();
+  if (prompt.length > SEEDREAM_LAYER_PROMPT_MAX_LENGTH) {
+    throw new Error(`Seedream 分层提示词最多 ${SEEDREAM_LAYER_PROMPT_MAX_LENGTH} 字符`);
+  }
+  const resolution = String(request.resolution || 'auto').trim().toLowerCase();
+  if (!SEEDREAM_LAYER_RESOLUTIONS.has(resolution)) {
+    throw new Error('Seedream 分层分辨率只支持 auto、1k、1.5k 或 2k');
+  }
+  const outputFormat = String(request.output_format || request.outputFormat || 'png').trim().toLowerCase();
+  if (!SEEDREAM_LAYER_OUTPUT_FORMATS.has(outputFormat)) {
+    throw new Error('Seedream 分层输出格式只支持 png 或 jpeg');
+  }
+  const sourceUrl = await uploadMedia(refs[0], 'image', apiKey, {
+    ...options,
+    maxBytes: SEEDREAM_LAYER_SOURCE_MAX_BYTES,
+    allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
+    cacheVariant: 'seedream-v5-pro-layer-decomposition-source-v1',
+  });
+  const payload = {
+    model: SEEDREAM_LAYER_DECOMPOSITION_MODEL,
+    images: [sourceUrl],
+    metadata: { resolution, output_format: outputFormat },
+  };
+  if (prompt) payload.prompt = prompt;
+  return { payload, model, taskType: 'layer-decomposition' };
 }
 
 function normalizeQwenImage30CustomSize(value) {
@@ -2480,7 +2864,8 @@ async function buildHailuoPayload(request, apiKey, options = {}) {
     const prompt = String(request.prompt || '').trim();
     const taskType = model === MINIMAX_H3_OW_T2V_MODEL
       ? 't2v'
-      : model === MINIMAX_H3_OW_R2V_MODEL ? 'r2v' : 'i2v';
+      : MINIMAX_H3_OW_R2V_MODELS.has(model) ? 'r2v' : 'i2v';
+    const isFast = MINIMAX_H3_OW_FAST_MODELS.has(model);
     if ((taskType === 't2v' || taskType === 'r2v') && !prompt) {
       throw new Error('MiniMax H3 OW 文生视频与参考生视频必须填写提示词');
     }
@@ -2498,13 +2883,28 @@ async function buildHailuoPayload(request, apiKey, options = {}) {
     if (prompt) payload.prompt = prompt;
     if (taskType !== 't2v') {
       const imageSources = normalizeList(request.images || request.refImages);
-      if (imageSources.length === 0) throw new Error('MiniMax H3 OW 图生与参考生视频必须提供 1 张图片');
-      payload.images = [await uploadMedia(imageSources[0], 'image', apiKey, {
-        ...options,
-        maxBytes: IMAGE_REFERENCE_MAX_BYTES,
-        allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
-        cacheVariant: 'minimax-h3-ow-image-v1',
-      })];
+      if (taskType === 'i2v' && imageSources.length !== 1) {
+        throw new Error('MiniMax H3 OW 图生视频必须且只能提供 1 张首帧图');
+      }
+      const maxImages = isFast && taskType === 'r2v' ? 9 : 1;
+      if (taskType === 'r2v' && (imageSources.length < 1 || imageSources.length > maxImages)) {
+        throw new Error(`MiniMax H3 OW 参考生视频必须提供 1-${maxImages} 张参考图`);
+      }
+      if (isFast && (
+        normalizeList(request.videos || request.videoUrls || request.video_url).length > 0
+        || normalizeList(request.audios || request.audioUrls || request.audio_url).length > 0
+      )) {
+        throw new Error('MiniMax H3 OW Fast 只接受图片参考，不接受视频或音频素材');
+      }
+      payload.images = [];
+      for (const source of imageSources) {
+        payload.images.push(await uploadMedia(source, 'image', apiKey, {
+          ...options,
+          maxBytes: IMAGE_REFERENCE_MAX_BYTES,
+          allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
+          cacheVariant: isFast ? 'minimax-h3-ow-fast-image-v1' : 'minimax-h3-ow-image-v1',
+        }));
+      }
     }
     return { payload, model, taskType };
   }
@@ -2514,22 +2914,22 @@ async function buildHailuoPayload(request, apiKey, options = {}) {
     if (prompt.length > HAILUO_H3_PROMPT_MAX_LENGTH) {
       throw new Error(`Hailuo H3 提示词不能超过 ${HAILUO_H3_PROMPT_MAX_LENGTH} 字符`);
     }
-    const taskType = model === HAILUO_H3_T2V_MODEL
+    const taskType = HAILUO_H3_T2V_MODELS.has(model)
       ? 't2v'
-      : model === HAILUO_H3_I2V_MODEL ? 'i2v' : 'multi';
+      : HAILUO_H3_I2V_MODELS.has(model) ? 'i2v' : 'multi';
     if (taskType !== 'i2v' && !prompt) {
       throw new Error(`Hailuo H3 ${taskType === 'multi' ? '多模态参考' : '文生视频'}必须填写提示词`);
     }
 
     const seconds = String(request.duration ?? request.seconds ?? '5').trim();
     if (!HAILUO_H3_SECONDS.has(seconds)) throw new Error('Hailuo H3 时长只支持 5-15 秒');
-    const requestedResolution = String(request.resolution || HAILUO_H3_RESOLUTION).trim().toUpperCase();
-    if (requestedResolution !== HAILUO_H3_RESOLUTION) throw new Error('Hailuo H3 分辨率固定为 2K');
+    const requestedResolution = String(request.resolution || '768P').trim().toUpperCase();
+    if (!HAILUO_H3_RESOLUTIONS.has(requestedResolution)) throw new Error('Hailuo H3 分辨率只支持 768P 或 2K');
 
     const payload = {
       model,
       seconds,
-      metadata: { resolution: HAILUO_H3_RESOLUTION },
+      metadata: { resolution: requestedResolution },
     };
     if (taskType === 't2v') {
       payload.metadata.ratio = normalizeRatio(request.ratio || '16:9');
@@ -2641,6 +3041,95 @@ async function buildHailuoPayload(request, apiKey, options = {}) {
   });
   payload.images = [imageUrl];
   if (prompt) payload.prompt = prompt;
+  return { payload, model, taskType };
+}
+
+function flux3TaskType(model) {
+  if (FLUX3_T2V_MODELS.has(model)) return 't2v';
+  if (FLUX3_I2V_MODELS.has(model)) return 'i2v';
+  if (FLUX3_V2V_MODELS.has(model)) return 'v2v';
+  if (FLUX3_DRAFT_ENHANCE_MODELS.has(model)) return 'draft-enhance';
+  return null;
+}
+
+async function buildFlux3Payload(request, apiKey, options = {}) {
+  const model = String(request.model || '').trim();
+  const taskType = flux3TaskType(model);
+  if (!taskType || !FLUX3_VIDEO_MODELS.has(model)) throw new Error(`未知 FLUX 3 Video 模型：${model || '(空)'}`);
+
+  const prompt = String(request.prompt || '').trim();
+  if (prompt.length > FLUX3_PROMPT_MAX_LENGTH) throw new Error(`FLUX 3 提示词不能超过 ${FLUX3_PROMPT_MAX_LENGTH} 字符`);
+  if (taskType !== 'draft-enhance' && !prompt) throw new Error('FLUX 3 文生、图生和视频编辑必须填写提示词');
+
+  const seconds = String(request.duration ?? request.seconds ?? '5').trim();
+  if (!FLUX3_SECONDS.has(seconds)) throw new Error('FLUX 3 时长只支持 5-20 秒');
+  const resolution = String(request.resolution || 'hd').trim().toLowerCase();
+  if (!FLUX3_RESOLUTIONS.has(resolution)) throw new Error('FLUX 3 分辨率只支持 hd 或 fhd');
+  const ratio = String(request.ratio || 'auto').trim();
+  if (!FLUX3_RATIOS.has(ratio)) throw new Error(`FLUX 3 不支持比例 ${ratio}`);
+
+  const imageSources = normalizeList(request.images || request.refImages);
+  const videoSources = normalizeList(request.videos || request.videoUrls || request.video_url || request.videoUrl);
+  if (taskType === 't2v' || taskType === 'draft-enhance') {
+    if (imageSources.length || videoSources.length) throw new Error(`FLUX 3 ${taskType === 't2v' ? '文生视频' : '草稿增强'}不接受参考素材`);
+  }
+  if (taskType === 'i2v' && videoSources.length) throw new Error('FLUX 3 图生视频不接受视频素材');
+  if (taskType === 'v2v' && imageSources.length) throw new Error('FLUX 3 视频编辑不接受图片素材');
+
+  const metadata = { resolution, ratio };
+  const payload = { model, seconds, metadata };
+
+  if (taskType === 'draft-enhance') {
+    const draftCache = String(request.draft_cache || request.draftCache || '').trim();
+    if (!draftCache) throw new Error('FLUX 3 草稿增强必须提供 draft_cache');
+    if (draftCache.length > FLUX3_DRAFT_CACHE_MAX_LENGTH) throw new Error('FLUX 3 draft_cache 超过允许长度');
+    metadata.draft_cache = draftCache;
+  } else {
+    payload.prompt = prompt;
+    if (request.draft === true) metadata.draft = true;
+  }
+
+  const audioMode = String(request.audioMode || request.audio_mode || '').trim().toLowerCase();
+  if (request.generate_audio === true || request.generateAudio === true || audioMode === 'enabled') {
+    metadata.generate_audio = true;
+  } else if (request.generate_audio === false || request.generateAudio === false || audioMode === 'disabled') {
+    metadata.generate_audio = false;
+  } else if (audioMode && audioMode !== 'api_default') {
+    throw new Error(`FLUX 3 不支持音频模式 ${audioMode}`);
+  }
+
+  const rawSafety = request.safety_tolerance ?? request.safetyTolerance;
+  if (rawSafety !== undefined && rawSafety !== null && String(rawSafety).trim() !== '' && String(rawSafety) !== 'api_default') {
+    const safetyTolerance = Number(rawSafety);
+    if (!Number.isInteger(safetyTolerance) || safetyTolerance < 0 || safetyTolerance > 4) {
+      throw new Error('FLUX 3 safety_tolerance 只支持 0-4');
+    }
+    metadata.safety_tolerance = safetyTolerance;
+  }
+
+  if (taskType === 'i2v') {
+    if (imageSources.length < 1 || imageSources.length > FLUX3_MAX_REFERENCE_IMAGES) {
+      throw new Error(`FLUX 3 图生视频必须提供 1-${FLUX3_MAX_REFERENCE_IMAGES} 张关键帧图片`);
+    }
+    payload.images = [];
+    for (const source of imageSources) {
+      payload.images.push(await uploadMedia(source, 'image', apiKey, {
+        ...options,
+        maxBytes: 30 * 1024 * 1024,
+        allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
+        cacheVariant: 'flux3-i2v-image-v1',
+      }));
+    }
+  } else if (taskType === 'v2v') {
+    if (videoSources.length !== 1) throw new Error('FLUX 3 视频编辑必须且只能提供 1 个 MP4 视频');
+    metadata.video_url = await uploadMedia(videoSources[0], 'video', apiKey, {
+      ...options,
+      maxBytes: 50 * 1024 * 1024,
+      allowedMimes: ['video/mp4'],
+      cacheVariant: 'flux3-v2v-video-v1',
+    });
+  }
+
   return { payload, model, taskType };
 }
 
@@ -3515,12 +4004,20 @@ function imageTaskResultUrls(record, nested) {
       add(value[key]);
     }
   };
+  const documentedLayerUrls = nested?.content?.image_urls ?? nested?.content?.imageUrls;
+  if (Array.isArray(documentedLayerUrls)) {
+    add(documentedLayerUrls);
+    if (urls.length) return urls;
+  }
+  const providerLayerResults = nested?.upstream?.response?.results;
+  if (Array.isArray(providerLayerResults)) {
+    add(providerLayerResults);
+    if (urls.length) return urls;
+  }
   for (const value of [
     record?.result_urls,
     record?.resultUrls,
     record?.images,
-    nested?.content?.image_urls,
-    nested?.content?.imageUrls,
     nested?.content?.images,
     record?.result_url,
     record?.resultUrl,
@@ -3561,6 +4058,25 @@ async function queryImageTask(taskId, apiKey, options = {}) {
     failReason,
     ...safeProviderTrace(response, data),
   };
+}
+
+async function submitFlux3Task(request, apiKey, options = {}) {
+  if (!String(apiKey || '').trim()) throw new Error('请先在 API 设置中填写“贞贞的平价AI小屋 API Key”');
+  const fetchImpl = getFetchImpl(options);
+  const baseUrl = cleanBaseUrl(options.baseUrl);
+  const built = await buildFlux3Payload(request, apiKey, options);
+  const response = await fetchProviderResponse(fetchImpl, `${baseUrl}/v1/videos`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(built.payload),
+  }, options, 'seedance.nz FLUX 3 Video 任务提交');
+  const data = await responseJson(response, 'seedance.nz FLUX 3 Video 任务提交');
+  if (!response.ok) throw createUpstreamError(data, response);
+  const taskId = requiredTaskId(data?.id || data?.task_id || data?.data?.id, 'seedance.nz FLUX 3 Video 任务提交', response);
+  return { taskId, model: built.model, taskType: built.taskType, ...safeProviderTrace(response, data, { pollCount: 0 }) };
 }
 
 async function submitTask(request, apiKey, options = {}) {
@@ -3607,6 +4123,9 @@ async function queryTask(taskId, apiKey, options = {}) {
     videoUrl: status === 'succeeded'
       ? String(metadata?.url || data?.url || data?.data?.url || '').trim() || null
       : null,
+    draftCache: status === 'succeeded'
+      ? String(metadata?.draft_cache || data?.draft_cache || data?.data?.draft_cache || '').trim() || null
+      : null,
     failReason: status === 'failed' ? 'Seedance 任务失败' : null,
     ...safeProviderTrace(response, data),
   };
@@ -3625,14 +4144,34 @@ module.exports = {
   HAILUO23_SECONDS,
   HAILUO23_T2V_MODELS,
   HAILUO_H3_I2V_MODEL,
+  HAILUO_H3_GLOBAL_I2V_MODEL,
+  HAILUO_H3_GLOBAL_MULTI_MODEL,
+  HAILUO_H3_GLOBAL_T2V_MODEL,
+  HAILUO_H3_I2V_MODELS,
   HAILUO_H3_MODELS,
   HAILUO_H3_MULTI_MODEL,
+  HAILUO_H3_MULTI_MODELS,
+  HAILUO_H3_RESOLUTIONS,
   HAILUO_H3_SECONDS,
   HAILUO_H3_T2V_MODEL,
+  HAILUO_H3_T2V_MODELS,
   HAILUO_MODELS,
+  FLUX3_DRAFT_ENHANCE_MODELS,
+  FLUX3_I2V_MODELS,
+  FLUX3_RATIOS,
+  FLUX3_RESOLUTIONS,
+  FLUX3_SECONDS,
+  FLUX3_T2V_MODELS,
+  FLUX3_V2V_MODELS,
+  FLUX3_VIDEO_MODELS,
   MINIMAX_H3_OW_I2V_MODEL,
+  MINIMAX_H3_OW_I2V_MODELS,
+  MINIMAX_H3_OW_FAST_I2V_MODEL,
+  MINIMAX_H3_OW_FAST_MODELS,
+  MINIMAX_H3_OW_FAST_R2V_MODEL,
   MINIMAX_H3_OW_MODELS,
   MINIMAX_H3_OW_R2V_MODEL,
+  MINIMAX_H3_OW_R2V_MODELS,
   MINIMAX_H3_OW_RESOLUTIONS,
   MINIMAX_H3_OW_SECONDS,
   MINIMAX_H3_OW_T2V_MODEL,
@@ -3657,6 +4196,8 @@ module.exports = {
   IMAGE_MODEL_PAIRS,
   IMAGE_MODELS,
   IMAGE_RESOLUTIONS,
+  SEEDREAM_LAYER_DECOMPOSITION_MODEL,
+  SEEDREAM_LAYER_RESOLUTIONS,
   QWEN_IMAGE_30_I2I_MODELS,
   QWEN_IMAGE_30_MODELS,
   QWEN_IMAGE_30_RATIOS,
@@ -3695,6 +4236,12 @@ module.exports = {
   PROVIDER_ID,
   RATIOS,
   RESOLUTIONS,
+  SEEDANCE25_I2V_MODELS,
+  SEEDANCE25_MODELS,
+  SEEDANCE25_MULTI_MODELS,
+  SEEDANCE25_MULTI_LIMITS,
+  SEEDANCE25_RESOLUTIONS,
+  SEEDANCE25_T2V_MODELS,
   SEED_AUDIO_FORMATS,
   SEED_AUDIO_MODEL,
   SEED_AUDIO_SAMPLE_RATES,
@@ -3707,15 +4254,18 @@ module.exports = {
   buildAudioPayload,
   buildSunoMusicPayload,
   buildHailuoPayload,
+  buildFlux3Payload,
   buildKlingPayload,
   buildUpscalerPayload,
   buildViduPayload,
   buildHappyHorsePayload,
   buildWanPayload,
   buildPayload,
+  buildSeedance25Payload,
   buildApimartImagePayload,
   buildApimartVideoPayload,
   buildImagePayload,
+  buildSeedreamLayerDecompositionPayload,
   buildQwenImage30Payload,
   buildMidjourneyPayload,
   buildZhenzhenImageG2Payload,
@@ -3734,6 +4284,7 @@ module.exports = {
   submitAudioTask,
   submitSunoMusicTask,
   submitHailuoTask,
+  submitFlux3Task,
   submitKlingTask,
   submitUpscalerTask,
   submitViduTask,
