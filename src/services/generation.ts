@@ -17,6 +17,7 @@ export interface ProviderTransportTrace {
 }
 export interface ProviderSubmissionTransport {
   submissionKey?: string | null;
+  signal?: AbortSignal;
 }
 
 export function providerSubmissionHeaders(transport: ProviderSubmissionTransport = {}): Record<string, string> {
@@ -100,7 +101,7 @@ async function safeJsonResponse(response: Response, label: string): Promise<any>
 export interface GenerateImageRequest {
   model: string;          // 节点 id (gpt-image-2 / nano-banana-2 / nano-banana-pro / grok-image / seedream-v5-pro)
   apiModel?: string;       // 上游真实模型名(优先使用)
-  paramKind?: 'gpt-size' | 'banana-ratio' | 'grok-image' | 'seedream-v5' | 'qwen-image-3.0' | 'mj';
+  paramKind?: 'gpt-size' | 'banana-ratio' | 'grok-image' | 'seedream-v5' | 'seedream-layer' | 'qwen-image-3.0' | 'mj';
   prompt: string;
   n?: number;
   // 主参数(双协议通用):
@@ -279,6 +280,7 @@ export async function submitImageAsync(
     method: 'POST',
     headers: providerSubmissionHeaders(transport),
     body: JSON.stringify(req),
+    signal: transport.signal,
   });
   const data = await r.json();
   if (!r.ok || !data.success) throw providerResponseError(r, data);
@@ -297,9 +299,9 @@ export interface ImageQueryResult extends ProviderTransportTrace {
 
 // apiModel 透传给后端，让轮询阶段复用与 submit 一致的分类 API Key
 // (否则 hint 为空时会 fallback 到通用 zhenzhenApiKey，分类 key 失效)
-export async function queryImageStatus(taskId: string, apiModel?: string): Promise<ImageQueryResult> {
+export async function queryImageStatus(taskId: string, apiModel?: string, transport: ProviderSubmissionTransport = {}): Promise<ImageQueryResult> {
   const qs = apiModel ? `?model=${encodeURIComponent(apiModel)}` : '';
-  const r = await fetch(`/api/proxy/image/status/${encodeURIComponent(taskId)}${qs}`);
+  const r = await fetch(`/api/proxy/image/status/${encodeURIComponent(taskId)}${qs}`, { signal: transport.signal });
   const data = await r.json();
   if (!r.ok) throw providerResponseError(r, data);
   // 失败状态下 success=false 但返回 body 中仍包含 status:'failed'
@@ -328,9 +330,10 @@ export interface SeedreamNzSubmitRequest {
     | 'qwen-image-3.0-global-t2i'
     | 'qwen-image-3.0-global-i2i'
     | 'qwen-image-3.0-global-pro-t2i'
-    | 'qwen-image-3.0-global-pro-i2i';
+    | 'qwen-image-3.0-global-pro-i2i'
+    | 'seedream-v5-pro-layer-decomposition';
   modelFamily?: 'domestic' | 'overseas';
-  resolution?: '0.5k' | '1k' | '2k' | '4k';
+  resolution?: 'auto' | '0.5k' | '1k' | '1.5k' | '2k' | '4k';
   ratio?: 'adaptive' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16' | '21:9' | '2:3' | '3:2' | '4:5' | '5:4';
   size?: string;
   n?: number;
@@ -349,14 +352,15 @@ export async function submitSeedreamNz(
     method: 'POST',
     headers: providerSubmissionHeaders(transport),
     body: JSON.stringify(req),
+    signal: transport.signal,
   });
   const data = await safeJsonResponse(r, '贞贞的平价AI小屋图像任务提交');
   if (!r.ok || !data.success) throw providerResponseError(r, data);
   return withProviderTransportTrace(data.data, r);
 }
 
-export async function querySeedreamNz(taskId: string): Promise<ImageQueryResult> {
-  const r = await fetch(`/api/proxy/image/seedance-nz/status/${encodeURIComponent(taskId)}`);
+export async function querySeedreamNz(taskId: string, transport: ProviderSubmissionTransport = {}): Promise<ImageQueryResult> {
+  const r = await fetch(`/api/proxy/image/seedance-nz/status/${encodeURIComponent(taskId)}`, { signal: transport.signal });
   const data = await safeJsonResponse(r, '贞贞的平价AI小屋图像任务查询');
   if (!r.ok) throw providerResponseError(r, data);
   return withProviderTransportTrace(
@@ -534,6 +538,7 @@ export async function submitImageFal(
     method: 'POST',
     headers: providerSubmissionHeaders(transport),
     body: JSON.stringify(req),
+    signal: transport.signal,
   });
   const data = await r.json();
   if (!r.ok || !data.success) throw providerResponseError(r, data);
@@ -550,11 +555,12 @@ export interface FalQueryResult extends ProviderTransportTrace {
   falStatus?: string;
 }
 
-export async function queryImageFal(params: { endpoint?: string; requestId?: string }): Promise<FalQueryResult> {
+export async function queryImageFal(params: { endpoint?: string; requestId?: string }, transport: ProviderSubmissionTransport = {}): Promise<FalQueryResult> {
   const r = await fetch('/api/proxy/image/fal/query', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
+    signal: transport.signal,
   });
   const data = await r.json();
   // 后端在 FAILED 时会 success=false 但 data.status='failed',这里返回结果供上层判断
@@ -729,7 +735,7 @@ export interface GenerateLlmRequest {
   /** 流式开关;默认 false(非流式) */
   stream?: boolean;
   /** 后端受控请求配置；提示词增强器使用真实媒体上传并禁止自动重放付费请求。 */
-  requestProfile?: 'minimax-h3-prompt-enhancer' | 'seedance20-prompt-enhancer';
+  requestProfile?: 'minimax-h3-prompt-enhancer' | 'seedance20-prompt-enhancer' | 'mv-music-master';
 }
 
 export interface GenerateLlmResult {
@@ -745,6 +751,10 @@ export interface GenerateLlmResult {
   usage?: Record<string, unknown>;
 }
 
+export function buildGenerateLlmRequestBody(req: GenerateLlmRequest): GenerateLlmRequest {
+  return { ...req, stream: false };
+}
+
 export async function generateLlm(
   req: GenerateLlmRequest,
   transport: ProviderSubmissionTransport = {},
@@ -752,7 +762,8 @@ export async function generateLlm(
   const r = await fetch('/api/proxy/llm', {
     method: 'POST',
     headers: providerSubmissionHeaders(transport),
-    body: JSON.stringify({ ...req, stream: false }),
+    body: JSON.stringify(buildGenerateLlmRequestBody(req)),
+    signal: transport.signal,
   });
   const data = await r.json();
   if (!r.ok || !data.success) {
@@ -771,6 +782,10 @@ export interface GenerateExternalLlmRequest extends Omit<GenerateLlmRequest, 'st
   providerParams?: Record<string, any>;
 }
 
+export function buildGenerateExternalLlmRequestBody(req: GenerateExternalLlmRequest): GenerateExternalLlmRequest {
+  return { ...req };
+}
+
 export async function generateExternalLlm(
   req: GenerateExternalLlmRequest,
   transport: ProviderSubmissionTransport = {},
@@ -778,7 +793,8 @@ export async function generateExternalLlm(
   const r = await fetch('/api/proxy/external/llm', {
     method: 'POST',
     headers: providerSubmissionHeaders(transport),
-    body: JSON.stringify(req),
+    body: JSON.stringify(buildGenerateExternalLlmRequestBody(req)),
+    signal: transport.signal,
   });
   const data = await r.json();
   if (!r.ok || !data.success) {
@@ -1118,6 +1134,9 @@ export interface HappyHorseQueryResult extends ProviderTransportTrace {
   code?: string;
   recoverable?: boolean;
   retryAfterMs?: number;
+  taskProvider?: 'seedance-nz';
+  model?: string;
+  taskType?: string;
 }
 
 export async function queryHappyHorse(taskId: string): Promise<HappyHorseQueryResult> {
@@ -1137,9 +1156,14 @@ export type HailuoModel =
   | 'hailuo-h3-t2v'
   | 'hailuo-h3-i2v'
   | 'hailuo-h3-multi'
+  | 'hailuo-h3-global-t2v'
+  | 'hailuo-h3-global-i2v'
+  | 'hailuo-h3-global-multi'
   | 'minimax-h3-ow-t2v'
   | 'minimax-h3-ow-r2v'
-  | 'minimax-h3-ow-i2v';
+  | 'minimax-h3-ow-i2v'
+  | 'minimax-h3-ow-i2v-fast'
+  | 'minimax-h3-ow-r2v-fast';
 
 export type Hailuo23Model = Extract<HailuoModel, `hailuo-2.3-${string}`>;
 export type HailuoDuration = 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
@@ -1149,7 +1173,7 @@ export interface HailuoSubmitRequest {
   prompt?: string;
   duration: HailuoDuration;
   ratio: string;
-  resolution: '480p' | '720p' | '768p' | '1080p' | '2K';
+  resolution: '480p' | '720p' | '768p' | '768P' | '1080p' | '2K';
   images?: string[];
   videos?: string[];
   audios?: string[];
@@ -1157,6 +1181,7 @@ export interface HailuoSubmitRequest {
 
 export async function submitHailuo(req: HailuoSubmitRequest, transport: ProviderSubmissionTransport = {}): Promise<{
   taskId: string;
+  taskProvider: 'seedance-nz';
   model: string;
   taskType: 't2v' | 'i2v' | 'r2v' | 'multi';
 } & ProviderTransportTrace> {
@@ -1164,14 +1189,15 @@ export async function submitHailuo(req: HailuoSubmitRequest, transport: Provider
     method: 'POST',
     headers: providerSubmissionHeaders(transport),
     body: JSON.stringify(req),
+    signal: transport.signal,
   });
   const data = await safeJsonResponse(r, 'Hailuo 提交');
   if (!r.ok || !data.success) throw providerResponseError(r, data);
   return withProviderTransportTrace(data.data, r);
 }
 
-export async function queryHailuo(taskId: string): Promise<HappyHorseQueryResult> {
-  const r = await fetch(`/api/proxy/video/hailuo/status/${encodeURIComponent(taskId)}`);
+export async function queryHailuo(taskId: string, transport: ProviderSubmissionTransport = {}): Promise<HappyHorseQueryResult> {
+  const r = await fetch(`/api/proxy/video/hailuo/status/${encodeURIComponent(taskId)}`, { signal: transport.signal });
   const data = await safeJsonResponse(r, 'Hailuo 查询');
   if (!r.ok || !data.success) throw providerResponseError(r, data);
   return withProviderTransportTrace(data.data, r);
@@ -1361,7 +1387,7 @@ export interface SeedanceSubmitRequest {
   /** 'doubao-seedance-2-0-260128' | 'doubao-seedance-2-0-fast-260128' | 'doubao-seedance-2.0-mini' */
   model: string;
   prompt: string;
-  /** 时长(秒) 4..15 */
+  /** 时长(秒)：Seedance 2.0 为 4..15；Seedance 2.5 为 4..30 或 -1 自动时长 */
   duration?: number;
   /** 比例 16:9|9:16|1:1|4:3|3:4|21:9|9:21|adaptive */
   ratio?: string;
@@ -1407,6 +1433,7 @@ export async function submitSeedance(
     method: 'POST',
     headers: providerSubmissionHeaders(transport),
     body: JSON.stringify(req),
+    signal: transport.signal,
   });
   const data = await r.json();
   if (!r.ok || !data.success) throw providerResponseError(r, data);
@@ -1431,9 +1458,10 @@ export interface SeedanceQueryResult extends ProviderTransportTrace {
 export async function querySeedance(
   taskId: string,
   taskProvider?: Exclude<SeedanceTaskProvider, 'auto'>,
+  transport: ProviderSubmissionTransport = {},
 ): Promise<SeedanceQueryResult> {
   const providerQuery = taskProvider ? `&taskProvider=${encodeURIComponent(taskProvider)}` : '';
-  const r = await fetch(`/api/proxy/seedance/query?taskId=${encodeURIComponent(taskId)}${providerQuery}`);
+  const r = await fetch(`/api/proxy/seedance/query?taskId=${encodeURIComponent(taskId)}${providerQuery}`, { signal: transport.signal });
   const data = await r.json();
   if (!r.ok || !data.success) throw providerResponseError(r, data);
   return data.data;
@@ -1518,6 +1546,71 @@ export function buildWhisperTranscriptEvidence(result: WhisperTranscribeResult):
   };
 }
 
+export function buildWhisperTranscribeRequestBody(req: WhisperTranscribeRequest): {
+  audioUrl: string;
+  model: 'whisper-1';
+  response_format: WhisperResponseFormat;
+} {
+  return {
+    audioUrl: req.audioUrl,
+    model: req.model || 'whisper-1',
+    response_format: req.responseFormat || 'json',
+  };
+}
+
+export type Flux3VideoModel =
+  | 'flux-3-video-t2v'
+  | 'flux-3-video-i2v'
+  | 'flux-3-video-v2v'
+  | 'flux-3-video-draft-enhance'
+  | 'flux-3-video-global-t2v'
+  | 'flux-3-video-global-i2v'
+  | 'flux-3-video-global-v2v'
+  | 'flux-3-video-global-draft-enhance';
+
+export interface Flux3SubmitRequest {
+  model: Flux3VideoModel;
+  prompt?: string;
+  duration: number;
+  ratio: 'auto' | '21:9' | '2:1' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16';
+  resolution: 'hd' | 'fhd';
+  images?: string[];
+  videos?: string[];
+  draft?: boolean;
+  draftCache?: string;
+  audioMode?: 'api_default' | 'enabled' | 'disabled';
+  safetyTolerance?: 'api_default' | 0 | 1 | 2 | 3 | 4;
+}
+
+export async function submitFlux3(req: Flux3SubmitRequest, transport: ProviderSubmissionTransport = {}): Promise<{
+  taskId: string;
+  taskProvider: 'seedance-nz';
+  model: string;
+  taskType: 't2v' | 'i2v' | 'v2v' | 'draft-enhance';
+} & ProviderTransportTrace> {
+  const r = await fetch('/api/proxy/video/flux3/submit', {
+    method: 'POST',
+    headers: providerSubmissionHeaders(transport),
+    body: JSON.stringify(req),
+    signal: transport.signal,
+  });
+  const data = await safeJsonResponse(r, 'FLUX 3 Video 提交');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data, r);
+}
+
+export interface Flux3QueryResult extends HappyHorseQueryResult {
+  draftCache?: string | null;
+  taskType?: 't2v' | 'i2v' | 'v2v' | 'draft-enhance';
+}
+
+export async function queryFlux3(taskId: string, transport: ProviderSubmissionTransport = {}): Promise<Flux3QueryResult> {
+  const r = await fetch(`/api/proxy/video/flux3/status/${encodeURIComponent(taskId)}`, { signal: transport.signal });
+  const data = await safeJsonResponse(r, 'FLUX 3 Video 查询');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data, r);
+}
+
 export async function transcribeWhisper(
   req: WhisperTranscribeRequest,
   transport: ProviderSubmissionTransport = {},
@@ -1525,11 +1618,8 @@ export async function transcribeWhisper(
   const r = await fetch('/api/proxy/audio/whisper/transcribe', {
     method: 'POST',
     headers: providerSubmissionHeaders(transport),
-    body: JSON.stringify({
-      audioUrl: req.audioUrl,
-      model: req.model || 'whisper-1',
-      response_format: req.responseFormat || 'json',
-    }),
+    body: JSON.stringify(buildWhisperTranscribeRequestBody(req)),
+    signal: transport.signal,
   });
   const data = await safeJsonResponse(r, '贞贞的平价AI小屋 Whisper 转写');
   if (!r.ok || !data.success) throw providerResponseError(r, data);
