@@ -14,17 +14,17 @@
     "coverageReceiptCompiler": "tools/zcanvas-cli/src/capabilityCoverage.cjs"
   },
   "sourceDigests": {
-    "creativeCapabilityManifest": "ce6ad80e45c55d8972944abd1c6f847e6e3651b2311b8dd293a5268ba381fc50",
-    "canvasNodeSchema": "da97fa5a60564b815304ce6819a2550202e8d1e7b7787836ef27fb4af7dccfc6",
-    "canvasNodeSchemaFile": "13f2e28a8c0e7060553bf09d1e085a758226de04c56d7bcf0f8769fa8a3f4e1f",
-    "runtimeCatalogSources": "e2f8c02396697fd0acd9c4d264e68783a8b5c648748c02f4c13e9b23664abaee",
-    "runtimeCatalogArtifact": "7533b5dcf137f08965f19981cadecf31afc4c18af9fbb3278e7a17d451464b1f",
+    "creativeCapabilityManifest": "87a3ee522a952d87c38b533e5b2d1e77720fca619556d3776969e3510deb8a07",
+    "canvasNodeSchema": "d7bd79b48f1f4216c990ff8b53a05a0f73d4105b57e429bf4696f14c018f89b0",
+    "canvasNodeSchemaFile": "32e85b2f9e8ec4d740afadeece7e0823c6e7e4f379556a15fbdccb17495027da",
+    "runtimeCatalogSources": "81169504490bc454d552ef8d76db4544f80fc344ff7f9de580462a4f2b77a5c3",
+    "runtimeCatalogArtifact": "dfc8e310c51ba3bc3f8db17b92d036dc9119cd6e1a2d6080d3f2fc7dbdbba824",
     "handlerBindings": "7f689a24a0d9afd39cb2788f5ecdcbdcbc6446adc357bc36373d1ab2461cd4bd",
     "capabilityGraphCompiler": "1a611d7e91dcf523e0536a92e9adb6ba2d884689a65fa10274bcda3a05ef9840",
     "coverageReceiptCompiler": "68c02167cb5317107edd346223a5e5999168e447bacbb977ff8e9678e6753fe7",
     "canonicalTextDigestCompiler": "b0afcf28a257fbbd8f391edc117348f8f2ede1b4a039ae91bce25a8d563ac0cf"
   },
-  "aggregateDigest": "46d814ddc18c5b082b44e749ed135a18d688db63a27090ebd5a156f2aca1ce31",
+  "aggregateDigest": "cda71422d459493f879f050d16cead1e583acb1ae547fae99e72203695fb883a",
   "principles": {
     "oneSentenceStart": true,
     "directCanvasMutation": false,
@@ -36,30 +36,30 @@
   "counts": {
     "capabilities": 31,
     "handlers": 31,
-    "nodes": 74,
-    "executableNodes": 55,
-    "generatableNodes": 9,
-    "referencedNodes": 65,
+    "nodes": 76,
+    "executableNodes": 57,
+    "generatableNodes": 10,
+    "referencedNodes": 67,
     "unreferencedNodes": 9,
-    "directCapabilityNodes": 65,
+    "directCapabilityNodes": 67,
     "internalCompatNodes": 1,
     "semanticSupersededNodes": 8,
     "publicCapabilityGapNodes": 0,
-    "accountedNodes": 74,
+    "accountedNodes": 76,
     "unexplainedNodes": 0,
-    "fullyOperableNodes": 16,
-    "runtimeEntries": 219,
+    "fullyOperableNodes": 17,
+    "runtimeEntries": 240,
     "runtimeByKind": {
       "llm": 29,
-      "image": 44,
-      "video": 91,
+      "image": 46,
+      "video": 110,
       "audio": 8,
       "actions": 47
     },
     "runtimeByProvider": {
       "grok-oauth": 2,
-      "seedance-nz": 154,
-      "zhenzhen": 56,
+      "seedance-nz": 166,
+      "zhenzhen": 65,
       "fal": 7
     },
     "operations": 152,
@@ -169,6 +169,7 @@
       "nodeTypes": [
         "text",
         "seedance",
+        "seedance25",
         "output"
       ],
       "supports": [
@@ -509,6 +510,7 @@
         "video",
         "video-edit",
         "seedance",
+        "seedance25",
         "director-storyboard",
         "story",
         "script-master",
@@ -516,6 +518,7 @@
         "llm",
         "minimax-h3-prompt-enhancer",
         "seedance20-prompt-enhancer",
+        "mv-music-master",
         "runninghub",
         "runninghub-wallet",
         "rh-tools",
@@ -3409,6 +3412,56 @@
       }
     },
     {
+      "type": "seedance25",
+      "label": "SD2.5",
+      "description": "Seedance 2.5 Standard 文生、首尾帧与多模态参考视频",
+      "category": "core",
+      "hidden": false,
+      "executable": true,
+      "generatable": false,
+      "agentExposure": "direct-capability",
+      "coverageReason": "registered-capability-reference",
+      "accounting": {
+        "status": "direct-capability",
+        "reasonCode": "registered-capability-reference",
+        "semanticCapabilityIds": [
+          "canvas.node-add",
+          "create.video"
+        ],
+        "evidence": [
+          "tools/zcanvas-cli/creativeCapabilityManifest.json"
+        ]
+      },
+      "inputs": [
+        "text",
+        "image",
+        "video",
+        "audio"
+      ],
+      "outputs": [
+        "video"
+      ],
+      "capabilityIds": [
+        "canvas.node-add",
+        "create.video"
+      ],
+      "handlerIds": [
+        "creative-action:graph.node-add",
+        "creative-plan:create.video"
+      ],
+      "coverage": {
+        "understand": true,
+        "plan": true,
+        "preview": true,
+        "apply": true,
+        "run": true,
+        "verify": true,
+        "resume": false,
+        "rollback": true,
+        "recover": true
+      }
+    },
+    {
       "type": "director-storyboard",
       "label": "导演分镜台",
       "description": "秒级长片分镜台：多镜头提示词、参考素材和 Seedance2.0 无限并发生成",
@@ -3778,6 +3831,57 @@
         "preview": true,
         "apply": true,
         "run": true,
+        "verify": true,
+        "resume": false,
+        "rollback": true,
+        "recover": true
+      }
+    },
+    {
+      "type": "mv-music-master",
+      "label": "MV 音乐大师",
+      "description": "从完整歌曲、歌词、人设与风格参考完成语义安全切段、分批导演提示词、分镜图、Seedance/H3 分段视频及原曲单轨成片的可恢复 MV 工作台",
+      "category": "core",
+      "hidden": false,
+      "executable": true,
+      "generatable": true,
+      "agentExposure": "direct-capability",
+      "coverageReason": "registered-capability-reference",
+      "accounting": {
+        "status": "direct-capability",
+        "reasonCode": "registered-capability-reference",
+        "semanticCapabilityIds": [
+          "canvas.node-add"
+        ],
+        "evidence": [
+          "tools/zcanvas-cli/creativeCapabilityManifest.json"
+        ]
+      },
+      "inputs": [
+        "audio",
+        "text",
+        "image",
+        "video"
+      ],
+      "outputs": [
+        "video",
+        "audio",
+        "image",
+        "text",
+        "metadata"
+      ],
+      "capabilityIds": [
+        "canvas.node-add"
+      ],
+      "handlerIds": [
+        "creative-action:graph.node-add"
+      ],
+      "coverage": {
+        "understand": true,
+        "plan": true,
+        "preview": true,
+        "apply": true,
+        "run": false,
         "verify": true,
         "resume": false,
         "rollback": true,
@@ -6216,7 +6320,7 @@
   ],
   "runtime": {
     "schema": "t8-creative-runtime-catalog-v1",
-    "sourceDigest": "e2f8c02396697fd0acd9c4d264e68783a8b5c648748c02f4c13e9b23664abaee",
+    "sourceDigest": "81169504490bc454d552ef8d76db4544f80fc344ff7f9de580462a4f2b77a5c3",
     "platforms": [
       {
         "id": "zhenzhen",
@@ -7626,6 +7730,26 @@
         }
       },
       {
+        "id": "image:seedance-nz:seedream-v5-pro-layer-decomposition",
+        "kind": "image",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "seedream-v5-pro-layer-decomposition",
+        "label": "seedream-v5-pro-layer-decomposition",
+        "family": "seedream-v5-pro",
+        "available": true,
+        "catalogSection": "image",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
         "id": "image:seedance-nz:seedream-v5-pro-t2i",
         "kind": "image",
         "provider": "seedance-nz",
@@ -8213,6 +8337,26 @@
         "model": "seedream-v5-pro",
         "label": "seedream-v5-pro",
         "family": "seedream-v5-pro",
+        "available": true,
+        "catalogSection": "image",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "image:zhenzhen:seedream-v5-pro-layer-decomposition",
+        "kind": "image",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "seedream-v5-pro-layer-decomposition",
+        "label": "seedream-v5-pro-layer-decomposition",
+        "family": "seedream-layer-decomposition",
         "available": true,
         "catalogSection": "image",
         "compatibility": {
@@ -9107,6 +9251,66 @@
         }
       },
       {
+        "id": "video:seedance-nz:hailuo-h3-global-i2v",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "hailuo-h3-global-i2v",
+        "label": "hailuo-h3-global-i2v（H3 海外首尾帧）",
+        "family": "hailuo-2.3",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:seedance-nz:hailuo-h3-global-multi",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "hailuo-h3-global-multi",
+        "label": "hailuo-h3-global-multi（H3 海外多模态）",
+        "family": "hailuo-2.3",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:seedance-nz:hailuo-h3-global-t2v",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "hailuo-h3-global-t2v",
+        "label": "hailuo-h3-global-t2v（H3 海外文生视频）",
+        "family": "hailuo-2.3",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
         "id": "video:seedance-nz:hailuo-h3-i2v",
         "kind": "video",
         "provider": "seedance-nz",
@@ -9708,12 +9912,52 @@
         }
       },
       {
+        "id": "video:seedance-nz:minimax-h3-ow-i2v-fast",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "minimax-h3-ow-i2v-fast",
+        "label": "minimax-h3-ow-i2v-fast（MiniMax H3 OW Fast 首帧图生视频）",
+        "family": "hailuo-2.3",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
         "id": "video:seedance-nz:minimax-h3-ow-r2v",
         "kind": "video",
         "provider": "seedance-nz",
         "platformLabel": "贞贞的平价AI小屋",
         "model": "minimax-h3-ow-r2v",
         "label": "minimax-h3-ow-r2v（MiniMax H3 OW 参考生视频）",
+        "family": "hailuo-2.3",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:seedance-nz:minimax-h3-ow-r2v-fast",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "minimax-h3-ow-r2v-fast",
+        "label": "minimax-h3-ow-r2v-fast（MiniMax H3 OW Fast 参考生视频）",
         "family": "hailuo-2.3",
         "available": true,
         "catalogSection": "video",
@@ -9735,6 +9979,126 @@
         "model": "minimax-h3-ow-t2v",
         "label": "minimax-h3-ow-t2v（MiniMax H3 OW 文生视频）",
         "family": "hailuo-2.3",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:seedance-nz:seedance-2.5-global-standard-i2v",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "seedance-2.5-global-standard-i2v",
+        "label": "seedance-2.5-global-standard-i2v（首尾帧图生视频）",
+        "family": "seedance-2.5",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:seedance-nz:seedance-2.5-global-standard-multi",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "seedance-2.5-global-standard-multi",
+        "label": "seedance-2.5-global-standard-multi（多模态参考）",
+        "family": "seedance-2.5",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:seedance-nz:seedance-2.5-global-standard-t2v",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "seedance-2.5-global-standard-t2v",
+        "label": "seedance-2.5-global-standard-t2v（文生视频）",
+        "family": "seedance-2.5",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:seedance-nz:seedance-2.5-standard-i2v",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "seedance-2.5-standard-i2v",
+        "label": "seedance-2.5-standard-i2v（首尾帧图生视频）",
+        "family": "seedance-2.5",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:seedance-nz:seedance-2.5-standard-multi",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "seedance-2.5-standard-multi",
+        "label": "seedance-2.5-standard-multi（多模态参考）",
+        "family": "seedance-2.5",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:seedance-nz:seedance-2.5-standard-t2v",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "seedance-2.5-standard-t2v",
+        "label": "seedance-2.5-standard-t2v（文生视频）",
+        "family": "seedance-2.5",
         "available": true,
         "catalogSection": "video",
         "compatibility": {
@@ -10255,6 +10619,166 @@
         "model": "doubao-seedance-2.0-mini",
         "label": "seedance-2.0-mini",
         "family": "seedance-2.0",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:zhenzhen:flux-3-video-draft-enhance",
+        "kind": "video",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "flux-3-video-draft-enhance",
+        "label": "flux-3-video-draft-enhance（草稿增强）",
+        "family": "flux-3-video",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:zhenzhen:flux-3-video-global-draft-enhance",
+        "kind": "video",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "flux-3-video-global-draft-enhance",
+        "label": "flux-3-video-global-draft-enhance（草稿增强）",
+        "family": "flux-3-video",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:zhenzhen:flux-3-video-global-i2v",
+        "kind": "video",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "flux-3-video-global-i2v",
+        "label": "flux-3-video-global-i2v（关键帧图生）",
+        "family": "flux-3-video",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:zhenzhen:flux-3-video-global-t2v",
+        "kind": "video",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "flux-3-video-global-t2v",
+        "label": "flux-3-video-global-t2v（文生视频）",
+        "family": "flux-3-video",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:zhenzhen:flux-3-video-global-v2v",
+        "kind": "video",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "flux-3-video-global-v2v",
+        "label": "flux-3-video-global-v2v（视频编辑）",
+        "family": "flux-3-video",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:zhenzhen:flux-3-video-i2v",
+        "kind": "video",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "flux-3-video-i2v",
+        "label": "flux-3-video-i2v（关键帧图生）",
+        "family": "flux-3-video",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:zhenzhen:flux-3-video-t2v",
+        "kind": "video",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "flux-3-video-t2v",
+        "label": "flux-3-video-t2v（文生视频）",
+        "family": "flux-3-video",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:zhenzhen:flux-3-video-v2v",
+        "kind": "video",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "flux-3-video-v2v",
+        "label": "flux-3-video-v2v（视频编辑）",
+        "family": "flux-3-video",
         "available": true,
         "catalogSection": "video",
         "compatibility": {
@@ -10826,6 +11350,7 @@
       "feishu-bitable-output",
       "video",
       "script-master",
+      "mv-music-master",
       "runninghub",
       "runninghub-wallet",
       "rh-tools",
@@ -10940,6 +11465,7 @@
       "image:seedance-nz:qwen-image-3.0-pro-t2i",
       "image:seedance-nz:qwen-image-3.0-t2i",
       "image:seedance-nz:seedream-v5-pro-i2i",
+      "image:seedance-nz:seedream-v5-pro-layer-decomposition",
       "image:seedance-nz:seedream-v5-pro-t2i",
       "image:seedance-nz:zhenzhen-image-g-v2-lowprice",
       "image:seedance-nz:zhenzhen-image-g2-i2i",
@@ -10970,6 +11496,7 @@
       "image:zhenzhen:qwen-image-3.0-pro-t2i",
       "image:zhenzhen:qwen-image-3.0-t2i",
       "image:zhenzhen:seedream-v5-pro",
+      "image:zhenzhen:seedream-v5-pro-layer-decomposition",
       "llm:seedance-nz:bytedance/doubao-seed-2.0-code",
       "llm:seedance-nz:bytedance/doubao-seed-2.0-lite",
       "llm:seedance-nz:bytedance/doubao-seed-2.0-mini",
@@ -11014,6 +11541,9 @@
       "video:seedance-nz:hailuo-2.3-i2v-standard",
       "video:seedance-nz:hailuo-2.3-t2v-pro",
       "video:seedance-nz:hailuo-2.3-t2v-standard",
+      "video:seedance-nz:hailuo-h3-global-i2v",
+      "video:seedance-nz:hailuo-h3-global-multi",
+      "video:seedance-nz:hailuo-h3-global-t2v",
       "video:seedance-nz:hailuo-h3-i2v",
       "video:seedance-nz:hailuo-h3-multi",
       "video:seedance-nz:hailuo-h3-t2v",
@@ -11044,8 +11574,16 @@
       "video:seedance-nz:midjourney-video",
       "video:seedance-nz:mini",
       "video:seedance-nz:minimax-h3-ow-i2v",
+      "video:seedance-nz:minimax-h3-ow-i2v-fast",
       "video:seedance-nz:minimax-h3-ow-r2v",
+      "video:seedance-nz:minimax-h3-ow-r2v-fast",
       "video:seedance-nz:minimax-h3-ow-t2v",
+      "video:seedance-nz:seedance-2.5-global-standard-i2v",
+      "video:seedance-nz:seedance-2.5-global-standard-multi",
+      "video:seedance-nz:seedance-2.5-global-standard-t2v",
+      "video:seedance-nz:seedance-2.5-standard-i2v",
+      "video:seedance-nz:seedance-2.5-standard-multi",
+      "video:seedance-nz:seedance-2.5-standard-t2v",
       "video:seedance-nz:standard",
       "video:seedance-nz:vidu-q3-ad-r2v",
       "video:seedance-nz:vidu-q3-ad-short-play",
@@ -11072,6 +11610,14 @@
       "video:zhenzhen:doubao-seedance-2-0-260128",
       "video:zhenzhen:doubao-seedance-2-0-fast-260128",
       "video:zhenzhen:doubao-seedance-2.0-mini",
+      "video:zhenzhen:flux-3-video-draft-enhance",
+      "video:zhenzhen:flux-3-video-global-draft-enhance",
+      "video:zhenzhen:flux-3-video-global-i2v",
+      "video:zhenzhen:flux-3-video-global-t2v",
+      "video:zhenzhen:flux-3-video-global-v2v",
+      "video:zhenzhen:flux-3-video-i2v",
+      "video:zhenzhen:flux-3-video-t2v",
+      "video:zhenzhen:flux-3-video-v2v",
       "video:zhenzhen:grok-1.5-video-10s",
       "video:zhenzhen:grok-1.5-video-15s",
       "video:zhenzhen:grok-1.5-video-6s",
@@ -11097,22 +11643,22 @@
   "coverageReceipt": {
     "schema": "t8-creative-capability-coverage-receipt-v1",
     "sourceDigests": {
-      "capabilityManifest": "ce6ad80e45c55d8972944abd1c6f847e6e3651b2311b8dd293a5268ba381fc50",
-      "nodeSchema": "da97fa5a60564b815304ce6819a2550202e8d1e7b7787836ef27fb4af7dccfc6",
-      "runtimeCatalog": "e2f8c02396697fd0acd9c4d264e68783a8b5c648748c02f4c13e9b23664abaee",
+      "capabilityManifest": "87a3ee522a952d87c38b533e5b2d1e77720fca619556d3776969e3510deb8a07",
+      "nodeSchema": "d7bd79b48f1f4216c990ff8b53a05a0f73d4105b57e429bf4696f14c018f89b0",
+      "runtimeCatalog": "81169504490bc454d552ef8d76db4544f80fc344ff7f9de580462a4f2b77a5c3",
       "handlerBindings": "7f689a24a0d9afd39cb2788f5ecdcbdcbc6446adc357bc36373d1ab2461cd4bd",
       "receiptCompiler": "68c02167cb5317107edd346223a5e5999168e447bacbb977ff8e9678e6753fe7"
     },
     "inventory": {
       "nodes": {
-        "total": 74,
-        "executable": 55,
-        "generatable": 9
+        "total": 76,
+        "executable": 57,
+        "generatable": 10
       },
       "runtime": {
         "llm": 29,
-        "image": 44,
-        "video": 91,
+        "image": 46,
+        "video": 110,
         "audio": 8,
         "actions": 47
       },
@@ -11128,6 +11674,6 @@
       "missingCompatibilityEdges": []
     },
     "complete": true,
-    "digest": "a987185d44bd8f13fa13db1b715daef15f3a7d45e4469a906466e5dbf1fb39ed"
+    "digest": "db38ddd631ca4c6ce02eb0e318d286fe48420b1ac857934932711237247d3689"
   }
 }
