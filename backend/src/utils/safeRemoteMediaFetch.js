@@ -561,18 +561,40 @@ function remainingDeadlineMs(state) {
   return remaining;
 }
 
+function transferAbortError(signal) {
+  const error = remoteMediaError('request_aborted', '远程资源读取已取消。', {
+    cause: signal?.reason,
+  });
+  error.name = 'AbortError';
+  return error;
+}
+
+function throwIfTransferAborted(state) {
+  if (state?.signal?.aborted) throw transferAbortError(state.signal);
+}
+
 async function withinDeadline(promise, state) {
+  throwIfTransferAborted(state);
   const remaining = remainingDeadlineMs(state);
   let timer;
+  let abortListener;
   try {
-    return await Promise.race([
+    const competitors = [
       promise,
       new Promise((_, reject) => {
         timer = setTimeout(() => reject(fetchTimeoutError('deadline')), remaining);
       }),
-    ]);
+    ];
+    if (state.signal) {
+      competitors.push(new Promise((_, reject) => {
+        abortListener = () => reject(transferAbortError(state.signal));
+        state.signal.addEventListener('abort', abortListener, { once: true });
+      }));
+    }
+    return await Promise.race(competitors);
   } finally {
     if (timer) clearTimeout(timer);
+    if (abortListener && state.signal) state.signal.removeEventListener('abort', abortListener);
   }
 }
 
@@ -674,6 +696,7 @@ function issuePinnedRequest(target, pinned, headers, state, requestOptions = {})
     let connectTimer;
     let requestSocket;
     let connectedEvent;
+    let abortListener;
     const clearConnectTimer = () => {
       if (connectTimer) clearTimeout(connectTimer);
       connectTimer = null;
@@ -689,6 +712,7 @@ function issuePinnedRequest(target, pinned, headers, state, requestOptions = {})
         pendingResponse.off('error', fail);
         pendingResponse.off('aborted', responseAborted);
       }
+      if (abortListener && state.signal) state.signal.removeEventListener('abort', abortListener);
     };
     const fail = (error) => {
       if (settled) return;
@@ -718,6 +742,7 @@ function issuePinnedRequest(target, pinned, headers, state, requestOptions = {})
       resolve(response);
     };
     try {
+      throwIfTransferAborted(state);
       const remaining = remainingDeadlineMs(state);
       request = transport.request(target, {
         // The DNS result is deliberately pinned for this exact request. Reusing
@@ -774,6 +799,15 @@ function issuePinnedRequest(target, pinned, headers, state, requestOptions = {})
       request.setTimeout(state.idleTimeoutMs, () => request.destroy(fetchTimeoutError('idle')));
       deadlineTimer = setTimeout(() => request.destroy(fetchTimeoutError('deadline')), remaining);
       request.on('error', fail);
+      if (state.signal) {
+        abortListener = () => {
+          const error = transferAbortError(state.signal);
+          if (pendingResponse) pendingResponse.destroy(error);
+          request.destroy(error);
+        };
+        state.signal.addEventListener('abort', abortListener, { once: true });
+        if (state.signal.aborted) abortListener();
+      }
       const bodyParts = Array.isArray(requestOptions.bodyParts) ? requestOptions.bodyParts : [];
       if (bodyParts.length || requestOptions.requireBodyCompletion) {
         void writeRequestParts(request, bodyParts, () => { bodyQueued = true; })
@@ -894,6 +928,7 @@ function isPrematureResponseError(error, response) {
 }
 
 async function consumeResponse(response, state, onChunk) {
+  throwIfTransferAborted(state);
   // Content-Length is advisory only. VPNs, transparent proxies and Chromium's
   // decoding layer may preserve an upstream encoded length while exposing a
   // decoded body. Acceptance is therefore based on the bytes actually read;
@@ -905,8 +940,15 @@ async function consumeResponse(response, state, onChunk) {
     response.setTimeout(state.idleTimeoutMs, () => response.destroy(fetchTimeoutError('idle')));
   }
   let total = 0;
+  let abortListener;
+  if (state.signal) {
+    abortListener = () => response.destroy(transferAbortError(state.signal));
+    state.signal.addEventListener('abort', abortListener, { once: true });
+    if (state.signal.aborted) abortListener();
+  }
   try {
     for await (const value of response) {
+      throwIfTransferAborted(state);
       const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value);
       if (total + chunk.length > state.maxBytes) {
         const error = remoteMediaError('item_too_large', `远程资源超过 ${state.maxBytes} bytes 限制。`);
@@ -926,6 +968,7 @@ async function consumeResponse(response, state, onChunk) {
     clearTimeout(deadlineTimer);
     if (response.socket) response.setTimeout(0);
     if (!response.complete) response.destroy();
+    if (abortListener && state.signal) state.signal.removeEventListener('abort', abortListener);
   }
 }
 
@@ -938,13 +981,16 @@ async function consumeResponseBuffer(response, state) {
 function createTransferState(options) {
   const timeoutMs = positiveInteger(options.timeoutMs, DEFAULT_TIMEOUT_MS);
   const deadlineMs = positiveInteger(options.deadlineMs, timeoutMs);
-  return {
+  const state = {
     deadlineAt: Date.now() + deadlineMs,
     connectTimeoutMs: positiveInteger(options.connectTimeoutMs, DEFAULT_CONNECT_TIMEOUT_MS),
     idleTimeoutMs: positiveInteger(options.idleTimeoutMs, timeoutMs),
     maxBytes: positiveInteger(options.maxBytes, DEFAULT_MAX_BYTES),
     maxRedirects: nonNegativeInteger(options.maxRedirects, DEFAULT_MAX_REDIRECTS),
+    signal: options.signal || null,
   };
+  throwIfTransferAborted(state);
+  return state;
 }
 
 function systemFetchBridgeMetadata() {
@@ -958,8 +1004,13 @@ function hasSystemFetchBridge() {
 }
 
 function systemFetchFallbackAllowed(error) {
+  if (error?.name === 'AbortError' || error?.code === 'request_aborted') return false;
   const code = String(error?.code || '').toUpperCase();
   const causeCode = String(error?.causeCode || error?.cause?.code || '').toUpperCase();
+  const status = Number(error?.status || 0);
+  if (code === 'REMOTE_HTTP_ERROR') {
+    return status === 408 || status === 425 || status === 429 || status >= 500;
+  }
   return new Set([
     'SYSTEM_NETWORK_FETCH_FAILED',
     'CONNECT_TIMEOUT',
@@ -986,7 +1037,26 @@ function systemFetchFallbackAllowed(error) {
   ]).has(causeCode);
 }
 
+function trustedProviderFallbackState(options, primaryState) {
+  const fallbackDeadlineMs = Number(options.trustedProviderFallbackDeadlineMs);
+  if (!Number.isFinite(fallbackDeadlineMs) || fallbackDeadlineMs <= 0) {
+    remainingDeadlineMs(primaryState);
+    return primaryState;
+  }
+  // A trusted completed-result download may first follow Chromium's system
+  // proxy/TUN route and then recover through the independently DNS-pinned
+  // transport.  Giving the recovery route its own explicit budget prevents a
+  // stalled system route from consuming the fallback before it can even open.
+  // This option is deliberately opt-in so ordinary remote fetch callers keep
+  // the historical single absolute deadline.
+  return createTransferState({
+    ...options,
+    deadlineMs: fallbackDeadlineMs,
+  });
+}
+
 function systemFetchNetworkError(error) {
+  if (error?.name === 'AbortError' || error?.code === 'request_aborted') return error;
   if (error?.code && error.code !== 'ABORT_ERR' && error.code !== 'ERR_ABORTED') return error;
   const causeCode = String(error?.cause?.code || error?.code || '').trim();
   return remoteMediaError(
@@ -1064,12 +1134,14 @@ async function validateTrustedSystemTarget(target, options, state) {
 }
 
 async function openTrustedSystemResponse(target, options, state, sensitiveHeadersAllowed) {
+  throwIfTransferAborted(state);
   const controller = new AbortController();
   const connectTimeoutMs = Math.max(
     1,
     Math.min(state.connectTimeoutMs, remainingDeadlineMs(state)),
   );
   let timeoutError = null;
+  let abortListener;
   const timer = setTimeout(() => {
     timeoutError = remoteMediaError(
       'connect_timeout',
@@ -1077,6 +1149,11 @@ async function openTrustedSystemResponse(target, options, state, sensitiveHeader
     );
     controller.abort(timeoutError);
   }, connectTimeoutMs);
+  if (state.signal) {
+    abortListener = () => controller.abort(transferAbortError(state.signal));
+    state.signal.addEventListener('abort', abortListener, { once: true });
+    if (state.signal.aborted) abortListener();
+  }
   try {
     const response = await globalThis.fetch(target.toString(), {
       method: 'GET',
@@ -1088,9 +1165,11 @@ async function openTrustedSystemResponse(target, options, state, sensitiveHeader
     return { controller, response };
   } catch (error) {
     controller.abort();
+    throwIfTransferAborted(state);
     throw timeoutError || systemFetchNetworkError(error);
   } finally {
     clearTimeout(timer);
+    if (abortListener && state.signal) state.signal.removeEventListener('abort', abortListener);
   }
 }
 
@@ -1102,6 +1181,7 @@ function systemResponseHeader(response, name) {
 }
 
 async function consumeTrustedSystemResponse(response, controller, state) {
+  throwIfTransferAborted(state);
   if (!response.body || typeof response.body.getReader !== 'function') {
     controller.abort();
     return Buffer.alloc(0);
@@ -1111,8 +1191,15 @@ async function consumeTrustedSystemResponse(response, controller, state) {
   const chunks = [];
   let total = 0;
   let completed = false;
+  let abortListener;
+  if (state.signal) {
+    abortListener = () => controller.abort(transferAbortError(state.signal));
+    state.signal.addEventListener('abort', abortListener, { once: true });
+    if (state.signal.aborted) abortListener();
+  }
   try {
     while (true) {
+      throwIfTransferAborted(state);
       const remaining = remainingDeadlineMs(state);
       const waitMs = Math.max(1, Math.min(remaining, state.idleTimeoutMs));
       const timeoutKind = remaining <= state.idleTimeoutMs ? 'deadline' : 'idle';
@@ -1145,19 +1232,28 @@ async function consumeTrustedSystemResponse(response, controller, state) {
     }
     return Buffer.concat(chunks, total);
   } catch (error) {
+    throwIfTransferAborted(state);
     throw systemFetchNetworkError(error);
   } finally {
     if (!completed) {
       try { await reader.cancel(); } catch (_) {}
     }
     controller.abort();
+    if (abortListener && state.signal) state.signal.removeEventListener('abort', abortListener);
   }
 }
 
 async function consumeTrustedSystemResponseToFile(response, controller, state, handle) {
+  throwIfTransferAborted(state);
   let reader = null;
   let total = 0;
   let completed = false;
+  let abortListener;
+  if (state.signal) {
+    abortListener = () => controller.abort(transferAbortError(state.signal));
+    state.signal.addEventListener('abort', abortListener, { once: true });
+    if (state.signal.aborted) abortListener();
+  }
   try {
     if (!response.body || typeof response.body.getReader !== 'function') {
       completed = true;
@@ -1165,6 +1261,7 @@ async function consumeTrustedSystemResponseToFile(response, controller, state, h
     }
     reader = response.body.getReader();
     while (true) {
+      throwIfTransferAborted(state);
       const remaining = remainingDeadlineMs(state);
       const waitMs = Math.max(1, Math.min(remaining, state.idleTimeoutMs));
       const timeoutKind = remaining <= state.idleTimeoutMs ? 'deadline' : 'idle';
@@ -1197,12 +1294,14 @@ async function consumeTrustedSystemResponseToFile(response, controller, state, h
     }
     return total;
   } catch (error) {
+    throwIfTransferAborted(state);
     throw systemFetchNetworkError(error);
   } finally {
     if (reader && !completed) {
       try { await reader.cancel(); } catch (_) {}
     }
     controller.abort();
+    if (abortListener && state.signal) state.signal.removeEventListener('abort', abortListener);
   }
 }
 
@@ -1308,16 +1407,17 @@ async function fetchTrustedProviderOutput(inputUrl, options, state, initialRedir
 async function safeRemoteMediaFetch(inputUrl, options = {}, redirectCount = 0) {
   const normalizedOptions = { ...options, _protocols: allowedProtocols(options.protocols) };
   const state = createTransferState(normalizedOptions);
+  let activeState = state;
   if (normalizedOptions.trustedProviderOutput === true && hasSystemFetchBridge()) {
     try {
       return await fetchTrustedProviderOutput(inputUrl, normalizedOptions, state, redirectCount);
     } catch (error) {
       if (!systemFetchFallbackAllowed(error)) throw error;
-      remainingDeadlineMs(state);
+      activeState = trustedProviderFallbackState(normalizedOptions, state);
     }
   }
-  const opened = await openSafeRemoteResponse(inputUrl, normalizedOptions, state, redirectCount);
-  const buffer = await consumeResponseBuffer(opened.response, state);
+  const opened = await openSafeRemoteResponse(inputUrl, normalizedOptions, activeState, redirectCount);
+  const buffer = await consumeResponseBuffer(opened.response, activeState);
   return {
     buffer,
     contentType: String(opened.response.headers['content-type'] || ''),
@@ -1507,6 +1607,7 @@ async function writeWholeChunk(handle, chunk, position = null) {
  *   maxBytes, maxRedirects, deadlineMs (absolute transfer budget), idleTimeoutMs
  *   accept, userAgent, headers, lookupImpl
  *   trustedProviderOutput: true prefers Electron/Chromium system networking
+ *   trustedProviderFallbackDeadlineMs: optional independent DNS-pinned recovery budget
  *
  * The target is opened with wx/0600 and is removed on every unsuccessful exit.
  * Resolves to { contentType, finalUrl, status, byteSize } without buffering the body.
@@ -1516,10 +1617,13 @@ async function safeRemoteMediaDownload(inputUrl, targetPath, options = {}) {
   // Validate URL/protocol/userinfo before reserving a filesystem target.
   parseRemoteUrl(inputUrl, normalizedOptions);
   const state = createTransferState(normalizedOptions);
+  let activeState = state;
+  throwIfTransferAborted(state);
   const target = await openExclusiveDownloadTarget(targetPath);
   let response = null;
   let closed = false;
   try {
+    throwIfTransferAborted(state);
     if (normalizedOptions.trustedProviderOutput === true && hasSystemFetchBridge()) {
       try {
         const downloaded = await downloadTrustedProviderOutputToFile(
@@ -1529,21 +1633,23 @@ async function safeRemoteMediaDownload(inputUrl, targetPath, options = {}) {
           target.handle,
         );
         await target.handle.sync();
+        throwIfTransferAborted(state);
         await target.handle.close();
         closed = true;
         return downloaded;
       } catch (error) {
         if (!systemFetchFallbackAllowed(error)) throw error;
-        remainingDeadlineMs(state);
+        activeState = trustedProviderFallbackState(normalizedOptions, state);
         // System-network chunks use explicit positions, so truncation leaves
         // the descriptor ready for a clean DNS-pinned fallback from byte 0.
         await target.handle.truncate(0);
       }
     }
-    const opened = await openSafeRemoteResponse(inputUrl, normalizedOptions, state);
+    const opened = await openSafeRemoteResponse(inputUrl, normalizedOptions, activeState);
     response = opened.response;
-    const byteSize = await consumeResponse(response, state, (chunk) => writeWholeChunk(target.handle, chunk));
+    const byteSize = await consumeResponse(response, activeState, (chunk) => writeWholeChunk(target.handle, chunk));
     await target.handle.sync();
+    throwIfTransferAborted(activeState);
     await target.handle.close();
     closed = true;
     return {
