@@ -157,7 +157,7 @@ function buildRuntimeCatalog() {
   const budgetVideoModels = new Set([
     ...(seedanceNz.ZHENZHEN_APIMART_VIDEO_MODELS || []),
   ].map(String));
-  const seedanceNzVideoKinds = new Set(['wan', 'happyhorse', 'hailuo', 'vidu', 'kling', 'upscaler']);
+  const seedanceNzVideoKinds = new Set(['wan', 'happyhorse', 'hailuo', 'vidu', 'kling', 'upscaler', 'seedance25']);
 
   const llm = [];
   for (const item of models.LLM_MODELS || []) {
@@ -178,6 +178,24 @@ function buildRuntimeCatalog() {
   }
   for (const model of seedanceNzLlmModels) {
     llm.push(modelEntry('llm', 'seedance-nz', model, model, 'llm'));
+  }
+  for (const model of seedanceNz.MINMAX_H3_CONTEXT_IR_MODELS || []) {
+    llm.push(modelEntry(
+      'llm',
+      'seedance-nz',
+      model,
+      model,
+      'minimax-h3-context-ir',
+      {
+        asynchronous: true,
+        outputKind: 'text',
+        inputKinds: model === seedanceNz.MINMAX_H3_CONTEXT_IR_TEXT_MODEL
+          ? ['text']
+          : model === seedanceNz.MINMAX_H3_CONTEXT_IR_IMAGE_MODEL
+            ? ['text', 'image']
+            : ['text', 'image', 'video', 'audio'],
+      },
+    ));
   }
 
   const image = [];
