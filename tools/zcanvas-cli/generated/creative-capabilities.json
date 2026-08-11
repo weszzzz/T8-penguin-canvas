@@ -3,7 +3,7 @@
   "generatedFrom": "tools/zcanvas-cli/creativeCapabilityManifest.json",
   "sourceSchema": "t8-creative-capability-manifest-v1",
   "sourceVersion": "0.1.0-dev",
-  "sourceDigest": "ce6ad80e45c55d8972944abd1c6f847e6e3651b2311b8dd293a5268ba381fc50",
+  "sourceDigest": "5c56b3b64d483ae6e6da5268f25c059f2a3fcc2c13e3c3d64d39b10e1e56402b",
   "principles": {
     "oneSentenceStart": true,
     "directCanvasMutation": false,
@@ -50,6 +50,7 @@
       "nodeTypes": [
         "text",
         "seedance",
+        "seedance25",
         "output"
       ],
       "supports": [
@@ -109,6 +110,7 @@
       "nodeTypes": [
         "llm",
         "minimax-h3-prompt-enhancer",
+        "minimax-h3-official-prompt-enhancer",
         "seedance20-prompt-enhancer",
         "output"
       ],
@@ -182,13 +184,16 @@
         "video",
         "video-edit",
         "seedance",
+        "seedance25",
         "director-storyboard",
         "story",
         "script-master",
         "audio",
         "llm",
         "minimax-h3-prompt-enhancer",
+        "minimax-h3-official-prompt-enhancer",
         "seedance20-prompt-enhancer",
+        "mv-music-master",
         "runninghub",
         "runninghub-wallet",
         "rh-tools",

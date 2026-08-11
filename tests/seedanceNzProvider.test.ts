@@ -36,6 +36,28 @@ const TINY_PNG_B = 'data:image/png;base64,iVBORw0KGgox';
 const TINY_MP3 = 'data:audio/mpeg;base64,SUQzAwAAAAA=';
 const TINY_MP4 = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb20=';
 
+test('seedance.nz provider boundary forwards options.signal and aborts a hanging poll', async () => {
+  const controller = new AbortController();
+  let observedSignal: AbortSignal | undefined;
+  const pending = seedanceNz.queryTask('task-abort', 'test-key', {
+    baseUrl: 'https://api.seedance.nz',
+    signal: controller.signal,
+    providerDeadlineMs: 5_000,
+    fetchImpl: (_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
+      observedSignal = init?.signal as AbortSignal | undefined;
+      if (init?.signal?.aborted) {
+        reject(new DOMException('Aborted', 'AbortError'));
+        return;
+      }
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+    }),
+  });
+  controller.abort(new Error('test-client-stop'));
+  await assert.rejects(pending, (error: any) => error?.code === 'SEEDANCE_REQUEST_ABORTED' && error?.status === 499);
+  assert.ok(observedSignal);
+  assert.equal(observedSignal?.aborted, true);
+});
+
 test('seedance.nz Suno catalog is an explicit 31-action whitelist', () => {
   const operations = Object.keys(seedanceNz.SUNO_ACTION_SPECS);
   assert.equal(operations.length, 31);
@@ -803,6 +825,135 @@ test('seedance.nz image query preserves every returned image URL for multi-outpu
   ]);
 });
 
+test('seedance.nz builds the exact Seedream layer-decomposition payload from one source image', async () => {
+  seedanceNz.resetCachesForTests();
+  const uploads: Array<{ url: string; init?: RequestInit }> = [];
+  const built = await seedanceNz.buildSeedreamLayerDecompositionPayload({
+    model: 'seedream-v5-pro-layer-decomposition',
+    images: [TINY_PNG_A],
+    prompt: '',
+    resolution: '1.5k',
+    output_format: 'png',
+    n: 99,
+    ratio: '16:9',
+  }, 'test-key', {
+    uploadIntervalMs: 0,
+    fetchImpl: async (url: string, init?: RequestInit) => {
+      uploads.push({ url, init });
+      return jsonResponse({ url: 'https://cdn.example.com/seedream-layer-source.png' });
+    },
+  });
+
+  assert.equal(uploads.length, 1);
+  assert.deepEqual(built, {
+    model: 'seedream-v5-pro-layer-decomposition',
+    taskType: 'layer-decomposition',
+    payload: {
+      model: 'seedream-v5-pro-layer-decomposition',
+      images: ['https://cdn.example.com/seedream-layer-source.png'],
+      metadata: { resolution: '1.5k', output_format: 'png' },
+    },
+  });
+  const dolaBuilt = await seedanceNz.buildSeedreamLayerDecompositionPayload({
+    model: 'dola-seedream-5.0-pro-layer-decomposition',
+    images: [TINY_PNG_A],
+    prompt: '',
+    resolution: 'auto',
+    output_format: 'png',
+  }, 'test-key', {
+    uploadIntervalMs: 0,
+    fetchImpl: async () => jsonResponse({ url: 'https://cdn.example.com/dola-layer-source.png' }),
+  });
+  assert.deepEqual(dolaBuilt, {
+    model: 'dola-seedream-5.0-pro-layer-decomposition',
+    taskType: 'layer-decomposition',
+    payload: {
+      model: 'dola-seedream-5.0-pro-layer-decomposition',
+      images: ['https://cdn.example.com/dola-layer-source.png'],
+      metadata: { resolution: 'auto', output_format: 'png' },
+    },
+  });
+  await assert.rejects(
+    seedanceNz.buildSeedreamLayerDecompositionPayload({
+      model: 'not-a-layer-model', images: [TINY_PNG_A],
+    }, 'test-key'),
+    /未知 Seedream 分层模型/,
+  );
+  await assert.rejects(
+    seedanceNz.buildSeedreamLayerDecompositionPayload({
+      model: 'seedream-v5-pro-layer-decomposition', images: [],
+    }, 'test-key'),
+    /必须且只能提供 1 张源图/,
+  );
+  await assert.rejects(
+    seedanceNz.buildSeedreamLayerDecompositionPayload({
+      model: 'seedream-v5-pro-layer-decomposition', images: [TINY_PNG_A, TINY_PNG_B],
+    }, 'test-key'),
+    /必须且只能提供 1 张源图/,
+  );
+});
+
+test('seedance.nz preserves the documented Seedream layer array order and duplicate entries', async () => {
+  const queried = await seedanceNz.queryImageTask('seedream-layer-task', 'test-key', {
+    baseUrl: 'https://api.seedance.nz',
+    fetchImpl: async () => jsonResponse({
+      data: {
+        status: 'SUCCESS',
+        result_url: 'https://cdn.example.com/scalar-must-not-replace-array.png',
+        data: {
+          content: {
+            image_url: 'https://cdn.example.com/base.png',
+            image_urls: [
+              'https://cdn.example.com/base.png',
+              'https://cdn.example.com/layer-1.png',
+              'https://cdn.example.com/layer-1.png',
+              'https://cdn.example.com/layer-2.png',
+            ],
+          },
+        },
+      },
+    }),
+  });
+  assert.deepEqual(queried.imageUrls, [
+    'https://cdn.example.com/base.png',
+    'https://cdn.example.com/layer-1.png',
+    'https://cdn.example.com/layer-1.png',
+    'https://cdn.example.com/layer-2.png',
+  ]);
+  assert.equal(queried.imageUrl, 'https://cdn.example.com/base.png');
+});
+
+test('seedance.nz preserves every layer from the live Provider upstream.results response shape', async () => {
+  const queried = await seedanceNz.queryImageTask('seedream-layer-live-shape', 'test-key', {
+    baseUrl: 'https://api.seedance.nz',
+    fetchImpl: async () => jsonResponse({
+      data: {
+        status: 'SUCCESS',
+        result_url: 'https://cdn.example.com/compatibility-result.png',
+        data: {
+          content: { video_url: 'https://cdn.example.com/compatibility-result.png' },
+          upstream: {
+            response: {
+              results: [
+                { outputType: 'url', url: 'https://cdn.example.com/base.png' },
+                { outputType: 'url', url: 'https://cdn.example.com/layer-1.png' },
+                { outputType: 'url', url: 'https://cdn.example.com/layer-1.png' },
+                { outputType: 'url', url: 'https://cdn.example.com/layer-2.png' },
+              ],
+            },
+          },
+        },
+      },
+    }),
+  });
+  assert.deepEqual(queried.imageUrls, [
+    'https://cdn.example.com/base.png',
+    'https://cdn.example.com/layer-1.png',
+    'https://cdn.example.com/layer-1.png',
+    'https://cdn.example.com/layer-2.png',
+  ]);
+});
+
 test('seedance.nz builds all three Happy Horse payload modes without mixing Seedance fields', async () => {
   seedanceNz.resetCachesForTests();
   let uploadIndex = 0;
@@ -1171,6 +1322,14 @@ test('seedance.nz Hailuo 2.3 validates model limits and submits through /v1/vide
 
 test('seedance.nz builds the documented Hailuo H3 t2v, first/last-frame i2v and multimodal payloads', async () => {
   seedanceNz.resetCachesForTests();
+  const default768p = await seedanceNz.buildHailuoPayload({
+    model: 'hailuo-h3-t2v',
+    prompt: 'A paper kite crosses a clear sky',
+    duration: 5,
+    ratio: '16:9',
+  }, 'test-key');
+  assert.equal(default768p.payload.metadata.resolution, '768P');
+
   const t2v = await seedanceNz.buildHailuoPayload({
     model: 'hailuo-h3-t2v',
     prompt: 'A warm paper lantern floats through a quiet night market',
@@ -1259,7 +1418,7 @@ test('seedance.nz Hailuo H3 rejects invalid duration, resolution and missing or 
     seedanceNz.buildHailuoPayload({
       model: 'hailuo-h3-t2v', prompt: 'Valid prompt', duration: 5, resolution: '1080p', ratio: '16:9',
     }, 'test-key'),
-    /固定为 2K/,
+    /只支持 768P 或 2K/,
   );
   await assert.rejects(
     seedanceNz.buildHailuoPayload({
@@ -1381,11 +1540,13 @@ test('seedance.nz image query preserves the documented upstream failure reason w
   assert.deepEqual(result.imageUrls, []);
 });
 
-test('seedance.nz builds MiniMax H3 OW t2v, r2v and i2v exactly as documented', async () => {
+test('seedance.nz builds all documented MiniMax H3 OW standard and Fast payloads', async () => {
   assert.deepEqual([...seedanceNz.MINIMAX_H3_OW_MODELS], [
     'minimax-h3-ow-t2v',
     'minimax-h3-ow-r2v',
     'minimax-h3-ow-i2v',
+    'minimax-h3-ow-i2v-fast',
+    'minimax-h3-ow-r2v-fast',
   ]);
   const t2v = await seedanceNz.buildHailuoPayload({
     model: 'minimax-h3-ow-t2v',
@@ -1413,7 +1574,7 @@ test('seedance.nz builds MiniMax H3 OW t2v, r2v and i2v exactly as documented', 
       duration: 15,
       resolution: '720p',
       ratio: '9:16',
-      images: [TINY_PNG_A, TINY_PNG_B],
+      images: [TINY_PNG_A],
     }, 'test-key', {
       uploadIntervalMs: 0,
       fetchImpl: async () => jsonResponse({ url: 'https://cdn.example.com/minimax-reference.png' }),
@@ -1422,6 +1583,53 @@ test('seedance.nz builds MiniMax H3 OW t2v, r2v and i2v exactly as documented', 
     assert.deepEqual(built.payload.images, ['https://cdn.example.com/minimax-reference.png']);
     assert.deepEqual(built.payload.metadata, { resolution: '720p', ratio: '9:16' });
   }
+
+  seedanceNz.resetCachesForTests();
+  let uploadIndex = 0;
+  const fastR2v = await seedanceNz.buildHailuoPayload({
+    model: 'minimax-h3-ow-r2v-fast',
+    prompt: 'preserve all ordered reference identities',
+    duration: 10,
+    resolution: '480p',
+    ratio: '21:9',
+    images: [TINY_PNG_A, TINY_PNG_B, `${TINY_PNG_A}A`],
+  }, 'test-key', {
+    uploadIntervalMs: 0,
+    fetchImpl: async () => {
+      uploadIndex += 1;
+      return jsonResponse({ url: `https://cdn.example.com/minimax-fast-${uploadIndex}.png` });
+    },
+  });
+  assert.deepEqual(fastR2v, {
+    model: 'minimax-h3-ow-r2v-fast',
+    taskType: 'r2v',
+    payload: {
+      model: 'minimax-h3-ow-r2v-fast',
+      prompt: 'preserve all ordered reference identities',
+      seconds: '10',
+      metadata: { resolution: '480p', ratio: '21:9' },
+      images: [
+        'https://cdn.example.com/minimax-fast-1.png',
+        'https://cdn.example.com/minimax-fast-2.png',
+        'https://cdn.example.com/minimax-fast-3.png',
+      ],
+    },
+  });
+
+  seedanceNz.resetCachesForTests();
+  const fastI2v = await seedanceNz.buildHailuoPayload({
+    model: 'minimax-h3-ow-i2v-fast',
+    duration: 5,
+    resolution: '720p',
+    ratio: '16:9',
+    images: [TINY_PNG_A],
+  }, 'test-key', {
+    uploadIntervalMs: 0,
+    fetchImpl: async () => jsonResponse({ url: 'https://cdn.example.com/minimax-fast-first.png' }),
+  });
+  assert.equal(fastI2v.taskType, 'i2v');
+  assert.equal(Object.hasOwn(fastI2v.payload, 'prompt'), false);
+  assert.deepEqual(fastI2v.payload.images, ['https://cdn.example.com/minimax-fast-first.png']);
 });
 
 test('seedance.nz validates MiniMax H3 OW prompt, image, seconds, resolution and ratio', async () => {
@@ -1433,7 +1641,27 @@ test('seedance.nz validates MiniMax H3 OW prompt, image, seconds, resolution and
     seedanceNz.buildHailuoPayload({
       model: 'minimax-h3-ow-i2v', duration: 5, resolution: '480p', ratio: '16:9', images: [],
     }, 'test-key'),
-    /必须提供 1 张图片/,
+    /必须且只能提供 1 张首帧图/,
+  );
+  await assert.rejects(
+    seedanceNz.buildHailuoPayload({
+      model: 'minimax-h3-ow-i2v-fast', duration: 5, resolution: '480p', ratio: '16:9', images: [TINY_PNG_A, TINY_PNG_B],
+    }, 'test-key'),
+    /必须且只能提供 1 张首帧图/,
+  );
+  await assert.rejects(
+    seedanceNz.buildHailuoPayload({
+      model: 'minimax-h3-ow-r2v-fast', prompt: 'valid prompt', duration: 5, resolution: '480p', ratio: '16:9',
+      images: Array.from({ length: 10 }, () => TINY_PNG_A),
+    }, 'test-key'),
+    /必须提供 1-9 张参考图/,
+  );
+  await assert.rejects(
+    seedanceNz.buildHailuoPayload({
+      model: 'minimax-h3-ow-r2v-fast', prompt: 'valid prompt', duration: 5, resolution: '480p', ratio: '16:9',
+      images: [TINY_PNG_A], videos: ['data:video/mp4;base64,AAAA'],
+    }, 'test-key'),
+    /不接受视频或音频素材/,
   );
   await assert.rejects(
     seedanceNz.buildHailuoPayload({
@@ -1757,7 +1985,7 @@ test('seedance.nz never reflects plain-text or JSON upstream secrets in errors',
     },
   ));
 
-  assert.equal(plainError.code, 'SEEDANCE_INVALID_RESPONSE');
+  assert.equal(plainError.code, 'SEEDANCE_UPSTREAM_ERROR');
   assert.equal(plainError.status, 502);
   assert.equal(plainError.requestId, 'req-plain-safe');
   assert.match(String(plainError.bodyDigest), /^sha256:[a-f0-9]{16}$/);

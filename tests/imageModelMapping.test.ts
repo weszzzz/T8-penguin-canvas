@@ -20,6 +20,10 @@ import {
   ZHENZHEN_IMAGE_NB_PRO_MODEL,
   ZHENZHEN_IMAGE_NB_EXTREME_RATIOS,
   ZHENZHEN_IMAGE_NB_STANDARD_RATIOS,
+  DOLA_SEEDREAM_LAYER_DECOMPOSITION_MODEL,
+  SEEDREAM_LAYER_DECOMPOSITION_MODEL,
+  SEEDREAM_LAYER_DECOMPOSITION_MODELS,
+  SEEDREAM_LAYER_RESOLUTIONS,
   gptImage2ZhenzhenVariantSize,
   isFalModel,
   isZhenzhenImageG2Model,
@@ -127,8 +131,8 @@ test('Zhenzhen Image G-2 models live under the separate budget platform and keep
   assert.match(imageNodeSource, /imageBuiltinSource === 'seedance-nz' \|\| isZhenzhenBudgetImageModel\(savedApiModel\)/);
   assert.match(imageNodeSource, /value="builtin:seedance-nz"[\s\S]*贞贞的平价AI小屋/);
   assert.match(imageNodeSource, /builtinApiModelOptions\.map\(\(opt\) =>/);
-  assert.match(imageNodeSource, /model: isQwenImageTab[\s\S]*: isZhenzhenBudgetImageSelected/);
-  assert.match(imageNodeSource, /resolution: isQwenImageTab[\s\S]*: isZhenzhenImageG2/);
+  assert.match(imageNodeSource, /model: isSeedreamLayerTab[\s\S]*: isQwenImageTab[\s\S]*: isZhenzhenBudgetImageSelected/);
+  assert.match(imageNodeSource, /resolution: isSeedreamLayerTab[\s\S]*: isQwenImageTab[\s\S]*: isZhenzhenImageG2/);
   assert.match(imageNodeSource, /图生图模式：必须提供 1–10 张参考图/);
   assert.match(imageNodeSource, /文生图模式：只使用 Prompt，已连接的参考图不会发送/);
   assert.match(proxySource, /seedanceNz\.submitImageTask/);
@@ -216,4 +220,51 @@ test('Seedream tab keeps legacy source by default and exposes isolated seedance.
   assert.match(proxySource, /settings\?\.zhenzhenSd2ApiKey/);
   assert.match(proxySource, /seedanceNz\.submitImageTask/);
   assert.match(proxySource, /seedanceNz\.queryImageTask/);
+});
+
+test('Seedream layer decomposition is an isolated single-image tab with ordered multi-output handling', () => {
+  const layer = IMAGE_MODELS.find((model) => model.id === 'seedream-layer-decomposition');
+  assert.ok(layer);
+  assert.equal(layer.tabLabel, 'Seedream分层');
+  assert.equal(layer.apiModel, SEEDREAM_LAYER_DECOMPOSITION_MODEL);
+  assert.equal(layer.paramKind, 'seedream-layer');
+  assert.equal(layer.maxReferenceImages, 1);
+  assert.deepEqual(SEEDREAM_LAYER_DECOMPOSITION_MODELS, [
+    SEEDREAM_LAYER_DECOMPOSITION_MODEL,
+    DOLA_SEEDREAM_LAYER_DECOMPOSITION_MODEL,
+  ]);
+  assert.deepEqual(
+    layer.apiModelOptions.map((option) => option.value),
+    [...SEEDREAM_LAYER_DECOMPOSITION_MODELS],
+  );
+  assert.equal(layer.apiModelOptions[0]?.value, SEEDREAM_LAYER_DECOMPOSITION_MODEL);
+  assert.deepEqual(SEEDREAM_LAYER_RESOLUTIONS, ['auto', '1k', '1.5k', '2k']);
+  assert.match(imageNodeSource, /Seedream 分层必须且只能连接或上传 1 张源图/);
+  assert.match(imageNodeSource, /提示词可留空，最多 2000 字符/);
+  assert.match(imageNodeSource, /国内 Seedream 与海外 Dola 共用同一参数；国内模型保持默认/);
+  assert.match(imageNodeSource, /不排序、不去重、不截断/);
+  assert.match(imageNodeSource, /imageUrls: query\.urls/);
+  assert.match(proxySource, /const remoteImageUrls = listedImageUrls/);
+  assert.match(proxySource, /outputCount: urls\.length/);
+
+  const workflows = [
+    ['seedream-v5-pro-layer-decomposition.json', SEEDREAM_LAYER_DECOMPOSITION_MODEL],
+    ['dola-seedream-5.0-pro-layer-decomposition.json', DOLA_SEEDREAM_LAYER_DECOMPOSITION_MODEL],
+  ] as const;
+  for (const [filename, expectedModel] of workflows) {
+    const workflow = JSON.parse(fs.readFileSync(
+      new URL(`../docs/workflows/${filename}`, import.meta.url),
+      'utf8',
+    ));
+    assert.equal(workflow.schema, 't8-workflow-fragment');
+    assert.equal(JSON.stringify(workflow).includes('sk-'), false);
+    const generation = workflow.nodes.find((node: any) => node.data?.apiModel === expectedModel);
+    assert.ok(generation);
+    assert.equal(generation.data.seedreamLayerResolution, 'auto');
+    assert.equal(generation.data.seedreamOutputFormat, 'png');
+    assert.equal(workflow.edges.some((edge: any) => edge.target === generation.id
+      && workflow.nodes.some((node: any) => node.id === edge.source && node.type === 'upload')), true);
+    assert.equal(workflow.edges.some((edge: any) => edge.source === generation.id
+      && workflow.nodes.some((node: any) => node.id === edge.target && node.type === 'output')), true);
+  }
 });
