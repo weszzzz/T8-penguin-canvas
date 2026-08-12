@@ -373,6 +373,27 @@
         }
       ]
     },
+    "seedance25": {
+      "resolver": "static",
+      "inputs": [
+        {
+          "id": null,
+          "kinds": ["text", "image", "video", "audio"],
+          "required": false,
+          "minConnections": 0,
+          "maxConnections": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": null,
+          "kinds": ["video"],
+          "required": false,
+          "minConnections": 0,
+          "maxConnections": null
+        }
+      ]
+    },
     "director-storyboard": {
       "resolver": "static",
       "inputs": [
@@ -573,6 +594,27 @@
         }
       ]
     },
+    "minimax-h3-official-prompt-enhancer": {
+      "resolver": "static",
+      "inputs": [
+        {
+          "id": null,
+          "kinds": ["text", "image", "video", "audio"],
+          "required": false,
+          "minConnections": 0,
+          "maxConnections": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": null,
+          "kinds": ["text"],
+          "required": false,
+          "minConnections": 0,
+          "maxConnections": null
+        }
+      ]
+    },
     "seedance20-prompt-enhancer": {
       "resolver": "static",
       "inputs": [
@@ -592,6 +634,23 @@
           "minConnections": 0,
           "maxConnections": null
         }
+      ]
+    },
+    "mv-music-master": {
+      "resolver": "static",
+      "inputs": [
+        { "id": "master-audio", "kinds": ["audio"], "required": true, "minConnections": 1, "maxConnections": 1 },
+        { "id": "lyrics", "kinds": ["text"], "required": false, "minConnections": 0, "maxConnections": 1 },
+        { "id": "identity-image", "kinds": ["image"], "required": true, "minConnections": 1, "maxConnections": 9 },
+        { "id": "style-image", "kinds": ["image"], "required": false, "minConnections": 0, "maxConnections": 9 },
+        { "id": "motion-reference", "kinds": ["video"], "required": false, "minConnections": 0, "maxConnections": 3 }
+      ],
+      "outputs": [
+        { "id": "final-video", "kinds": ["video"], "required": false, "minConnections": 0, "maxConnections": null, "preferred": true },
+        { "id": "master-audio", "kinds": ["audio"], "required": false, "minConnections": 0, "maxConnections": null, "preferred": false },
+        { "id": "storyboards", "kinds": ["image"], "required": false, "minConnections": 0, "maxConnections": null, "preferred": false },
+        { "id": "prompt-pack", "kinds": ["text"], "required": false, "minConnections": 0, "maxConnections": null, "preferred": false },
+        { "id": "manifest", "kinds": ["metadata"], "required": false, "minConnections": 0, "maxConnections": null, "preferred": false }
       ]
     },
     "runninghub": {
@@ -2546,6 +2605,55 @@
       }
     },
     {
+      "type": "seedance25",
+      "label": "SD2.5",
+      "category": "core",
+      "description": "Seedance 2.5 Standard 文生、首尾帧与多模态参考视频",
+      "icon": "Film",
+      "color": "fuchsia",
+      "ports": {
+        "inputs": ["text", "image", "video", "audio"],
+        "outputs": ["video"]
+      },
+      "executable": true,
+      "generatable": false,
+      "generation": {
+        "allowedDataFields": {
+          "model": {
+            "type": "string",
+            "enum": [
+              "seedance-2.5-global-standard-i2v",
+              "seedance-2.5-global-standard-multi",
+              "seedance-2.5-global-standard-t2v",
+              "seedance-2.5-standard-i2v",
+              "seedance-2.5-standard-multi",
+              "seedance-2.5-standard-t2v"
+            ]
+          },
+          "duration": {
+            "type": "integer",
+            "enum": [-1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+          },
+          "ratio": { "type": "string", "enum": ["adaptive", "16:9", "4:3", "1:1", "3:4", "9:16", "21:9"] },
+          "resolution": { "type": "string", "enum": ["480p", "720p", "1080p", "2k", "4k"] },
+          "generateAudio": { "type": "boolean" },
+          "returnLastFrame": { "type": "boolean" },
+          "seed": { "type": "integer", "minimum": -1, "maximum": 2147483647 },
+          "reuseResult": { "type": "boolean" }
+        },
+        "defaults": {
+          "model": "seedance-2.5-global-standard-i2v",
+          "duration": 5,
+          "ratio": "adaptive",
+          "resolution": "720p",
+          "generateAudio": true,
+          "returnLastFrame": false,
+          "seed": -1,
+          "reuseResult": false
+        }
+      }
+    },
+    {
       "type": "director-storyboard",
       "label": "导演分镜台",
       "category": "core",
@@ -2627,7 +2735,7 @@
       "type": "audio",
       "label": "音频",
       "category": "core",
-      "description": "Suno / Seed Audio 生成与 Whisper 语音转文字",
+      "description": "Suno、Seed Audio、Qwen3-TTS、MiniMax、Mureka 音频生成与 Whisper 语音转文字",
       "icon": "Music",
       "color": "violet",
       "ports": {
@@ -2649,8 +2757,44 @@
         "allowedDataFields": {
           "audioProviderMode": {
             "type": "string",
-            "enum": ["suno", "seed-audio", "whisper"]
+            "enum": ["suno", "seed-audio", "whisper", "qwen3-tts", "minimax", "mureka"]
           },
+          "qwenTtsModel": {
+            "type": "string",
+            "enum": ["qwen3-tts-flash", "qwen3-tts-instruct-flash"]
+          },
+          "qwenTtsVoice": { "type": "string" },
+          "qwenTtsLanguage": {
+            "type": "string",
+            "enum": ["Chinese", "English", "Japanese", "Korean", "German", "French", "Russian", "Portuguese", "Spanish", "Italian"]
+          },
+          "qwenTtsInstructions": { "type": "string" },
+          "qwenTtsOptimizeInstructions": { "type": "boolean" },
+          "minimaxAudioModel": {
+            "type": "string",
+            "enum": ["minimax-music-2.6", "minimax-speech-2.8-hd", "minimax-speech-2.8-turbo", "minimax-voice-clone"]
+          },
+          "minimaxLyrics": { "type": "string" },
+          "minimaxInstrumental": { "type": "boolean" },
+          "minimaxLyricsOptimizer": { "type": "boolean" },
+          "minimaxVoiceId": { "type": "string" },
+          "minimaxSpeed": { "type": "number", "minimum": 0.5, "maximum": 2 },
+          "minimaxVolume": { "type": "number", "minimum": 0.1, "maximum": 10 },
+          "minimaxPitch": { "type": "integer", "minimum": -12, "maximum": 12 },
+          "minimaxLanguageBoost": { "type": "string" },
+          "minimaxOutputFormat": { "type": "string", "enum": ["mp3", "wav", "flac"] },
+          "minimaxSampleRate": { "type": "string", "enum": ["16000", "24000", "32000", "44100"] },
+          "minimaxBitrate": { "type": "string", "enum": ["32000", "64000", "128000", "256000"] },
+          "minimaxChannel": { "type": "integer", "enum": [1, 2] },
+          "minimaxCustomVoiceId": { "type": "string" },
+          "minimaxCloneTargetModel": { "type": "string", "enum": ["minimax-speech-2.8-hd", "minimax-speech-2.8-turbo"] },
+          "minimaxNoiseReduction": { "type": "boolean" },
+          "minimaxVolumeNormalization": { "type": "boolean" },
+          "murekaModel": { "type": "string", "enum": ["mureka-v8-bgm", "mureka-v9-bgm"] },
+          "murekaInstrumentalId": { "type": "string" },
+          "murekaCount": { "type": "integer", "minimum": 1, "maximum": 3 },
+          "prompt": { "type": "string" },
+          "referenceAudios": { "type": "array", "items": { "type": "string" }, "maxItems": 1 },
           "whisperResponseFormat": {
             "type": "string",
             "enum": ["json", "verbose_json", "srt", "text", "vtt"]
@@ -2661,6 +2805,18 @@
         },
         "defaults": {
           "audioProviderMode": "suno",
+          "qwenTtsModel": "qwen3-tts-flash",
+          "qwenTtsVoice": "Cherry",
+          "qwenTtsLanguage": "Chinese",
+          "qwenTtsOptimizeInstructions": true,
+          "minimaxAudioModel": "minimax-speech-2.8-turbo",
+          "minimaxInstrumental": true,
+          "minimaxOutputFormat": "mp3",
+          "minimaxSampleRate": "32000",
+          "minimaxBitrate": "128000",
+          "minimaxChannel": 1,
+          "murekaModel": "mureka-v8-bgm",
+          "murekaCount": 1,
           "whisperResponseFormat": "json",
           "reuseResult": false
         },
@@ -2823,6 +2979,61 @@
       }
     },
     {
+      "type": "minimax-h3-official-prompt-enhancer",
+      "label": "MiniMax H3官方提示词增强器",
+      "category": "inspiration",
+      "description": "通过 MiniMax H3 Context IR 官方异步模型，按纯文本、首尾帧或图/视频/音频多模态上下文增强视频提示词；固定使用贞贞的平价AI小屋",
+      "icon": "Sparkles",
+      "color": "emerald",
+      "ports": {
+        "inputs": ["text", "image", "video", "audio"],
+        "outputs": ["text"]
+      },
+      "executable": true,
+      "generatable": true,
+      "generation": {
+        "allowedDataFields": {
+          "userPrompt": { "type": "string", "maxLength": 7000 },
+          "model": {
+            "type": "string",
+            "enum": [
+              "minmax-h3-context-ir-text",
+              "minmax-h3-context-ir-image",
+              "minmax-h3-context-ir-multimodal"
+            ]
+          },
+          "duration": { "type": "integer", "minimum": 4, "maximum": 15 },
+          "ratio": {
+            "type": "string",
+            "enum": ["api_default", "adaptive", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"]
+          }
+        },
+        "defaults": {
+          "userPrompt": "",
+          "model": "minmax-h3-context-ir-text",
+          "duration": 4,
+          "ratio": "16:9",
+          "taskProvider": "seedance-nz",
+          "status": "idle",
+          "error": "",
+          "progress": "",
+          "taskId": "",
+          "resultText": "",
+          "enhancedPrompt": "",
+          "prompt": ""
+        },
+        "connectionPorts": {
+          "dynamic": false,
+          "inputs": [
+            { "id": null, "kinds": ["text", "image", "video", "audio"], "required": false, "minConnections": 0, "maxConnections": null }
+          ],
+          "outputs": [
+            { "id": null, "kinds": ["text"], "required": false, "minConnections": 0, "maxConnections": null }
+          ]
+        }
+      }
+    },
+    {
       "type": "seedance20-prompt-enhancer",
       "label": "Seedance 2.0提示词增强器",
       "category": "inspiration",
@@ -2890,6 +3101,82 @@
           ],
           "outputs": [
             { "id": null, "kinds": ["text"], "required": false, "minConnections": 0, "maxConnections": null }
+          ]
+        }
+      }
+    },
+    {
+      "type": "mv-music-master",
+      "label": "MV 音乐大师",
+      "category": "core",
+      "description": "从完整歌曲、歌词、人设与风格参考完成语义安全切段、分批导演提示词、分镜图、Seedance/H3 分段视频及原曲单轨成片的可恢复 MV 工作台",
+      "icon": "Clapperboard",
+      "color": "fuchsia",
+      "ports": {
+        "inputs": ["audio", "text", "image", "video"],
+        "outputs": ["video", "audio", "image", "text", "metadata"]
+      },
+      "executable": true,
+      "generatable": true,
+      "generation": {
+        "allowedDataFields": {
+          "lyricsText": { "type": "string", "maxLength": 200000 },
+          "styleDescription": { "type": "string", "maxLength": 20000 },
+          "mvType": { "type": "string", "enum": ["narrative", "performance", "dance", "abstract", "lyric-visual", "hybrid"] },
+          "creativity": { "type": "string", "enum": ["conservative", "balanced", "creative", "custom"] },
+          "shotMode": { "type": "string", "enum": ["bpm-auto", "semantic-auto", "fixed"] },
+          "fixedShotCount": { "type": "integer", "minimum": 1, "maximum": 20 },
+          "aspectRatio": { "type": "string", "enum": ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"] },
+          "subtitlePolicy": { "type": "string", "enum": ["lyrics", "spatial-lyrics", "none"] },
+          "llmApiSource": { "type": "string", "enum": ["seedance-nz", "zhenzhen"] },
+          "providerSource": { "type": "string", "maxLength": 200 },
+          "providerId": { "type": "string", "maxLength": 200 },
+          "providerModel": { "type": "string", "maxLength": 300 },
+          "mvImageProvider": { "type": "string", "enum": ["seedance-nz", "zhenzhen"] },
+          "mvImageModel": { "type": "string", "enum": ["zhenzhen-image-g2-i2i", "zhenzhen-image-g-v2-lowprice", "gpt-image-2-all", "gpt-image-2", "gpt-image-2-2K", "gpt-image-2-4K"] },
+          "mvVideoFamily": { "type": "string", "enum": ["seedance", "hailuo"] },
+          "mvVideoProvider": { "type": "string", "enum": ["seedance-nz", "zhenzhen"] },
+          "mvVideoModel": { "type": "string", "enum": ["standard", "fast", "mini", "global-standard", "global-fast", "global-mini", "doubao-seedance-2-0-fast-260128", "doubao-seedance-2-0-260128", "doubao-seedance-2.0-mini", "hailuo-h3-multi", "hailuo-h3-i2v", "minimax-h3-ow-r2v", "minimax-h3-ow-i2v"] },
+          "mvVideoResolution": { "type": "string", "enum": ["480p", "720p", "1080p", "2k", "4k", "native1080p", "native4K", "2K"] },
+          "mvComposeResolution": { "type": "string", "enum": ["720p", "1080p", "2k", "4k"] }
+        },
+        "defaults": {
+          "lyricsText": "",
+          "styleDescription": "",
+          "mvType": "hybrid",
+          "creativity": "balanced",
+          "shotMode": "bpm-auto",
+          "fixedShotCount": 4,
+          "aspectRatio": "16:9",
+          "subtitlePolicy": "lyrics",
+          "llmApiSource": "seedance-nz",
+          "providerSource": "zhenzhen",
+          "providerId": "",
+          "providerModel": "bytedance/doubao-seed-2.1-pro",
+          "mvImageProvider": "seedance-nz",
+          "mvImageModel": "zhenzhen-image-g2-i2i",
+          "mvVideoFamily": "seedance",
+          "mvVideoProvider": "seedance-nz",
+          "mvVideoModel": "fast",
+          "mvVideoResolution": "1080p",
+          "mvComposeResolution": "1080p",
+          "status": "idle"
+        },
+        "connectionPorts": {
+          "dynamic": false,
+          "inputs": [
+            { "id": "master-audio", "kinds": ["audio"], "required": true, "minConnections": 1, "maxConnections": 1 },
+            { "id": "lyrics", "kinds": ["text"], "required": false, "minConnections": 0, "maxConnections": 1 },
+            { "id": "identity-image", "kinds": ["image"], "required": true, "minConnections": 1, "maxConnections": 9 },
+            { "id": "style-image", "kinds": ["image"], "required": false, "minConnections": 0, "maxConnections": 9 },
+            { "id": "motion-reference", "kinds": ["video"], "required": false, "minConnections": 0, "maxConnections": 3 }
+          ],
+          "outputs": [
+            { "id": "final-video", "kinds": ["video"], "required": false, "minConnections": 0, "maxConnections": null, "preferred": true },
+            { "id": "master-audio", "kinds": ["audio"], "required": false, "minConnections": 0, "maxConnections": null, "preferred": false },
+            { "id": "storyboards", "kinds": ["image"], "required": false, "minConnections": 0, "maxConnections": null, "preferred": false },
+            { "id": "prompt-pack", "kinds": ["text"], "required": false, "minConnections": 0, "maxConnections": null, "preferred": false },
+            { "id": "manifest", "kinds": ["metadata"], "required": false, "minConnections": 0, "maxConnections": null, "preferred": false }
           ]
         }
       }
