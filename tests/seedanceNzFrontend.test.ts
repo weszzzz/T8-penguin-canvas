@@ -36,7 +36,7 @@ test('SD2 node exposes built-in provider choices and preserves provider during p
   assert.match(node, /主力 API（自动：优先平价AI小屋）/);
   assert.match(node, /贞贞的平价AI小屋 · api\.seedance\.nz/);
   assert.match(node, /贞贞的AI工坊（海外） · ai\.t8star\.org/);
-  assert.match(node, /taskProvider: builtinSource/);
+  assert.match(node, /taskProvider:\s*isSeedance25\s*\?\s*'seedance-nz'\s*:\s*builtinSource/);
   assert.match(node, /querySeedance\(tid, taskProvider\)/);
   assert.match(node, /lastTaskProvider/);
   assert.match(generation, /taskProvider=\$\{encodeURIComponent\(taskProvider\)\}/);
@@ -73,8 +73,8 @@ test('all interval-based generation polling never overlaps a slow status request
   assert.equal((videoNode.match(/let pollInFlight = false;/g) || []).length, 2);
   assert.equal((videoNode.match(/if \(pollInFlight\) return;/g) || []).length, 2);
   assert.equal((videoNode.match(/pollInFlight = false;/g) || []).length, 4);
-  assert.equal((audioNode.match(/let pollInFlight = false;/g) || []).length, 3);
-  assert.equal((audioNode.match(/if \(pollInFlight\) return;/g) || []).length, 3);
+  assert.equal((audioNode.match(/let pollInFlight = false;/g) || []).length, 4);
+  assert.equal((audioNode.match(/if \(pollInFlight\) return;/g) || []).length, 4);
   assert.match(runningHubNode, /let pollInFlight = false;[\s\S]*?if \(pollInFlight\) return;/);
   assert.match(rhToolsNode, /let pollInFlight = false;[\s\S]*?if \(pollInFlight\) return;/);
 });
@@ -176,20 +176,25 @@ test('video node exposes Hailuo 2.3 and H3 as one isolated budget-house family',
     'hailuo-h3-t2v',
     'hailuo-h3-i2v',
     'hailuo-h3-multi',
+    'hailuo-h3-global-t2v',
+    'hailuo-h3-global-i2v',
+    'hailuo-h3-global-multi',
+    'minimax-h3-ow-i2v-fast',
+    'minimax-h3-ow-r2v-fast',
   ]) {
     assert.match(models, new RegExp(model.replaceAll('.', '\\.')));
   }
   assert.match(models, /label: 'Hailuo'/);
   assert.match(models, /durations: \[6, 10\]/);
   assert.match(models, /resolutions: \['768p', '1080p'\]/);
-  assert.match(models, /Hailuo H3 多模态参考；最多 9 图、3 视频、3 音频，固定 2K/);
+  assert.match(models, /Hailuo H3 国内多模态参考；最多 9 图、3 视频、3 音频，支持 768P\/2K/);
   assert.match(node, /submitHailuo/);
   assert.match(node, /queryHailuo/);
   assert.match(node, /hailuoMode === 'multi'/);
   assert.match(node, /imageUrls\.slice\(0, 9\)/);
   assert.match(node, /videoUrls\.slice\(0, 3\)/);
   assert.match(node, /audioUrls\.slice\(0, 3\)/);
-  assert.match(node, /固定 2K/);
+  assert.match(node, /768P \/ 2K/);
   assert.match(node, /首帧图短边需大于 300px/);
   assert.match(node, /1080p 仅 6 秒/);
   assert.match(generation, /\/api\/proxy\/video\/hailuo\/submit/);
@@ -322,7 +327,7 @@ test('Seedream NZ selector distinguishes domestic and Dola overseas model famili
   assert.match(node, /Dola Seedream 5\.0 Pro（海外模型）/);
   assert.match(node, /dola-seedream-5\.0-pro-t2i/);
   assert.match(node, /dola-seedream-5\.0-pro-i2i/);
-  assert.match(node, /modelFamily: isZhenzhenBudgetImageSelected \|\| isQwenImageTab \? undefined : seedreamNzModelFamily/);
+  assert.match(node, /modelFamily: isZhenzhenBudgetImageSelected \|\| isQwenImageTab \|\| isSeedreamLayerTab \|\| isWanImageTab \? undefined : seedreamNzModelFamily/);
   assert.match(generation, /modelFamily\?: 'domestic' \| 'overseas'/);
   assert.match(provider, /dola-seedream-5\.0-pro-t2i/);
   assert.match(provider, /dola-seedream-5\.0-pro-i2i/);
@@ -349,7 +354,7 @@ test('audio node exposes Seed Audio without replacing Suno and supports image/au
     outputs: ['audio', 'text', 'video'],
     executable: true,
   });
-  assert.match(apiSettings, /Happy Horse、Hailuo、Kling、Vidu、Upscaler、Seedream、Zhenzhen Image G-2 与 Seed Audio/);
+  assert.match(apiSettings, /Seedream\/Qwen\/Wan\/Grok 图像，以及 Seed Audio、Qwen3-TTS、MiniMax、Mureka 音频/);
 });
 
 test('APIMart image, video and Whisper models are wired to the budget provider without replacing existing tabs', () => {
@@ -437,5 +442,6 @@ test('proxy keeps Happy Horse and Seed Audio on the domestic key and stores outp
   assert.match(proxy, /seedanceNz\.submitAudioTask/);
   assert.match(proxy, /settings\?\.zhenzhenSd2ApiKey/);
   assert.match(proxy, /materializeRemoteTaskOutput\(\{[\s\S]*?remoteUrl: result\.videoUrl,[\s\S]*?kind: 'video',[\s\S]*?materializationKey: `happyhorse-nz:\$\{req\.params\.tid\}`,[\s\S]*?providerFetchImpl: seedanceNz\.fetchRemote/);
-  assert.match(proxy, /materializeRemoteTaskOutput\(\{[\s\S]*?remoteUrl: result\.audioUrl,[\s\S]*?kind: 'audio',[\s\S]*?materializationKey: `seed-audio-nz:\$\{req\.params\.tid\}:0`/);
+  assert.match(proxy, /materializeSeedanceNzAudioResults\(result, req\.params\.tid\)/);
+  assert.match(proxy, /remoteUrls\[index\][\s\S]*?kind: 'audio',[\s\S]*?materializationKey: `seed-audio-nz:\$\{taskId\}:\$\{index\}`/);
 });
