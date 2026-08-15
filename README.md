@@ -10,13 +10,13 @@ https://www.runninghub.cn/?inviteCode=rh-v1121
 My favorite girl Go YounJung
 # 🐧 贞贞的无限画布（企鹅共创版） · T8-penguin-canvas
 
-> AI 节点画布工作流工具 · Web + Electron 桌面端｜v2.8.2
+> AI 节点画布工作流工具 · Web + Electron 桌面端｜v2.9.3
 >
 > GitHub：<https://github.com/T8mars/T8-penguin-canvas>
 
 一个面向 AI 创作的 **节点式画布**：拖拽节点、连线编排、生成图像 / 视频 / 音频、调用 LLM、串接 RunningHub 工作流，叠加批量执行、智能对齐、打组、主题模板与终端日志。Web 浏览器和桌面端均可使用。
 
-![status](https://img.shields.io/badge/version-v2.8.2-brightgreen) ![node](https://img.shields.io/badge/node-62-blue) ![react](https://img.shields.io/badge/react-19-61dafb) ![electron](https://img.shields.io/badge/electron-33-47848f) ![license](https://img.shields.io/badge/license-MIT-yellow)
+![status](https://img.shields.io/badge/version-v2.9.3-brightgreen) ![node](https://img.shields.io/badge/node-78-blue) ![react](https://img.shields.io/badge/react-19-61dafb) ![electron](https://img.shields.io/badge/electron-33-47848f) ![license](https://img.shields.io/badge/license-MIT-yellow)
 
 ---
 
@@ -35,7 +35,18 @@ My favorite girl Go YounJung
 
 ## ✨ 功能亮点
 
-- 🎨 **62 个节点**，覆盖文本 / 图像 / 视频 / 音频 / LLM / RunningHub / ComfyUI / 3D / 工具 / 辅助 / 工具箱 / 输出预览 / 上传素材 / 素材集 / 批量打标 / 随机路由 / Story 全自动制片 / 剧本大师 / MiniMax H3 / Seedance 2.0 提示词增强器 / 白模预演
+- 🎨 **78 个节点**，覆盖文本 / 图像 / 视频 / 音频 / LLM / RunningHub / ComfyUI / 3D / 工具 / 辅助 / 工具箱 / 输出预览 / 上传素材 / 素材集 / 批量打标 / 随机路由 / Story 全自动制片 / 剧本大师 / MiniMax H3 / MiniMax Music3 / Seedance 2.0 提示词增强器 / MiniMax H3 官方提示词增强器 / Seedance 2.5 / 白模预演 / MV 音乐大师
+- 🎵 **[v2.9.3 MiniMax Music3 提示词增强自动更新版](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v2.9.3)**：已发布为 GitHub Latest。新增纯文本音乐前期策划节点，支持歌词生成、逐字保留、指定段落润色、纯音乐、结构/语言/BPM/拍号/调性/时长与 Caption 规划；默认继续使用贞贞的平价AI小屋 `bytedance/doubao-seed-2.1-pro`，并支持现有全部已启用扩展 LLM 渠道。安装包已实测包含固定的 MiniMax 官方 Music 3 Skill 快照（1,022 上游文件、18 个风格族索引、1,000 个模板，以及 SOURCE/NOTICE/manifest），按渐进披露每次只读取有限参考；来源提交和树哈希可核验。既有 v2.9.2 启动优化、节点、默认值和旧画布均不回退。
+- ⚡ **[v2.9.2 画布启动与资源性能自动更新版](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v2.9.2)**：已发布为 GitHub Latest。Electron 先显示可操作启动壳，后端数据库与维护任务按需加载；画布目录改为 50 项游标分页和窗口化，损坏索引渐进恢复。画布 hydration、视口、主题 CSS 与媒体加载均按需执行，跨画布后台运行以 canvasId + entityUid + revision CAS 隔离，避免同 ID 节点串写或结果丢失。隔离开发态 5000 项目录冷启动 959.1ms、刷新 464.9ms、侧栏 DOM 14 行；这不是安装版或所有用户环境保证。
+- 🎬🎵 **v2.9.1 MiniMax H3 OW Fast 音频驱动扩展版**：Hailuo TAB 新增 `minimax-h3-ow-ref2va-audio-drive-fast`、`minimax-h3-ow-fl2va-audio-drive-fast` 与 `minimax-h3-ow-t2v-fast`。两个音频驱动模型严格接收 1 图 + 1 音频，T2V Fast 只接收必填提示词；三者支持 5/10/15 秒、480p/720p 与八种比例。三个模型均已各真实提交一次、成功下载并完整解码，三份配套工作流不含凭据，既有默认模型、默认渠道和旧画布保持不变。
+- 🎨🎵 **v2.9.0 平价 AI 小屋图像与音频扩展版**：图像节点新增 Grok `zhenzhen-image-gk-v2` 与 Wan Image 三模型；音频节点新增 Qwen3-TTS、MiniMax 和 Mureka 三个 TAB、八个模型。12 个模型均已真实提交并成功，13 个媒体结果全部下载解码；Mureka V9 的两个有序音频输出完整保留。12 份配套工作流不含凭据，既有默认渠道、默认模型和旧画布保持不变。
+- 🧩 **v2.8.9 Dola Seedream 5.0 Pro 分层版**：既有 Seedream 分层 TAB 新增 `dola-seedream-5.0-pro-layer-decomposition`，原国内模型继续默认；单张素材可返回一张底图和数量可变的有序透明图层，画布会完整保留、逐张下载和解码，不排序、不去重、不截断。配套无密钥工作流已保存；一次真实任务返回的 7/7 张图片已全部下载并逐张核验。
+- ✨ **v2.8.8 MiniMax H3 官方提示词增强版**：新增独立节点，精确接入 `minmax-h3-context-ir-text`、`minmax-h3-context-ir-image` 与 `minmax-h3-context-ir-multimodal`。文本模式只接收提示词并要求固定比例；图像模式按顺序接收 1–2 张首尾帧且不发送比例；多模态模式最多支持 9 图、3 视频、3 音频。三份无密钥工作流、付费提交前双端边界和同任务恢复已配套完成，默认渠道、默认模型及旧画布保持不变。
+- 🎞️ **v2.8.7 Hailuo H3 / MiniMax H3 OW Fast 更新版**：既有 Hailuo TAB 新增 `minimax-h3-ow-i2v-fast` 与 `minimax-h3-ow-r2v-fast`，支持 5/10/15 秒、480p/720p 与八种比例；Fast I2V 使用单张首帧图，Fast R2V 按顺序接收 1–9 张参考图。国内 `hailuo-h3-t2v/i2v/multi` 保留 768P/2K，并把新建选择与缺省请求更新为 768P；旧画布显式保存的 2K 不迁移，默认视频模型与渠道不变。
+- 🧩 **v2.8.6 Seedream 分层与下载恢复版**：图像节点新增 Seedream 分层 TAB，接入 `seedream-v5-pro-layer-decomposition`，完整保存底图和全部返回图层；同时放宽图像、视频、音频及 RunningHub 已完成结果的下载恢复窗口，采用 0/500/1500ms 快速重试，并在系统代理、TUN、VPN、慢首包或 CDN 暂时错误时切换独立安全回源。恢复只查询和下载原任务，不会重放生成请求或重复扣费。
+- 🎞️ **v2.8.5 Hailuo H3 Global / Flux3 视频版**：既有 Hailuo TAB 新增 Global T2V、I2V、Multi，并统一支持 5–15 秒与 768P/2K；新增 Flux3 TAB，收录国内/Global 的 T2V、I2V、V2V、Draft Enhance 八个精确模型，支持 5–20 秒、HD/FHD、最多 10 张关键帧、单个 MP4 视频编辑与真实草稿缓存增强。11 份工作流不保存密钥，默认视频模型、旧 Hailuo/Seedance 与已保存画布参数不变。
+- 🎬 **v2.8.4 Seedance 2.5 标准模型版**：新增独立 SD2.5 节点，并在视频节点加入 Seedance 2.5 TAB，收录国内/Global 的 Standard T2V、I2V、Multi 六个精确模型；新建节点按最新官方文档默认 5 秒/720p，支持 4–30 秒或智能时长、首尾帧及最多 30 图/10 视频/10 音频/总计 50 个多模态素材。图片 MIME/30MB、音视频 MIME/50MB、单段 2–30 秒及音视频合计 30 秒均在付费提交前校验，旧 Seedance 2.0、默认视频模型与已保存画布参数不变。
+- 🎵 **v2.8.3 MV 音乐大师版**：上传歌曲、人设图、风格图和歌词后，以 5.000–14.990 秒完整句式分段，分批生成视觉圣经、图像提示词和视频提示词；分镜图与分段视频均支持逐段审阅、采纳和重生成，最终按版本化 EDL 合成并只保留一条完整原曲音轨。默认 LLM 仍为贞贞的平价AI小屋 `bytedance/doubao-seed-2.1-pro`，Provider、模型、素材摘要、停止/恢复和交付回执均失败关闭，不会静默切换渠道或自动重放不明确的付费提交。
 - 🪟 **v2.8.2 Windows 中文用户名与路径兼容版**：修复 Electron 33 主进程系统网络在 Provider 或文件服务响应头回显中文用户名、userData、安装路径或文件名时触发 `ByteString` / `Headers.set` 未捕获异常的问题；中文目录、中文图片名的本地读取、Seedream I2I 转换和输出保存均受回归保护。渲染器请求、真实文件路径、请求与响应正文、系统代理/PAC/TUN/VPN/IPv4/IPv6 及付费写请求不重放边界保持不变。
 - ✨ **v2.8.1 Qwen Image 3.0 / MiniMax H3 OW 与 H3 提示词增强版**：图像节点新增 8 个 Qwen Image 3.0 模型，Hailuo 新增 MiniMax H3 OW T2V/R2V/I2V；MiniMax H3 提示词增强器同步官方 Skill 与数字人 MV 写作规则。RunningHub `app-info` 作为只读查询会在任一站点失败后继续尝试另一已配置站点，而付费提交链路仍保持窄回退，避免重复扣费。默认渠道、默认模型及旧画布行为不变。
 - ✨ **v2.7.9 Seedance 2.0 提示词增强与 RH 网络兼容版**：新增独立 Seedance 2.0 提示词增强器，覆盖生成、首尾帧、多参考、视频编辑、视频延长、轨道补齐、组合任务、AUTO/1–20 镜头与完整视频理解，默认保持贞贞的平价AI小屋 `bytedance/doubao-seed-2.1-pro` 并支持全部已启用扩展 LLM 渠道；同时修复自定义 RH 节点在 Chromium 系统网络栈下因手写 `Host` 导致 WebApp 查询、提交、轮询、取消或上传报 `net::ERR_INVALID_ARGUMENT` 的问题。

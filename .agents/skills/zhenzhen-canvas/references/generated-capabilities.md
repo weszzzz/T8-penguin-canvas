@@ -5,7 +5,7 @@
 
 - Source schema: `t8-creative-capability-manifest-v1`
 - Source version: `0.1.0-dev`
-- Source SHA-256: `ce6ad80e45c55d8972944abd1c6f847e6e3651b2311b8dd293a5268ba381fc50`
+- Source SHA-256: `16c15dab6eef440bbbee2e44ccf69dfe75bba70d6a61585ca0fb717279353b1d`
 - Registered capabilities: **31**
 
 All write or generation paths shown here remain subject to the human-readable Skill rules:

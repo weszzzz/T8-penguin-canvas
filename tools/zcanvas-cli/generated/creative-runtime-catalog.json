@@ -1,6 +1,6 @@
 {
   "schema": "t8-creative-runtime-catalog-v1",
-  "sourceDigest": "e2f8c02396697fd0acd9c4d264e68783a8b5c648748c02f4c13e9b23664abaee",
+  "sourceDigest": "3c8802635d0fd87c9b478e92085f2d71d6b363323bb71b0b48928be2718f1ba0",
   "generatedFrom": [
     "src/providers/models.ts",
     "src/config/seedance.ts",
@@ -254,6 +254,70 @@
         "platformLabel": "贞贞的平价AI小屋",
         "family": "llm",
         "available": true
+      }
+    },
+    {
+      "id": "llm:seedance-nz:minmax-h3-context-ir-image",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minmax-h3-context-ir-image",
+      "label": "minmax-h3-context-ir-image",
+      "family": "minimax-h3-context-ir",
+      "available": true,
+      "parameters": {
+        "label": "minmax-h3-context-ir-image",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-context-ir",
+        "available": true,
+        "asynchronous": true,
+        "outputKind": "text",
+        "inputKinds": [
+          "text",
+          "image"
+        ]
+      }
+    },
+    {
+      "id": "llm:seedance-nz:minmax-h3-context-ir-multimodal",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minmax-h3-context-ir-multimodal",
+      "label": "minmax-h3-context-ir-multimodal",
+      "family": "minimax-h3-context-ir",
+      "available": true,
+      "parameters": {
+        "label": "minmax-h3-context-ir-multimodal",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-context-ir",
+        "available": true,
+        "asynchronous": true,
+        "outputKind": "text",
+        "inputKinds": [
+          "text",
+          "image",
+          "video",
+          "audio"
+        ]
+      }
+    },
+    {
+      "id": "llm:seedance-nz:minmax-h3-context-ir-text",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minmax-h3-context-ir-text",
+      "label": "minmax-h3-context-ir-text",
+      "family": "minimax-h3-context-ir",
+      "available": true,
+      "parameters": {
+        "label": "minmax-h3-context-ir-text",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-context-ir",
+        "available": true,
+        "asynchronous": true,
+        "outputKind": "text",
+        "inputKinds": [
+          "text"
+        ]
       }
     },
     {
@@ -672,6 +736,30 @@
       }
     },
     {
+      "id": "image:seedance-nz:dola-seedream-5.0-pro-layer-decomposition",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "dola-seedream-5.0-pro-layer-decomposition",
+      "label": "dola-seedream-5.0-pro-layer-decomposition",
+      "family": "seedream-layer-decomposition",
+      "available": true,
+      "parameters": {
+        "label": "dola-seedream-5.0-pro-layer-decomposition",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedream-layer-decomposition",
+        "available": true,
+        "tabLabel": "Seedream分层",
+        "capabilities": [
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "seedream-layer",
+        "supportsReference": true,
+        "maxReferenceImages": 1,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
       "id": "image:seedance-nz:dola-seedream-5.0-pro-t2i",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -700,22 +788,22 @@
       "platformLabel": "贞贞的平价AI小屋",
       "model": "qwen-image-3.0-global-i2i",
       "label": "qwen-image-3.0-global-i2i",
-      "family": "seedream-v5-pro",
+      "family": "qwen-image-3.0",
       "available": true,
       "parameters": {
         "label": "qwen-image-3.0-global-i2i",
         "platformLabel": "贞贞的平价AI小屋",
-        "family": "seedream-v5-pro",
+        "family": "qwen-image-3.0",
         "available": true,
-        "tabLabel": "Seedream",
+        "tabLabel": "Qwen Image",
         "capabilities": [
           "t2i",
           "i2i",
           "edit"
         ],
-        "parameterKind": "seedream-v5",
+        "parameterKind": "qwen-image-3.0",
         "supportsReference": true,
-        "maxReferenceImages": 10,
+        "maxReferenceImages": 3,
         "description": "贞贞的平价AI小屋图像模型"
       }
     },
@@ -725,22 +813,22 @@
       "platformLabel": "贞贞的平价AI小屋",
       "model": "qwen-image-3.0-global-pro-i2i",
       "label": "qwen-image-3.0-global-pro-i2i",
-      "family": "seedream-v5-pro",
+      "family": "qwen-image-3.0",
       "available": true,
       "parameters": {
         "label": "qwen-image-3.0-global-pro-i2i",
         "platformLabel": "贞贞的平价AI小屋",
-        "family": "seedream-v5-pro",
+        "family": "qwen-image-3.0",
         "available": true,
-        "tabLabel": "Seedream",
+        "tabLabel": "Qwen Image",
         "capabilities": [
           "t2i",
           "i2i",
           "edit"
         ],
-        "parameterKind": "seedream-v5",
+        "parameterKind": "qwen-image-3.0",
         "supportsReference": true,
-        "maxReferenceImages": 10,
+        "maxReferenceImages": 3,
         "description": "贞贞的平价AI小屋图像模型"
       }
     },
@@ -750,18 +838,18 @@
       "platformLabel": "贞贞的平价AI小屋",
       "model": "qwen-image-3.0-global-pro-t2i",
       "label": "qwen-image-3.0-global-pro-t2i",
-      "family": "seedream-v5-pro",
+      "family": "qwen-image-3.0",
       "available": true,
       "parameters": {
         "label": "qwen-image-3.0-global-pro-t2i",
         "platformLabel": "贞贞的平价AI小屋",
-        "family": "seedream-v5-pro",
+        "family": "qwen-image-3.0",
         "available": true,
-        "tabLabel": "Seedream",
+        "tabLabel": "Qwen Image",
         "capabilities": [
           "t2i"
         ],
-        "parameterKind": "seedream-v5",
+        "parameterKind": "qwen-image-3.0",
         "supportsReference": false,
         "maxReferenceImages": 0,
         "description": "贞贞的平价AI小屋图像模型"
@@ -773,18 +861,18 @@
       "platformLabel": "贞贞的平价AI小屋",
       "model": "qwen-image-3.0-global-t2i",
       "label": "qwen-image-3.0-global-t2i",
-      "family": "seedream-v5-pro",
+      "family": "qwen-image-3.0",
       "available": true,
       "parameters": {
         "label": "qwen-image-3.0-global-t2i",
         "platformLabel": "贞贞的平价AI小屋",
-        "family": "seedream-v5-pro",
+        "family": "qwen-image-3.0",
         "available": true,
-        "tabLabel": "Seedream",
+        "tabLabel": "Qwen Image",
         "capabilities": [
           "t2i"
         ],
-        "parameterKind": "seedream-v5",
+        "parameterKind": "qwen-image-3.0",
         "supportsReference": false,
         "maxReferenceImages": 0,
         "description": "贞贞的平价AI小屋图像模型"
@@ -796,22 +884,22 @@
       "platformLabel": "贞贞的平价AI小屋",
       "model": "qwen-image-3.0-i2i",
       "label": "qwen-image-3.0-i2i",
-      "family": "seedream-v5-pro",
+      "family": "qwen-image-3.0",
       "available": true,
       "parameters": {
         "label": "qwen-image-3.0-i2i",
         "platformLabel": "贞贞的平价AI小屋",
-        "family": "seedream-v5-pro",
+        "family": "qwen-image-3.0",
         "available": true,
-        "tabLabel": "Seedream",
+        "tabLabel": "Qwen Image",
         "capabilities": [
           "t2i",
           "i2i",
           "edit"
         ],
-        "parameterKind": "seedream-v5",
+        "parameterKind": "qwen-image-3.0",
         "supportsReference": true,
-        "maxReferenceImages": 10,
+        "maxReferenceImages": 3,
         "description": "贞贞的平价AI小屋图像模型"
       }
     },
@@ -821,22 +909,22 @@
       "platformLabel": "贞贞的平价AI小屋",
       "model": "qwen-image-3.0-pro-i2i",
       "label": "qwen-image-3.0-pro-i2i",
-      "family": "seedream-v5-pro",
+      "family": "qwen-image-3.0",
       "available": true,
       "parameters": {
         "label": "qwen-image-3.0-pro-i2i",
         "platformLabel": "贞贞的平价AI小屋",
-        "family": "seedream-v5-pro",
+        "family": "qwen-image-3.0",
         "available": true,
-        "tabLabel": "Seedream",
+        "tabLabel": "Qwen Image",
         "capabilities": [
           "t2i",
           "i2i",
           "edit"
         ],
-        "parameterKind": "seedream-v5",
+        "parameterKind": "qwen-image-3.0",
         "supportsReference": true,
-        "maxReferenceImages": 10,
+        "maxReferenceImages": 3,
         "description": "贞贞的平价AI小屋图像模型"
       }
     },
@@ -846,18 +934,18 @@
       "platformLabel": "贞贞的平价AI小屋",
       "model": "qwen-image-3.0-pro-t2i",
       "label": "qwen-image-3.0-pro-t2i",
-      "family": "seedream-v5-pro",
+      "family": "qwen-image-3.0",
       "available": true,
       "parameters": {
         "label": "qwen-image-3.0-pro-t2i",
         "platformLabel": "贞贞的平价AI小屋",
-        "family": "seedream-v5-pro",
+        "family": "qwen-image-3.0",
         "available": true,
-        "tabLabel": "Seedream",
+        "tabLabel": "Qwen Image",
         "capabilities": [
           "t2i"
         ],
-        "parameterKind": "seedream-v5",
+        "parameterKind": "qwen-image-3.0",
         "supportsReference": false,
         "maxReferenceImages": 0,
         "description": "贞贞的平价AI小屋图像模型"
@@ -869,18 +957,18 @@
       "platformLabel": "贞贞的平价AI小屋",
       "model": "qwen-image-3.0-t2i",
       "label": "qwen-image-3.0-t2i",
-      "family": "seedream-v5-pro",
+      "family": "qwen-image-3.0",
       "available": true,
       "parameters": {
         "label": "qwen-image-3.0-t2i",
         "platformLabel": "贞贞的平价AI小屋",
-        "family": "seedream-v5-pro",
+        "family": "qwen-image-3.0",
         "available": true,
-        "tabLabel": "Seedream",
+        "tabLabel": "Qwen Image",
         "capabilities": [
           "t2i"
         ],
-        "parameterKind": "seedream-v5",
+        "parameterKind": "qwen-image-3.0",
         "supportsReference": false,
         "maxReferenceImages": 0,
         "description": "贞贞的平价AI小屋图像模型"
@@ -912,6 +1000,30 @@
       }
     },
     {
+      "id": "image:seedance-nz:seedream-v5-pro-layer-decomposition",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedream-v5-pro-layer-decomposition",
+      "label": "seedream-v5-pro-layer-decomposition",
+      "family": "seedream-layer-decomposition",
+      "available": true,
+      "parameters": {
+        "label": "seedream-v5-pro-layer-decomposition",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedream-layer-decomposition",
+        "available": true,
+        "tabLabel": "Seedream分层",
+        "capabilities": [
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "seedream-layer",
+        "supportsReference": true,
+        "maxReferenceImages": 1,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
       "id": "image:seedance-nz:seedream-v5-pro-t2i",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -929,6 +1041,79 @@
           "t2i"
         ],
         "parameterKind": "seedream-v5",
+        "supportsReference": false,
+        "maxReferenceImages": 0,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:wan-2.7-global-i2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "wan-2.7-global-i2i",
+      "label": "wan-2.7-global-i2i",
+      "family": "wan-image",
+      "available": true,
+      "parameters": {
+        "label": "wan-2.7-global-i2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "wan-image",
+        "available": true,
+        "tabLabel": "Wan Image",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "wan-image",
+        "supportsReference": true,
+        "maxReferenceImages": 9,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:wan-2.7-global-i2i-pro",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "wan-2.7-global-i2i-pro",
+      "label": "wan-2.7-global-i2i-pro",
+      "family": "wan-image",
+      "available": true,
+      "parameters": {
+        "label": "wan-2.7-global-i2i-pro",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "wan-image",
+        "available": true,
+        "tabLabel": "Wan Image",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "wan-image",
+        "supportsReference": true,
+        "maxReferenceImages": 9,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:wan-2.7-global-t2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "wan-2.7-global-t2i",
+      "label": "wan-2.7-global-t2i",
+      "family": "wan-image",
+      "available": true,
+      "parameters": {
+        "label": "wan-2.7-global-t2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "wan-image",
+        "available": true,
+        "tabLabel": "Wan Image",
+        "capabilities": [
+          "t2i"
+        ],
+        "parameterKind": "wan-image",
         "supportsReference": false,
         "maxReferenceImages": 0,
         "description": "贞贞的平价AI小屋图像模型"
@@ -1051,6 +1236,29 @@
         "parameterKind": "seedance-nz-image",
         "supportsReference": true,
         "maxReferenceImages": 1,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:zhenzhen-image-gk-v2",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen-image-gk-v2",
+      "label": "zhenzhen-image-gk-v2",
+      "family": "grok-image",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen-image-gk-v2",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "grok-image",
+        "available": true,
+        "tabLabel": "Grok",
+        "capabilities": [
+          "t2i"
+        ],
+        "parameterKind": "seedance-nz-image",
+        "supportsReference": false,
+        "maxReferenceImages": 0,
         "description": "贞贞的平价AI小屋图像模型"
       }
     },
@@ -1684,334 +1892,6 @@
       }
     },
     {
-      "id": "image:zhenzhen:qwen-image-3.0-global-i2i",
-      "provider": "zhenzhen",
-      "platformLabel": "贞贞的AI工坊",
-      "model": "qwen-image-3.0-global-i2i",
-      "label": "qwen-image-3.0-global-i2i",
-      "family": "qwen-image-3.0",
-      "available": true,
-      "parameters": {
-        "label": "qwen-image-3.0-global-i2i",
-        "platformLabel": "贞贞的AI工坊",
-        "family": "qwen-image-3.0",
-        "available": true,
-        "tabLabel": "Qwen Image",
-        "capabilities": [
-          "t2i",
-          "i2i",
-          "edit",
-          "text-render"
-        ],
-        "parameterKind": "qwen-image-3.0",
-        "aspectRatios": [
-          "1:1",
-          "2:3",
-          "3:2",
-          "3:4",
-          "4:3",
-          "4:5",
-          "5:4",
-          "9:16",
-          "16:9",
-          "21:9"
-        ],
-        "defaultAspectRatio": "1:1",
-        "sizes": [],
-        "defaultSize": "",
-        "supportsReference": true,
-        "maxReferenceImages": 3,
-        "description": "Qwen Image 3.0 / Pro · 国内与 Global 文生图、图像编辑"
-      }
-    },
-    {
-      "id": "image:zhenzhen:qwen-image-3.0-global-pro-i2i",
-      "provider": "zhenzhen",
-      "platformLabel": "贞贞的AI工坊",
-      "model": "qwen-image-3.0-global-pro-i2i",
-      "label": "qwen-image-3.0-global-pro-i2i",
-      "family": "qwen-image-3.0",
-      "available": true,
-      "parameters": {
-        "label": "qwen-image-3.0-global-pro-i2i",
-        "platformLabel": "贞贞的AI工坊",
-        "family": "qwen-image-3.0",
-        "available": true,
-        "tabLabel": "Qwen Image",
-        "capabilities": [
-          "t2i",
-          "i2i",
-          "edit",
-          "text-render"
-        ],
-        "parameterKind": "qwen-image-3.0",
-        "aspectRatios": [
-          "1:1",
-          "2:3",
-          "3:2",
-          "3:4",
-          "4:3",
-          "4:5",
-          "5:4",
-          "9:16",
-          "16:9",
-          "21:9"
-        ],
-        "defaultAspectRatio": "1:1",
-        "sizes": [],
-        "defaultSize": "",
-        "supportsReference": true,
-        "maxReferenceImages": 3,
-        "description": "Qwen Image 3.0 / Pro · 国内与 Global 文生图、图像编辑"
-      }
-    },
-    {
-      "id": "image:zhenzhen:qwen-image-3.0-global-pro-t2i",
-      "provider": "zhenzhen",
-      "platformLabel": "贞贞的AI工坊",
-      "model": "qwen-image-3.0-global-pro-t2i",
-      "label": "qwen-image-3.0-global-pro-t2i",
-      "family": "qwen-image-3.0",
-      "available": true,
-      "parameters": {
-        "label": "qwen-image-3.0-global-pro-t2i",
-        "platformLabel": "贞贞的AI工坊",
-        "family": "qwen-image-3.0",
-        "available": true,
-        "tabLabel": "Qwen Image",
-        "capabilities": [
-          "t2i",
-          "i2i",
-          "edit",
-          "text-render"
-        ],
-        "parameterKind": "qwen-image-3.0",
-        "aspectRatios": [
-          "1:1",
-          "2:3",
-          "3:2",
-          "3:4",
-          "4:3",
-          "4:5",
-          "5:4",
-          "9:16",
-          "16:9",
-          "21:9"
-        ],
-        "defaultAspectRatio": "1:1",
-        "sizes": [],
-        "defaultSize": "",
-        "supportsReference": true,
-        "maxReferenceImages": 3,
-        "description": "Qwen Image 3.0 / Pro · 国内与 Global 文生图、图像编辑"
-      }
-    },
-    {
-      "id": "image:zhenzhen:qwen-image-3.0-global-t2i",
-      "provider": "zhenzhen",
-      "platformLabel": "贞贞的AI工坊",
-      "model": "qwen-image-3.0-global-t2i",
-      "label": "qwen-image-3.0-global-t2i",
-      "family": "qwen-image-3.0",
-      "available": true,
-      "parameters": {
-        "label": "qwen-image-3.0-global-t2i",
-        "platformLabel": "贞贞的AI工坊",
-        "family": "qwen-image-3.0",
-        "available": true,
-        "tabLabel": "Qwen Image",
-        "capabilities": [
-          "t2i",
-          "i2i",
-          "edit",
-          "text-render"
-        ],
-        "parameterKind": "qwen-image-3.0",
-        "aspectRatios": [
-          "1:1",
-          "2:3",
-          "3:2",
-          "3:4",
-          "4:3",
-          "4:5",
-          "5:4",
-          "9:16",
-          "16:9",
-          "21:9"
-        ],
-        "defaultAspectRatio": "1:1",
-        "sizes": [],
-        "defaultSize": "",
-        "supportsReference": true,
-        "maxReferenceImages": 3,
-        "description": "Qwen Image 3.0 / Pro · 国内与 Global 文生图、图像编辑"
-      }
-    },
-    {
-      "id": "image:zhenzhen:qwen-image-3.0-i2i",
-      "provider": "zhenzhen",
-      "platformLabel": "贞贞的AI工坊",
-      "model": "qwen-image-3.0-i2i",
-      "label": "qwen-image-3.0-i2i",
-      "family": "qwen-image-3.0",
-      "available": true,
-      "parameters": {
-        "label": "qwen-image-3.0-i2i",
-        "platformLabel": "贞贞的AI工坊",
-        "family": "qwen-image-3.0",
-        "available": true,
-        "tabLabel": "Qwen Image",
-        "capabilities": [
-          "t2i",
-          "i2i",
-          "edit",
-          "text-render"
-        ],
-        "parameterKind": "qwen-image-3.0",
-        "aspectRatios": [
-          "1:1",
-          "2:3",
-          "3:2",
-          "3:4",
-          "4:3",
-          "4:5",
-          "5:4",
-          "9:16",
-          "16:9",
-          "21:9"
-        ],
-        "defaultAspectRatio": "1:1",
-        "sizes": [],
-        "defaultSize": "",
-        "supportsReference": true,
-        "maxReferenceImages": 3,
-        "description": "Qwen Image 3.0 / Pro · 国内与 Global 文生图、图像编辑"
-      }
-    },
-    {
-      "id": "image:zhenzhen:qwen-image-3.0-pro-i2i",
-      "provider": "zhenzhen",
-      "platformLabel": "贞贞的AI工坊",
-      "model": "qwen-image-3.0-pro-i2i",
-      "label": "qwen-image-3.0-pro-i2i",
-      "family": "qwen-image-3.0",
-      "available": true,
-      "parameters": {
-        "label": "qwen-image-3.0-pro-i2i",
-        "platformLabel": "贞贞的AI工坊",
-        "family": "qwen-image-3.0",
-        "available": true,
-        "tabLabel": "Qwen Image",
-        "capabilities": [
-          "t2i",
-          "i2i",
-          "edit",
-          "text-render"
-        ],
-        "parameterKind": "qwen-image-3.0",
-        "aspectRatios": [
-          "1:1",
-          "2:3",
-          "3:2",
-          "3:4",
-          "4:3",
-          "4:5",
-          "5:4",
-          "9:16",
-          "16:9",
-          "21:9"
-        ],
-        "defaultAspectRatio": "1:1",
-        "sizes": [],
-        "defaultSize": "",
-        "supportsReference": true,
-        "maxReferenceImages": 3,
-        "description": "Qwen Image 3.0 / Pro · 国内与 Global 文生图、图像编辑"
-      }
-    },
-    {
-      "id": "image:zhenzhen:qwen-image-3.0-pro-t2i",
-      "provider": "zhenzhen",
-      "platformLabel": "贞贞的AI工坊",
-      "model": "qwen-image-3.0-pro-t2i",
-      "label": "qwen-image-3.0-pro-t2i",
-      "family": "qwen-image-3.0",
-      "available": true,
-      "parameters": {
-        "label": "qwen-image-3.0-pro-t2i",
-        "platformLabel": "贞贞的AI工坊",
-        "family": "qwen-image-3.0",
-        "available": true,
-        "tabLabel": "Qwen Image",
-        "capabilities": [
-          "t2i",
-          "i2i",
-          "edit",
-          "text-render"
-        ],
-        "parameterKind": "qwen-image-3.0",
-        "aspectRatios": [
-          "1:1",
-          "2:3",
-          "3:2",
-          "3:4",
-          "4:3",
-          "4:5",
-          "5:4",
-          "9:16",
-          "16:9",
-          "21:9"
-        ],
-        "defaultAspectRatio": "1:1",
-        "sizes": [],
-        "defaultSize": "",
-        "supportsReference": true,
-        "maxReferenceImages": 3,
-        "description": "Qwen Image 3.0 / Pro · 国内与 Global 文生图、图像编辑"
-      }
-    },
-    {
-      "id": "image:zhenzhen:qwen-image-3.0-t2i",
-      "provider": "zhenzhen",
-      "platformLabel": "贞贞的AI工坊",
-      "model": "qwen-image-3.0-t2i",
-      "label": "qwen-image-3.0-t2i",
-      "family": "qwen-image-3.0",
-      "available": true,
-      "parameters": {
-        "label": "qwen-image-3.0-t2i",
-        "platformLabel": "贞贞的AI工坊",
-        "family": "qwen-image-3.0",
-        "available": true,
-        "tabLabel": "Qwen Image",
-        "capabilities": [
-          "t2i",
-          "i2i",
-          "edit",
-          "text-render"
-        ],
-        "parameterKind": "qwen-image-3.0",
-        "aspectRatios": [
-          "1:1",
-          "2:3",
-          "3:2",
-          "3:4",
-          "4:3",
-          "4:5",
-          "5:4",
-          "9:16",
-          "16:9",
-          "21:9"
-        ],
-        "defaultAspectRatio": "1:1",
-        "sizes": [],
-        "defaultSize": "",
-        "supportsReference": true,
-        "maxReferenceImages": 3,
-        "description": "Qwen Image 3.0 / Pro · 国内与 Global 文生图、图像编辑"
-      }
-    },
-    {
       "id": "image:zhenzhen:seedream-v5-pro",
       "provider": "zhenzhen",
       "platformLabel": "贞贞的AI工坊",
@@ -2285,7 +2165,7 @@
           "9:16",
           "21:9"
         ],
-        "defaultRatio": "16:9",
+        "defaultRatio": "adaptive",
         "durations": [
           6,
           10
@@ -2328,7 +2208,7 @@
           "9:16",
           "21:9"
         ],
-        "defaultRatio": "16:9",
+        "defaultRatio": "adaptive",
         "durations": [
           6,
           10
@@ -2371,7 +2251,7 @@
           "9:16",
           "21:9"
         ],
-        "defaultRatio": "16:9",
+        "defaultRatio": "adaptive",
         "durations": [
           6,
           10
@@ -2414,7 +2294,7 @@
           "9:16",
           "21:9"
         ],
-        "defaultRatio": "16:9",
+        "defaultRatio": "adaptive",
         "durations": [
           6,
           10
@@ -2457,7 +2337,7 @@
           "9:16",
           "21:9"
         ],
-        "defaultRatio": "16:9",
+        "defaultRatio": "adaptive",
         "durations": [
           6,
           10
@@ -2500,7 +2380,7 @@
           "9:16",
           "21:9"
         ],
-        "defaultRatio": "16:9",
+        "defaultRatio": "adaptive",
         "durations": [
           6,
           10
@@ -2518,6 +2398,154 @@
         "maxReferenceVideos": 0,
         "maxReferenceAudios": 0,
         "description": "Hailuo 2.3 · 文生/图生/Fast 图生视频"
+      }
+    },
+    {
+      "id": "video:seedance-nz:hailuo-h3-global-i2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "hailuo-h3-global-i2v",
+      "label": "hailuo-h3-global-i2v（H3 海外首尾帧）",
+      "family": "hailuo-2.3",
+      "available": true,
+      "parameters": {
+        "label": "hailuo-h3-global-i2v（H3 海外首尾帧）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "hailuo-2.3",
+        "available": true,
+        "nodeKind": "hailuo",
+        "ratios": [],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "768P",
+          "2K"
+        ],
+        "defaultResolution": "2K",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 2,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "Hailuo H3 海外图生视频；第 1 张为首帧，第 2 张可选为尾帧。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:hailuo-h3-global-multi",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "hailuo-h3-global-multi",
+      "label": "hailuo-h3-global-multi（H3 海外多模态）",
+      "family": "hailuo-2.3",
+      "available": true,
+      "parameters": {
+        "label": "hailuo-h3-global-multi（H3 海外多模态）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "hailuo-2.3",
+        "available": true,
+        "nodeKind": "hailuo",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "768P",
+          "2K"
+        ],
+        "defaultResolution": "2K",
+        "supportsImages": true,
+        "supportsVideos": true,
+        "supportsAudios": true,
+        "maxReferenceImages": 9,
+        "maxReferenceVideos": 3,
+        "maxReferenceAudios": 3,
+        "description": "Hailuo H3 海外多模态参考；最多 9 图、3 视频、3 音频。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:hailuo-h3-global-t2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "hailuo-h3-global-t2v",
+      "label": "hailuo-h3-global-t2v（H3 海外文生视频）",
+      "family": "hailuo-2.3",
+      "available": true,
+      "parameters": {
+        "label": "hailuo-h3-global-t2v（H3 海外文生视频）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "hailuo-2.3",
+        "available": true,
+        "nodeKind": "hailuo",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "768P",
+          "2K"
+        ],
+        "defaultResolution": "2K",
+        "supportsImages": false,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "Hailuo H3 海外文生视频；768P/2K，支持 5-15 秒。"
       }
     },
     {
@@ -2551,16 +2579,17 @@
         ],
         "defaultDuration": 5,
         "resolutions": [
+          "768P",
           "2K"
         ],
-        "defaultResolution": "2K",
+        "defaultResolution": "768P",
         "supportsImages": true,
         "supportsVideos": false,
         "supportsAudios": false,
         "maxReferenceImages": 2,
         "maxReferenceVideos": 0,
         "maxReferenceAudios": 0,
-        "description": "Hailuo H3 图生视频；第 1 张为首帧，第 2 张可选为尾帧，固定 2K。"
+        "description": "Hailuo H3 国内图生视频；第 1 张为首帧，第 2 张可选为尾帧，支持 768P/2K。"
       }
     },
     {
@@ -2602,16 +2631,17 @@
         ],
         "defaultDuration": 5,
         "resolutions": [
+          "768P",
           "2K"
         ],
-        "defaultResolution": "2K",
+        "defaultResolution": "768P",
         "supportsImages": true,
         "supportsVideos": true,
         "supportsAudios": true,
         "maxReferenceImages": 9,
         "maxReferenceVideos": 3,
         "maxReferenceAudios": 3,
-        "description": "Hailuo H3 多模态参考；最多 9 图、3 视频、3 音频，固定 2K。"
+        "description": "Hailuo H3 国内多模态参考；最多 9 图、3 视频、3 音频，支持 768P/2K。"
       }
     },
     {
@@ -2653,16 +2683,17 @@
         ],
         "defaultDuration": 5,
         "resolutions": [
+          "768P",
           "2K"
         ],
-        "defaultResolution": "2K",
+        "defaultResolution": "768P",
         "supportsImages": false,
         "supportsVideos": false,
         "supportsAudios": false,
         "maxReferenceImages": 0,
         "maxReferenceVideos": 0,
         "maxReferenceAudios": 0,
-        "description": "Hailuo H3 文生视频；固定 2K，支持 5-15 秒与自适应比例。"
+        "description": "Hailuo H3 国内文生视频；768P/2K，支持 5-15 秒与自适应比例。"
       }
     },
     {
@@ -3684,6 +3715,51 @@
       }
     },
     {
+      "id": "video:seedance-nz:minimax-h3-ow-fl2va-audio-drive-fast",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-ow-fl2va-audio-drive-fast",
+      "label": "minimax-h3-ow-fl2va-audio-drive-fast（首帧音频驱动 Fast）",
+      "family": "hailuo-2.3",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-ow-fl2va-audio-drive-fast（首帧音频驱动 Fast）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "hailuo-2.3",
+        "available": true,
+        "nodeKind": "hailuo",
+        "ratios": [
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "9:16",
+          "16:9",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          10,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p"
+        ],
+        "defaultResolution": "480p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": true,
+        "maxReferenceImages": 1,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 1,
+        "description": "MiniMax H3 OW 首帧音频驱动；必须且只能提供 1 张首帧图与 1 段音频，提示词可选。"
+      }
+    },
+    {
       "id": "video:seedance-nz:minimax-h3-ow-i2v",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -3726,6 +3802,51 @@
         "maxReferenceVideos": 0,
         "maxReferenceAudios": 0,
         "description": "MiniMax H3 OW 图生视频；必须提供 1 张首帧图，提示词可选。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:minimax-h3-ow-i2v-fast",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-ow-i2v-fast",
+      "label": "minimax-h3-ow-i2v-fast（MiniMax H3 OW Fast 首帧图生视频）",
+      "family": "hailuo-2.3",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-ow-i2v-fast（MiniMax H3 OW Fast 首帧图生视频）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "hailuo-2.3",
+        "available": true,
+        "nodeKind": "hailuo",
+        "ratios": [
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "9:16",
+          "16:9",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          10,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p"
+        ],
+        "defaultResolution": "480p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 1,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "MiniMax H3 OW Fast 图生视频；必须且只能提供 1 张首帧图，提示词可选。"
       }
     },
     {
@@ -3774,6 +3895,96 @@
       }
     },
     {
+      "id": "video:seedance-nz:minimax-h3-ow-r2v-fast",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-ow-r2v-fast",
+      "label": "minimax-h3-ow-r2v-fast（MiniMax H3 OW Fast 参考生视频）",
+      "family": "hailuo-2.3",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-ow-r2v-fast（MiniMax H3 OW Fast 参考生视频）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "hailuo-2.3",
+        "available": true,
+        "nodeKind": "hailuo",
+        "ratios": [
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "9:16",
+          "16:9",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          10,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p"
+        ],
+        "defaultResolution": "480p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 9,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "MiniMax H3 OW Fast 参考生视频；必须填写提示词并提供 1-9 张参考图。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:minimax-h3-ow-ref2va-audio-drive-fast",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-ow-ref2va-audio-drive-fast",
+      "label": "minimax-h3-ow-ref2va-audio-drive-fast（参考图音频驱动 Fast）",
+      "family": "hailuo-2.3",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-ow-ref2va-audio-drive-fast（参考图音频驱动 Fast）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "hailuo-2.3",
+        "available": true,
+        "nodeKind": "hailuo",
+        "ratios": [
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "9:16",
+          "16:9",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          10,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p"
+        ],
+        "defaultResolution": "480p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": true,
+        "maxReferenceImages": 1,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 1,
+        "description": "MiniMax H3 OW 参考图音频驱动；必须且只能提供 1 张参考图与 1 段音频，提示词可选。"
+      }
+    },
+    {
       "id": "video:seedance-nz:minimax-h3-ow-t2v",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -3816,6 +4027,483 @@
         "maxReferenceVideos": 0,
         "maxReferenceAudios": 0,
         "description": "MiniMax H3 OW 文生视频；5/10/15 秒，480p/720p。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:minimax-h3-ow-t2v-fast",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-ow-t2v-fast",
+      "label": "minimax-h3-ow-t2v-fast（MiniMax H3 OW Fast 文生视频）",
+      "family": "hailuo-2.3",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-ow-t2v-fast（MiniMax H3 OW Fast 文生视频）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "hailuo-2.3",
+        "available": true,
+        "nodeKind": "hailuo",
+        "ratios": [
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "9:16",
+          "16:9",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          10,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p"
+        ],
+        "defaultResolution": "480p",
+        "supportsImages": false,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "MiniMax H3 OW Fast 文生视频；必须填写提示词，不接受参考素材。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-global-standard-i2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-global-standard-i2v",
+      "label": "seedance-2.5-global-standard-i2v（首尾帧图生视频）",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-global-standard-i2v（首尾帧图生视频）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "adaptive",
+        "durations": [
+          -1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p",
+          "1080p",
+          "2k",
+          "4k"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 2,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "1-2 张图片，依次作为首帧和可选尾帧；提示词可选。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-global-standard-multi",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-global-standard-multi",
+      "label": "seedance-2.5-global-standard-multi（多模态参考）",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-global-standard-multi（多模态参考）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          -1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p",
+          "1080p",
+          "2k",
+          "4k"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": true,
+        "supportsAudios": true,
+        "maxReferenceImages": 30,
+        "maxReferenceVideos": 10,
+        "maxReferenceAudios": 10,
+        "description": "至少 1 个素材；最多 30 图、10 视频、10 音频，合计不超过 50 个。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-global-standard-t2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-global-standard-t2v",
+      "label": "seedance-2.5-global-standard-t2v（文生视频）",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-global-standard-t2v（文生视频）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          -1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p",
+          "1080p",
+          "2k",
+          "4k"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": false,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "仅提示词；不发送参考素材。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-standard-i2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-standard-i2v",
+      "label": "seedance-2.5-standard-i2v（首尾帧图生视频）",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-standard-i2v（首尾帧图生视频）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "adaptive",
+        "durations": [
+          -1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p",
+          "1080p",
+          "2k",
+          "4k"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 2,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "1-2 张图片，依次作为首帧和可选尾帧；提示词可选。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-standard-multi",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-standard-multi",
+      "label": "seedance-2.5-standard-multi（多模态参考）",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-standard-multi（多模态参考）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          -1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p",
+          "1080p",
+          "2k",
+          "4k"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": true,
+        "supportsAudios": true,
+        "maxReferenceImages": 30,
+        "maxReferenceVideos": 10,
+        "maxReferenceAudios": 10,
+        "description": "至少 1 个素材；最多 30 图、10 视频、10 音频，合计不超过 50 个。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-standard-t2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-standard-t2v",
+      "label": "seedance-2.5-standard-t2v（文生视频）",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-standard-t2v（文生视频）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          -1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p",
+          "1080p",
+          "2k",
+          "4k"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": false,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "仅提示词；不发送参考素材。"
       }
     },
     {
@@ -4934,6 +5622,470 @@
       }
     },
     {
+      "id": "video:zhenzhen:flux-3-video-draft-enhance",
+      "provider": "zhenzhen",
+      "platformLabel": "贞贞的AI工坊",
+      "model": "flux-3-video-draft-enhance",
+      "label": "flux-3-video-draft-enhance（草稿增强）",
+      "family": "flux-3-video",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-video-draft-enhance（草稿增强）",
+        "platformLabel": "贞贞的AI工坊",
+        "family": "flux-3-video",
+        "available": true,
+        "nodeKind": "flux3",
+        "ratios": [
+          "auto",
+          "21:9",
+          "2:1",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16"
+        ],
+        "defaultRatio": "auto",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "hd",
+          "fhd"
+        ],
+        "defaultResolution": "hd",
+        "supportsImages": false,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "使用同线路已完成 Draft 任务返回的 draft_cache。"
+      }
+    },
+    {
+      "id": "video:zhenzhen:flux-3-video-global-draft-enhance",
+      "provider": "zhenzhen",
+      "platformLabel": "贞贞的AI工坊",
+      "model": "flux-3-video-global-draft-enhance",
+      "label": "flux-3-video-global-draft-enhance（草稿增强）",
+      "family": "flux-3-video",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-video-global-draft-enhance（草稿增强）",
+        "platformLabel": "贞贞的AI工坊",
+        "family": "flux-3-video",
+        "available": true,
+        "nodeKind": "flux3",
+        "ratios": [
+          "auto",
+          "21:9",
+          "2:1",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16"
+        ],
+        "defaultRatio": "auto",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "hd",
+          "fhd"
+        ],
+        "defaultResolution": "hd",
+        "supportsImages": false,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "使用同线路已完成 Draft 任务返回的 draft_cache。"
+      }
+    },
+    {
+      "id": "video:zhenzhen:flux-3-video-global-i2v",
+      "provider": "zhenzhen",
+      "platformLabel": "贞贞的AI工坊",
+      "model": "flux-3-video-global-i2v",
+      "label": "flux-3-video-global-i2v（关键帧图生）",
+      "family": "flux-3-video",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-video-global-i2v（关键帧图生）",
+        "platformLabel": "贞贞的AI工坊",
+        "family": "flux-3-video",
+        "available": true,
+        "nodeKind": "flux3",
+        "ratios": [
+          "auto",
+          "21:9",
+          "2:1",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16"
+        ],
+        "defaultRatio": "auto",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "hd",
+          "fhd"
+        ],
+        "defaultResolution": "hd",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 10,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "提示词 + 1-10 张排序关键帧图片。"
+      }
+    },
+    {
+      "id": "video:zhenzhen:flux-3-video-global-t2v",
+      "provider": "zhenzhen",
+      "platformLabel": "贞贞的AI工坊",
+      "model": "flux-3-video-global-t2v",
+      "label": "flux-3-video-global-t2v（文生视频）",
+      "family": "flux-3-video",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-video-global-t2v（文生视频）",
+        "platformLabel": "贞贞的AI工坊",
+        "family": "flux-3-video",
+        "available": true,
+        "nodeKind": "flux3",
+        "ratios": [
+          "auto",
+          "21:9",
+          "2:1",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16"
+        ],
+        "defaultRatio": "auto",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "hd",
+          "fhd"
+        ],
+        "defaultResolution": "hd",
+        "supportsImages": false,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "仅提示词；可开启 Draft 以返回后续增强所需缓存。"
+      }
+    },
+    {
+      "id": "video:zhenzhen:flux-3-video-global-v2v",
+      "provider": "zhenzhen",
+      "platformLabel": "贞贞的AI工坊",
+      "model": "flux-3-video-global-v2v",
+      "label": "flux-3-video-global-v2v（视频编辑）",
+      "family": "flux-3-video",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-video-global-v2v（视频编辑）",
+        "platformLabel": "贞贞的AI工坊",
+        "family": "flux-3-video",
+        "available": true,
+        "nodeKind": "flux3",
+        "ratios": [
+          "auto",
+          "21:9",
+          "2:1",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16"
+        ],
+        "defaultRatio": "auto",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "hd",
+          "fhd"
+        ],
+        "defaultResolution": "hd",
+        "supportsImages": false,
+        "supportsVideos": true,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 1,
+        "maxReferenceAudios": 0,
+        "description": "提示词 + 1 个 MP4 输入视频。"
+      }
+    },
+    {
+      "id": "video:zhenzhen:flux-3-video-i2v",
+      "provider": "zhenzhen",
+      "platformLabel": "贞贞的AI工坊",
+      "model": "flux-3-video-i2v",
+      "label": "flux-3-video-i2v（关键帧图生）",
+      "family": "flux-3-video",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-video-i2v（关键帧图生）",
+        "platformLabel": "贞贞的AI工坊",
+        "family": "flux-3-video",
+        "available": true,
+        "nodeKind": "flux3",
+        "ratios": [
+          "auto",
+          "21:9",
+          "2:1",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16"
+        ],
+        "defaultRatio": "auto",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "hd",
+          "fhd"
+        ],
+        "defaultResolution": "hd",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 10,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "提示词 + 1-10 张排序关键帧图片。"
+      }
+    },
+    {
+      "id": "video:zhenzhen:flux-3-video-t2v",
+      "provider": "zhenzhen",
+      "platformLabel": "贞贞的AI工坊",
+      "model": "flux-3-video-t2v",
+      "label": "flux-3-video-t2v（文生视频）",
+      "family": "flux-3-video",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-video-t2v（文生视频）",
+        "platformLabel": "贞贞的AI工坊",
+        "family": "flux-3-video",
+        "available": true,
+        "nodeKind": "flux3",
+        "ratios": [
+          "auto",
+          "21:9",
+          "2:1",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16"
+        ],
+        "defaultRatio": "auto",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "hd",
+          "fhd"
+        ],
+        "defaultResolution": "hd",
+        "supportsImages": false,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "仅提示词；可开启 Draft 以返回后续增强所需缓存。"
+      }
+    },
+    {
+      "id": "video:zhenzhen:flux-3-video-v2v",
+      "provider": "zhenzhen",
+      "platformLabel": "贞贞的AI工坊",
+      "model": "flux-3-video-v2v",
+      "label": "flux-3-video-v2v（视频编辑）",
+      "family": "flux-3-video",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-video-v2v（视频编辑）",
+        "platformLabel": "贞贞的AI工坊",
+        "family": "flux-3-video",
+        "available": true,
+        "nodeKind": "flux3",
+        "ratios": [
+          "auto",
+          "21:9",
+          "2:1",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16"
+        ],
+        "defaultRatio": "auto",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "hd",
+          "fhd"
+        ],
+        "defaultResolution": "hd",
+        "supportsImages": false,
+        "supportsVideos": true,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 1,
+        "maxReferenceAudios": 0,
+        "description": "提示词 + 1 个 MP4 输入视频。"
+      }
+    },
+    {
       "id": "video:zhenzhen:grok-1.5-video-10s",
       "provider": "zhenzhen",
       "platformLabel": "贞贞的AI工坊",
@@ -5624,6 +6776,130 @@
         "label": "doubao-seed-audio-1.0",
         "platformLabel": "贞贞的平价AI小屋",
         "family": "seed-audio",
+        "available": true
+      }
+    },
+    {
+      "id": "audio:seedance-nz:minimax-music-2.6",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-music-2.6",
+      "label": "minimax-music-2.6",
+      "family": "minimax",
+      "available": true,
+      "parameters": {
+        "label": "minimax-music-2.6",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax",
+        "available": true
+      }
+    },
+    {
+      "id": "audio:seedance-nz:minimax-speech-2.8-hd",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-speech-2.8-hd",
+      "label": "minimax-speech-2.8-hd",
+      "family": "minimax",
+      "available": true,
+      "parameters": {
+        "label": "minimax-speech-2.8-hd",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax",
+        "available": true
+      }
+    },
+    {
+      "id": "audio:seedance-nz:minimax-speech-2.8-turbo",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-speech-2.8-turbo",
+      "label": "minimax-speech-2.8-turbo",
+      "family": "minimax",
+      "available": true,
+      "parameters": {
+        "label": "minimax-speech-2.8-turbo",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax",
+        "available": true
+      }
+    },
+    {
+      "id": "audio:seedance-nz:minimax-voice-clone",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-voice-clone",
+      "label": "minimax-voice-clone",
+      "family": "minimax",
+      "available": true,
+      "parameters": {
+        "label": "minimax-voice-clone",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax",
+        "available": true
+      }
+    },
+    {
+      "id": "audio:seedance-nz:mureka-v8-bgm",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "mureka-v8-bgm",
+      "label": "mureka-v8-bgm",
+      "family": "mureka",
+      "available": true,
+      "parameters": {
+        "label": "mureka-v8-bgm",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "mureka",
+        "available": true,
+        "orderedMultiOutput": true,
+        "maxOutputs": 3
+      }
+    },
+    {
+      "id": "audio:seedance-nz:mureka-v9-bgm",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "mureka-v9-bgm",
+      "label": "mureka-v9-bgm",
+      "family": "mureka",
+      "available": true,
+      "parameters": {
+        "label": "mureka-v9-bgm",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "mureka",
+        "available": true,
+        "orderedMultiOutput": true,
+        "maxOutputs": 3
+      }
+    },
+    {
+      "id": "audio:seedance-nz:qwen3-tts-flash",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "qwen3-tts-flash",
+      "label": "qwen3-tts-flash",
+      "family": "qwen3-tts",
+      "available": true,
+      "parameters": {
+        "label": "qwen3-tts-flash",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "qwen3-tts",
+        "available": true
+      }
+    },
+    {
+      "id": "audio:seedance-nz:qwen3-tts-instruct-flash",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "qwen3-tts-instruct-flash",
+      "label": "qwen3-tts-instruct-flash",
+      "family": "qwen3-tts",
+      "available": true,
+      "parameters": {
+        "label": "qwen3-tts-instruct-flash",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "qwen3-tts",
         "available": true
       }
     },
@@ -6573,10 +7849,10 @@
     }
   ],
   "counts": {
-    "llm": 29,
-    "image": 44,
-    "video": 91,
-    "audio": 8,
+    "llm": 32,
+    "image": 42,
+    "video": 113,
+    "audio": 16,
     "actions": 47
   }
 }

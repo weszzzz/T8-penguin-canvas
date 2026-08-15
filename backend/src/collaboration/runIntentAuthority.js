@@ -6,6 +6,11 @@ const MAX_CANVAS_NODES = 20_000;
 const MAX_CANVAS_EDGES = 20_000;
 const MAX_REQUESTED_NODE_IDS = 2_000;
 const SEEDANCE_NZ_LLM_MODEL_SET = new Set(seedanceNzLlmModels);
+const MINMAX_H3_CONTEXT_IR_MODEL_SET = new Set([
+  'minmax-h3-context-ir-text',
+  'minmax-h3-context-ir-image',
+  'minmax-h3-context-ir-multimodal',
+]);
 
 const EXECUTABLE_NODE_TYPES = new Set(
   (Array.isArray(canvasNodeSchema.types) ? canvasNodeSchema.types : [])
@@ -398,13 +403,21 @@ function providerDeclarationForNode(node, context = {}) {
   }
 
   if (type === 'audio') {
-    const seedAudio = data.audioProviderMode === 'seed-audio';
-    return seedAudio
-      ? { provider: 'seedance-nz', model: 'doubao-seed-audio-1.0' }
-      : {
-          provider: 'suno',
-          model: boundedString(data.version) || DEFAULT_SUNO_VERSION,
-        };
+    const mode = boundedString(data.audioProviderMode, 40) || 'suno';
+    const seedanceNzModels = {
+      'seed-audio': 'doubao-seed-audio-1.0',
+      whisper: 'whisper-1',
+      'qwen3-tts': boundedString(data.qwenTtsModel) || 'qwen3-tts-flash',
+      minimax: boundedString(data.minimaxAudioModel) || 'minimax-speech-2.8-turbo',
+      mureka: boundedString(data.murekaModel) || 'mureka-v8-bgm',
+    };
+    if (seedanceNzModels[mode]) return { provider: 'seedance-nz', model: seedanceNzModels[mode] };
+    return {
+      provider: data.sunoPlatform === 'seedance-nz' ? 'seedance-nz' : 'suno',
+      model: data.sunoPlatform === 'seedance-nz'
+        ? boundedString(data.sunoNzOperation) || 'suno-generation'
+        : boundedString(data.version) || DEFAULT_SUNO_VERSION,
+    };
   }
 
   if (type === 'grok-oauth-agent') {
@@ -423,8 +436,22 @@ function providerDeclarationForNode(node, context = {}) {
     return { provider: 'grok-oauth', model };
   }
 
-  if (type === 'minimax-h3-prompt-enhancer' || type === 'seedance20-prompt-enhancer') {
-    const enhancerLabel = type === 'seedance20-prompt-enhancer' ? 'Seedance 2.0' : 'MiniMax H3';
+  if (type === 'minimax-h3-official-prompt-enhancer') {
+    const model = boundedString(data.model) || 'minmax-h3-context-ir-text';
+    if (!MINMAX_H3_CONTEXT_IR_MODEL_SET.has(model)) {
+      throw authorityError(
+        'intent_execution_model_unresolved',
+        'MiniMax H3 官方提示词增强器模型不在官方 Context IR 列表中',
+        [node.id],
+      );
+    }
+    return { provider: 'seedance-nz', model };
+  }
+
+  if (type === 'minimax-h3-prompt-enhancer' || type === 'minimax-music3-prompt-enhancer' || type === 'seedance20-prompt-enhancer') {
+    const enhancerLabel = type === 'seedance20-prompt-enhancer'
+      ? 'Seedance 2.0'
+      : type === 'minimax-music3-prompt-enhancer' ? 'MiniMax Music 3' : 'MiniMax H3';
     if (data.llmApiSource !== 'zhenzhen') {
       const model = boundedString(data.providerModel) || 'bytedance/doubao-seed-2.1-pro';
       if (!SEEDANCE_NZ_LLM_MODEL_SET.has(model)) {

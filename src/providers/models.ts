@@ -11,9 +11,11 @@ export type ProviderType = 'zhenzhen' | 'llm-direct' | 'runninghub';
 //  - 'banana-ratio': nano-banana 协议,使用 aspect_ratio + image_size(1K/2K/4K) + image[]
 //  - 'grok-image'  : Grok Image 协议,JSON /generations,参考图默认 base64 dataURL
 //  - 'seedream-v5' : Seedream V5 Pro 协议,JSON /generations,size 为像素串,image[] 可选
+//  - 'seedream-layer': Seedream V5 Pro 分层协议,单图输入,返回底图 + 有序图层列表
 //  - 'qwen-image-3.0': Qwen Image 3.0 协议,auto / 比例+分辨率 / 自定义 W*H 三种互斥尺寸模式
+//  - 'wan-image'   : Wan 2.7 Global 图像协议,T2I 使用宽高/思考模式,I2I 使用 1-9 张参考图
 //  - 'mj'          : Midjourney 协议,走专属 /api/proxy/mj/* 路由(speed_map + sref/oref)
-export type ImageParamKind = 'gpt-size' | 'banana-ratio' | 'grok-image' | 'seedream-v5' | 'qwen-image-3.0' | 'mj';
+export type ImageParamKind = 'gpt-size' | 'banana-ratio' | 'grok-image' | 'seedream-v5' | 'seedream-layer' | 'qwen-image-3.0' | 'wan-image' | 'mj';
 
 export interface ImageModelDef {
   id: string;             // 节点内部 id(如 'gpt-image-2')
@@ -56,6 +58,7 @@ export const ZHENZHEN_IMAGE_G2_I2I_MODEL = 'zhenzhen-image-g2-i2i';
 export const ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL = 'zhenzhen-image-g-v2-lowprice';
 export const ZHENZHEN_IMAGE_GK_V15_MODEL = 'zhenzhen-image-gk-v15';
 export const ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL = 'zhenzhen-image-gk-v15-edit';
+export const ZHENZHEN_IMAGE_GK_V2_MODEL = 'zhenzhen-image-gk-v2';
 export const ZHENZHEN_IMAGE_NB_2_LITE_MODEL = 'zhenzhen-image-nb-2-lite';
 export const ZHENZHEN_IMAGE_NB_2_MODEL = 'zhenzhen-image-nb-2';
 export const ZHENZHEN_IMAGE_NB_PRO_MODEL = 'zhenzhen-image-nb-pro';
@@ -69,6 +72,7 @@ export const ZHENZHEN_BUDGET_GPT2_MODEL_OPTIONS = [
   { value: ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL, label: ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL },
 ] as const;
 export const ZHENZHEN_BUDGET_GROK_MODEL_OPTIONS = [
+  { value: ZHENZHEN_IMAGE_GK_V2_MODEL, label: ZHENZHEN_IMAGE_GK_V2_MODEL },
   { value: ZHENZHEN_IMAGE_GK_V15_MODEL, label: ZHENZHEN_IMAGE_GK_V15_MODEL },
   { value: ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL, label: ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL },
 ] as const;
@@ -82,6 +86,7 @@ export const ZHENZHEN_BUDGET_BANANA_PRO_MODEL_OPTIONS = [
 export const ZHENZHEN_IMAGE_G2_MODEL_OPTIONS = ZHENZHEN_BUDGET_GPT2_MODEL_OPTIONS.slice(0, 2);
 export const ZHENZHEN_APIMART_IMAGE_MODELS = [
   ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL,
+  ZHENZHEN_IMAGE_GK_V2_MODEL,
   ZHENZHEN_IMAGE_GK_V15_MODEL,
   ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL,
   ZHENZHEN_IMAGE_NB_2_LITE_MODEL,
@@ -94,6 +99,7 @@ export const ZHENZHEN_BUDGET_IMAGE_MODELS = [
 ] as const;
 export const ZHENZHEN_IMAGE_G2_RATIOS = ['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16', '21:9'];
 export const ZHENZHEN_IMAGE_GK_V15_RATIOS = ['1:1', '16:9', '9:16', '3:2', '2:3'];
+export const ZHENZHEN_IMAGE_GK_V2_RATIOS = ['1:1', '16:9', '9:16', '3:2', '2:3'];
 export const ZHENZHEN_IMAGE_NB_STANDARD_RATIOS = [
   '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9',
 ];
@@ -130,6 +136,14 @@ export const QWEN_IMAGE_30_MODELS = [
 ] as const;
 export type QwenImage30Model = typeof QWEN_IMAGE_30_MODELS[number];
 export const QWEN_IMAGE_30_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'];
+export const SEEDREAM_LAYER_DECOMPOSITION_MODEL = 'seedream-v5-pro-layer-decomposition';
+export const DOLA_SEEDREAM_LAYER_DECOMPOSITION_MODEL = 'dola-seedream-5.0-pro-layer-decomposition';
+export const SEEDREAM_LAYER_DECOMPOSITION_MODELS = [
+  SEEDREAM_LAYER_DECOMPOSITION_MODEL,
+  DOLA_SEEDREAM_LAYER_DECOMPOSITION_MODEL,
+] as const;
+export type SeedreamLayerDecompositionModel = typeof SEEDREAM_LAYER_DECOMPOSITION_MODELS[number];
+export const SEEDREAM_LAYER_RESOLUTIONS = ['auto', '1k', '1.5k', '2k'] as const;
 
 export function isQwenImage30Model(apiModel: string | undefined | null): apiModel is QwenImage30Model {
   return (QWEN_IMAGE_30_MODELS as readonly string[]).includes(String(apiModel || '').trim());
@@ -137,6 +151,21 @@ export function isQwenImage30Model(apiModel: string | undefined | null): apiMode
 
 export function isQwenImage30I2IModel(apiModel: string | undefined | null): boolean {
   return (QWEN_IMAGE_30_I2I_MODELS as readonly string[]).includes(String(apiModel || '').trim());
+}
+
+export const WAN27_GLOBAL_T2I_MODEL = 'wan-2.7-global-t2i';
+export const WAN27_GLOBAL_I2I_MODEL = 'wan-2.7-global-i2i';
+export const WAN27_GLOBAL_I2I_PRO_MODEL = 'wan-2.7-global-i2i-pro';
+export const WAN27_GLOBAL_IMAGE_MODELS = [
+  WAN27_GLOBAL_T2I_MODEL,
+  WAN27_GLOBAL_I2I_MODEL,
+  WAN27_GLOBAL_I2I_PRO_MODEL,
+] as const;
+export const WAN27_GLOBAL_I2I_MODELS = [WAN27_GLOBAL_I2I_MODEL, WAN27_GLOBAL_I2I_PRO_MODEL] as const;
+export type Wan27GlobalImageModel = typeof WAN27_GLOBAL_IMAGE_MODELS[number];
+
+export function isWan27GlobalI2IModel(apiModel: string | undefined | null): boolean {
+  return (WAN27_GLOBAL_I2I_MODELS as readonly string[]).includes(String(apiModel || '').trim());
 }
 
 export function isZhenzhenApimartImageModel(apiModel: string | undefined | null): boolean {
@@ -258,6 +287,23 @@ export const IMAGE_MODELS: ImageModelDef[] = [
     description: 'Seedream V5 Pro · 文生图/多图编辑',
   },
   {
+    id: 'seedream-layer-decomposition',
+    apiModel: SEEDREAM_LAYER_DECOMPOSITION_MODEL,
+    label: 'Seedream V5 Pro 分层',
+    tabLabel: 'Seedream分层',
+    provider: 'zhenzhen',
+    paramKind: 'seedream-layer',
+    capabilities: ['i2i', 'edit'],
+    apiModelOptions: SEEDREAM_LAYER_DECOMPOSITION_MODELS.map((value) => ({ value, label: value })),
+    aspectRatios: [],
+    defaultAspectRatio: '',
+    sizes: [],
+    defaultSize: '',
+    supportsReference: true,
+    maxReferenceImages: 1,
+    description: 'Seedream / Dola Seedream V5 Pro 图层拆分 · 单图输入，完整返回底图与全部有序图层',
+  },
+  {
     id: 'qwen-image-3.0',
     apiModel: 'qwen-image-3.0-t2i',
     label: 'Qwen Image 3.0',
@@ -273,6 +319,23 @@ export const IMAGE_MODELS: ImageModelDef[] = [
     supportsReference: true,
     maxReferenceImages: 3,
     description: 'Qwen Image 3.0 / Pro · 国内与 Global 文生图、图像编辑',
+  },
+  {
+    id: 'wan-image',
+    apiModel: WAN27_GLOBAL_T2I_MODEL,
+    label: 'Wan Image 2.7 Global',
+    tabLabel: 'Wan Image',
+    provider: 'zhenzhen',
+    paramKind: 'wan-image',
+    capabilities: ['t2i', 'i2i', 'edit'],
+    apiModelOptions: WAN27_GLOBAL_IMAGE_MODELS.map((value) => ({ value, label: value })),
+    aspectRatios: [],
+    defaultAspectRatio: '',
+    sizes: [],
+    defaultSize: '',
+    supportsReference: true,
+    maxReferenceImages: 9,
+    description: 'Wan 2.7 Global · 文生图与 1–9 图编辑',
   },
   // ========================================================================
   // Midjourney — 完全对齐 gpt-image-2-web/index.html runMJ L4437~L4694
@@ -422,7 +485,7 @@ export const NBPRO_FAL_RESOLUTIONS = ['1K', '2K', '4K'];
 
 // ========== 视频 ==========
 // kind 决定上游 payload 协议(后端会根据 model 名自动识别,前端主要用于控制参数 UI 列表)
-export type VideoKind = 'veo' | 'grok' | 'sora' | 'seedance' | 'happyhorse' | 'hailuo' | 'kling' | 'vidu' | 'upscaler' | 'wan';
+export type VideoKind = 'veo' | 'grok' | 'sora' | 'seedance' | 'seedance25' | 'happyhorse' | 'hailuo' | 'flux3' | 'kling' | 'vidu' | 'upscaler' | 'wan';
 
 // ---- Video FAL 渠道注册表 (1:1 对齐 gpt-image-2-web runVeo3Fal / runGrokFal / runSora2Fal) ----
 export interface VideoFalEndpointDef {
@@ -591,6 +654,46 @@ export const ZHENZHEN_APIMART_VIDEO_MODELS = [
   ZHENZHEN_VIDEO_V31_LITE_MODEL,
 ] as const;
 
+export const SEEDANCE25_VIDEO_MODELS = [
+  'seedance-2.5-global-standard-i2v',
+  'seedance-2.5-global-standard-multi',
+  'seedance-2.5-global-standard-t2v',
+  'seedance-2.5-standard-i2v',
+  'seedance-2.5-standard-multi',
+  'seedance-2.5-standard-t2v',
+] as const;
+export const HAILUO_H3_GLOBAL_VIDEO_MODELS = [
+  'hailuo-h3-global-t2v',
+  'hailuo-h3-global-i2v',
+  'hailuo-h3-global-multi',
+] as const;
+export const MINIMAX_H3_OW_VIDEO_MODELS = [
+  'minimax-h3-ow-t2v',
+  'minimax-h3-ow-r2v',
+  'minimax-h3-ow-i2v',
+  'minimax-h3-ow-i2v-fast',
+  'minimax-h3-ow-r2v-fast',
+  'minimax-h3-ow-ref2va-audio-drive-fast',
+  'minimax-h3-ow-fl2va-audio-drive-fast',
+  'minimax-h3-ow-t2v-fast',
+] as const;
+export const FLUX3_VIDEO_MODELS = [
+  'flux-3-video-t2v',
+  'flux-3-video-i2v',
+  'flux-3-video-v2v',
+  'flux-3-video-draft-enhance',
+  'flux-3-video-global-t2v',
+  'flux-3-video-global-i2v',
+  'flux-3-video-global-v2v',
+  'flux-3-video-global-draft-enhance',
+] as const;
+export const FLUX3_VIDEO_RATIOS = ['auto', '21:9', '2:1', '16:9', '4:3', '1:1', '3:4', '9:16'] as const;
+export const FLUX3_VIDEO_DURATIONS = Array.from({ length: 16 }, (_, index) => index + 5);
+export const FLUX3_VIDEO_RESOLUTIONS = ['hd', 'fhd'] as const;
+const SEEDANCE25_RATIOS = ['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16', '21:9'];
+const SEEDANCE25_DURATIONS = [-1, ...Array.from({ length: 27 }, (_, index) => index + 4)];
+const SEEDANCE25_RESOLUTIONS = ['480p', '720p', '1080p', '2k', '4k'];
+
 export function isZhenzhenApimartVideoModel(apiModel: string | undefined | null): boolean {
   return (ZHENZHEN_APIMART_VIDEO_MODELS as readonly string[]).includes(String(apiModel || '').trim());
 }
@@ -736,13 +839,13 @@ export const VIDEO_MODELS: VideoModelDef[] = [
       {
         value: 'hailuo-h3-t2v',
         label: 'hailuo-h3-t2v（H3 文生视频）',
-        description: 'Hailuo H3 文生视频；固定 2K，支持 5-15 秒与自适应比例。',
+        description: 'Hailuo H3 国内文生视频；768P/2K，支持 5-15 秒与自适应比例。',
         ratios: ['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16', '21:9'],
         defaultRatio: '16:9',
         durations: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         defaultDuration: 5,
-        resolutions: ['2K'],
-        defaultResolution: '2K',
+        resolutions: ['768P', '2K'],
+        defaultResolution: '768P',
         supportImages: false,
         supportVideos: false,
         supportAudios: false,
@@ -753,13 +856,13 @@ export const VIDEO_MODELS: VideoModelDef[] = [
       {
         value: 'hailuo-h3-i2v',
         label: 'hailuo-h3-i2v（H3 首尾帧图生视频）',
-        description: 'Hailuo H3 图生视频；第 1 张为首帧，第 2 张可选为尾帧，固定 2K。',
+        description: 'Hailuo H3 国内图生视频；第 1 张为首帧，第 2 张可选为尾帧，支持 768P/2K。',
         ratios: [],
         defaultRatio: '16:9',
         durations: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         defaultDuration: 5,
-        resolutions: ['2K'],
-        defaultResolution: '2K',
+        resolutions: ['768P', '2K'],
+        defaultResolution: '768P',
         supportImages: true,
         supportVideos: false,
         supportAudios: false,
@@ -770,13 +873,13 @@ export const VIDEO_MODELS: VideoModelDef[] = [
       {
         value: 'hailuo-h3-multi',
         label: 'hailuo-h3-multi（H3 多模态参考）',
-        description: 'Hailuo H3 多模态参考；最多 9 图、3 视频、3 音频，固定 2K。',
+        description: 'Hailuo H3 国内多模态参考；最多 9 图、3 视频、3 音频，支持 768P/2K。',
         ratios: ['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16', '21:9'],
         defaultRatio: '16:9',
         durations: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         defaultDuration: 5,
-        resolutions: ['2K'],
-        defaultResolution: '2K',
+        resolutions: ['768P', '2K'],
+        defaultResolution: '768P',
         supportImages: true,
         supportVideos: true,
         supportAudios: true,
@@ -784,6 +887,30 @@ export const VIDEO_MODELS: VideoModelDef[] = [
         maxRefVideos: 3,
         maxRefAudios: 3,
       },
+      ...HAILUO_H3_GLOBAL_VIDEO_MODELS.map((value) => {
+        const mode = value.endsWith('-t2v') ? 't2v' : value.endsWith('-i2v') ? 'i2v' : 'multi';
+        return {
+          value,
+          label: `${value}${mode === 't2v' ? '（H3 海外文生视频）' : mode === 'i2v' ? '（H3 海外首尾帧）' : '（H3 海外多模态）'}`,
+          description: mode === 't2v'
+            ? 'Hailuo H3 海外文生视频；768P/2K，支持 5-15 秒。'
+            : mode === 'i2v'
+              ? 'Hailuo H3 海外图生视频；第 1 张为首帧，第 2 张可选为尾帧。'
+              : 'Hailuo H3 海外多模态参考；最多 9 图、3 视频、3 音频。',
+          ratios: mode === 'i2v' ? [] : ['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16', '21:9'],
+          defaultRatio: '16:9',
+          durations: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+          defaultDuration: 5,
+          resolutions: ['768P', '2K'],
+          defaultResolution: '2K',
+          supportImages: mode !== 't2v',
+          supportVideos: mode === 'multi',
+          supportAudios: mode === 'multi',
+          maxRefImages: mode === 't2v' ? 0 : mode === 'i2v' ? 2 : 9,
+          maxRefVideos: mode === 'multi' ? 3 : 0,
+          maxRefAudios: mode === 'multi' ? 3 : 0,
+        };
+      }),
       {
         value: 'minimax-h3-ow-t2v',
         label: 'minimax-h3-ow-t2v（MiniMax H3 OW 文生视频）',
@@ -835,15 +962,145 @@ export const VIDEO_MODELS: VideoModelDef[] = [
         maxRefVideos: 0,
         maxRefAudios: 0,
       },
+      {
+        value: 'minimax-h3-ow-i2v-fast',
+        label: 'minimax-h3-ow-i2v-fast（MiniMax H3 OW Fast 首帧图生视频）',
+        description: 'MiniMax H3 OW Fast 图生视频；必须且只能提供 1 张首帧图，提示词可选。',
+        ratios: ['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9'],
+        defaultRatio: '16:9',
+        durations: [5, 10, 15],
+        defaultDuration: 5,
+        resolutions: ['480p', '720p'],
+        defaultResolution: '480p',
+        supportImages: true,
+        supportVideos: false,
+        supportAudios: false,
+        maxRefImages: 1,
+        maxRefVideos: 0,
+        maxRefAudios: 0,
+      },
+      {
+        value: 'minimax-h3-ow-r2v-fast',
+        label: 'minimax-h3-ow-r2v-fast（MiniMax H3 OW Fast 参考生视频）',
+        description: 'MiniMax H3 OW Fast 参考生视频；必须填写提示词并提供 1-9 张参考图。',
+        ratios: ['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9'],
+        defaultRatio: '16:9',
+        durations: [5, 10, 15],
+        defaultDuration: 5,
+        resolutions: ['480p', '720p'],
+        defaultResolution: '480p',
+        supportImages: true,
+        supportVideos: false,
+        supportAudios: false,
+        maxRefImages: 9,
+        maxRefVideos: 0,
+        maxRefAudios: 0,
+      },
+      {
+        value: 'minimax-h3-ow-ref2va-audio-drive-fast',
+        label: 'minimax-h3-ow-ref2va-audio-drive-fast（参考图音频驱动 Fast）',
+        description: 'MiniMax H3 OW 参考图音频驱动；必须且只能提供 1 张参考图与 1 段音频，提示词可选。',
+        ratios: ['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9'],
+        defaultRatio: '16:9',
+        durations: [5, 10, 15],
+        defaultDuration: 5,
+        resolutions: ['480p', '720p'],
+        defaultResolution: '480p',
+        supportImages: true,
+        supportVideos: false,
+        supportAudios: true,
+        maxRefImages: 1,
+        maxRefVideos: 0,
+        maxRefAudios: 1,
+      },
+      {
+        value: 'minimax-h3-ow-fl2va-audio-drive-fast',
+        label: 'minimax-h3-ow-fl2va-audio-drive-fast（首帧音频驱动 Fast）',
+        description: 'MiniMax H3 OW 首帧音频驱动；必须且只能提供 1 张首帧图与 1 段音频，提示词可选。',
+        ratios: ['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9'],
+        defaultRatio: '16:9',
+        durations: [5, 10, 15],
+        defaultDuration: 5,
+        resolutions: ['480p', '720p'],
+        defaultResolution: '480p',
+        supportImages: true,
+        supportVideos: false,
+        supportAudios: true,
+        maxRefImages: 1,
+        maxRefVideos: 0,
+        maxRefAudios: 1,
+      },
+      {
+        value: 'minimax-h3-ow-t2v-fast',
+        label: 'minimax-h3-ow-t2v-fast（MiniMax H3 OW Fast 文生视频）',
+        description: 'MiniMax H3 OW Fast 文生视频；必须填写提示词，不接受参考素材。',
+        ratios: ['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9'],
+        defaultRatio: '16:9',
+        durations: [5, 10, 15],
+        defaultDuration: 5,
+        resolutions: ['480p', '720p'],
+        defaultResolution: '480p',
+        supportImages: false,
+        supportVideos: false,
+        supportAudios: false,
+        maxRefImages: 0,
+        maxRefVideos: 0,
+        maxRefAudios: 0,
+      },
     ],
     ratios: ['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16', '21:9'],
-    defaultRatio: '16:9',
+    defaultRatio: 'adaptive',
     durations: [6, 10],
     defaultDuration: 6,
     resolutions: ['768p', '1080p'],
     defaultResolution: '768p',
     supportImages: true,
     maxRefImages: 1,
+  },
+  {
+    id: 'flux-3-video',
+    label: 'Flux3',
+    kind: 'flux3',
+    provider: 'zhenzhen',
+    builtinSource: 'seedance-nz',
+    description: 'FLUX 3 Video · 国内/海外文生、关键帧图生、视频编辑与草稿增强',
+    apiModelOptions: FLUX3_VIDEO_MODELS.map((value) => {
+      const mode = value.endsWith('-draft-enhance')
+        ? 'draft-enhance'
+        : value.endsWith('-v2v') ? 'v2v' : value.endsWith('-i2v') ? 'i2v' : 't2v';
+      return {
+        value,
+        label: `${value}${mode === 't2v' ? '（文生视频）' : mode === 'i2v' ? '（关键帧图生）' : mode === 'v2v' ? '（视频编辑）' : '（草稿增强）'}`,
+        description: mode === 't2v'
+          ? '仅提示词；可开启 Draft 以返回后续增强所需缓存。'
+          : mode === 'i2v'
+            ? '提示词 + 1-10 张排序关键帧图片。'
+            : mode === 'v2v'
+              ? '提示词 + 1 个 MP4 输入视频。'
+              : '使用同线路已完成 Draft 任务返回的 draft_cache。',
+        ratios: [...FLUX3_VIDEO_RATIOS],
+        defaultRatio: 'auto',
+        durations: FLUX3_VIDEO_DURATIONS,
+        defaultDuration: 5,
+        resolutions: [...FLUX3_VIDEO_RESOLUTIONS],
+        defaultResolution: 'hd',
+        supportImages: mode === 'i2v',
+        supportVideos: mode === 'v2v',
+        supportAudios: false,
+        maxRefImages: mode === 'i2v' ? 10 : 0,
+        maxRefVideos: mode === 'v2v' ? 1 : 0,
+        maxRefAudios: 0,
+      };
+    }),
+    ratios: [...FLUX3_VIDEO_RATIOS],
+    defaultRatio: 'auto',
+    durations: FLUX3_VIDEO_DURATIONS,
+    defaultDuration: 5,
+    resolutions: [...FLUX3_VIDEO_RESOLUTIONS],
+    defaultResolution: 'hd',
+    supportImages: true,
+    supportVideos: true,
+    maxRefImages: 10,
   },
   {
     id: 'vidu-q3',
@@ -935,6 +1192,47 @@ export const VIDEO_MODELS: VideoModelDef[] = [
     supportImages: false,
     supportVideos: true,
     maxRefImages: 0,
+  },
+  {
+    id: 'seedance-2.5',
+    label: 'Seedance 2.5',
+    kind: 'seedance25',
+    provider: 'zhenzhen',
+    builtinSource: 'seedance-nz',
+    description: 'Seedance 2.5 Standard · 文生、首尾帧与多模态参考视频',
+    apiModelOptions: SEEDANCE25_VIDEO_MODELS.map((value) => {
+      const mode = value.endsWith('-t2v') ? 't2v' : value.endsWith('-i2v') ? 'i2v' : 'multi';
+      return {
+        value,
+        label: `${value}${mode === 't2v' ? '（文生视频）' : mode === 'i2v' ? '（首尾帧图生视频）' : '（多模态参考）'}`,
+        description: mode === 't2v'
+          ? '仅提示词；不发送参考素材。'
+          : mode === 'i2v'
+            ? '1-2 张图片，依次作为首帧和可选尾帧；提示词可选。'
+            : '至少 1 个素材；最多 30 图、10 视频、10 音频，合计不超过 50 个。',
+        ratios: SEEDANCE25_RATIOS,
+        defaultRatio: mode === 'i2v' ? 'adaptive' : '16:9',
+        durations: SEEDANCE25_DURATIONS,
+        defaultDuration: 5,
+        resolutions: SEEDANCE25_RESOLUTIONS,
+        defaultResolution: '720p',
+        supportImages: mode !== 't2v',
+        supportVideos: mode === 'multi',
+        supportAudios: mode === 'multi',
+        maxRefImages: mode === 't2v' ? 0 : mode === 'i2v' ? 2 : 30,
+        maxRefVideos: mode === 'multi' ? 10 : 0,
+        maxRefAudios: mode === 'multi' ? 10 : 0,
+      };
+    }),
+    ratios: SEEDANCE25_RATIOS,
+    defaultRatio: 'adaptive',
+    durations: SEEDANCE25_DURATIONS,
+    defaultDuration: 5,
+    resolutions: SEEDANCE25_RESOLUTIONS,
+    defaultResolution: '720p',
+    supportImages: true,
+    supportVideos: true,
+    maxRefImages: 30,
   },
   {
     id: 'seedance-2.0',
@@ -1184,6 +1482,40 @@ export const LLM_MODELS: LlmModelDef[] = [
   { id: 'kimi-k3', label: 'kimi-k3', provider: 'llm-direct' },
   { id: 'gpt-image-2-all', label: 'GPT Image 2 All (图文)', provider: 'llm-direct', vision: true, imageOutput: true, nonStreaming: true, description: '可自动调用图像生成' },
 ];
+
+export const QWEN3_TTS_FLASH_MODEL = 'qwen3-tts-flash';
+export const QWEN3_TTS_INSTRUCT_FLASH_MODEL = 'qwen3-tts-instruct-flash';
+export const QWEN3_TTS_MODELS = [QWEN3_TTS_FLASH_MODEL, QWEN3_TTS_INSTRUCT_FLASH_MODEL] as const;
+export const QWEN3_TTS_LANGUAGE_TYPES = [
+  'Chinese', 'English', 'Japanese', 'Korean', 'German',
+  'French', 'Russian', 'Portuguese', 'Spanish', 'Italian',
+] as const;
+
+export const MINIMAX_MUSIC_MODEL = 'minimax-music-2.6';
+export const MINIMAX_SPEECH_HD_MODEL = 'minimax-speech-2.8-hd';
+export const MINIMAX_SPEECH_TURBO_MODEL = 'minimax-speech-2.8-turbo';
+export const MINIMAX_VOICE_CLONE_MODEL = 'minimax-voice-clone';
+export const MINIMAX_AUDIO_MODELS = [
+  MINIMAX_MUSIC_MODEL,
+  MINIMAX_SPEECH_HD_MODEL,
+  MINIMAX_SPEECH_TURBO_MODEL,
+  MINIMAX_VOICE_CLONE_MODEL,
+] as const;
+export const MINIMAX_SPEECH_MODELS = [MINIMAX_SPEECH_HD_MODEL, MINIMAX_SPEECH_TURBO_MODEL] as const;
+export const MINIMAX_AUDIO_FORMATS = ['mp3', 'wav', 'flac'] as const;
+export const MINIMAX_SAMPLE_RATES = ['16000', '24000', '32000', '44100'] as const;
+export const MINIMAX_BITRATES = ['32000', '64000', '128000', '256000'] as const;
+export const MINIMAX_LANGUAGE_BOOSTS = [
+  'auto', 'Chinese', 'Chinese,Yue', 'English', 'Japanese', 'Korean',
+  'French', 'German', 'Spanish', 'Portuguese', 'Russian',
+] as const;
+
+export const MUREKA_BGM_MODELS = ['mureka-v8-bgm', 'mureka-v9-bgm'] as const;
+export const SEEDANCE_NZ_AUDIO_MODELS = [
+  ...QWEN3_TTS_MODELS,
+  ...MINIMAX_AUDIO_MODELS,
+  ...MUREKA_BGM_MODELS,
+] as const;
 
 export const DEFAULT_LLM_MODEL = 'gemini-3.5-flash';
 export const CUSTOM_LLM_MODEL_VALUE = '__custom__';

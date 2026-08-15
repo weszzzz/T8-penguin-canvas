@@ -7,6 +7,7 @@ import MaterialPreviewSection from './MaterialPreviewSection';
 import ReuseResultToggle from './ReuseResultToggle';
 import MentionPromptInput from './MentionPromptInput';
 import SmartImage from '../SmartImage';
+import LazyVideo from '../LazyVideo';
 import PromptTextarea from '../PromptTextarea';
 import { resolveMediaMentions, type MediaMention } from './mediaMentions';
 import {
@@ -38,6 +39,8 @@ import {
   ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL,
   ZHENZHEN_IMAGE_GK_V15_MODEL,
   ZHENZHEN_IMAGE_GK_V15_RATIOS,
+  ZHENZHEN_IMAGE_GK_V2_MODEL,
+  ZHENZHEN_IMAGE_GK_V2_RATIOS,
   ZHENZHEN_IMAGE_NB_2_LITE_MODEL,
   ZHENZHEN_IMAGE_NB_2_MODEL,
   ZHENZHEN_IMAGE_NB_PRO_MODEL,
@@ -45,7 +48,12 @@ import {
   ZHENZHEN_IMAGE_NB_STANDARD_RATIOS,
   QWEN_IMAGE_30_MODELS,
   QWEN_IMAGE_30_RATIOS,
+  SEEDREAM_LAYER_DECOMPOSITION_MODEL,
+  SEEDREAM_LAYER_RESOLUTIONS,
   isQwenImage30I2IModel,
+  WAN27_GLOBAL_IMAGE_MODELS,
+  WAN27_GLOBAL_T2I_MODEL,
+  isWan27GlobalI2IModel,
 } from '../../providers/models';
 import {
   submitImageAsync,
@@ -116,7 +124,7 @@ import {
 
 /**
  * ImageNode - 图像生成(ZhenzhenMagic)
- * 多 TAB 切换:GPT2 / 香蕉2 / 香蕉Pro / Grok / Seedream / Qwen Image / MJ
+ * 多 TAB 切换:GPT2 / 香蕉2 / 香蕉Pro / Grok / Seedream / Seedream分层 / Qwen Image / MJ
  * 参数:模型 TAB / 比例 / 尺寸 / 多张参考图 / 本地 prompt
  * 上游 text 节点 → prompt(优先);上游 image 节点 → 参考图(并入 references)
  */
@@ -418,13 +426,19 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
     || modelDef.id === 'nano-banana-pro'
     || modelDef.id === 'grok-image';
   const isQwenImageTab = modelDef.paramKind === 'qwen-image-3.0';
+  const isSeedreamLayerTab = modelDef.paramKind === 'seedream-layer';
+  const isWanImageTab = modelDef.paramKind === 'wan-image';
   const isZhenzhenBudgetImageSelected = !isExternalSelected
     && isBudgetImageTab
     && (d?.imageBuiltinSource === 'seedance-nz' || isZhenzhenBudgetImageModel(savedApiModel));
   const isZhenzhenBudgetMjSelected = !isExternalSelected
     && modelDef.paramKind === 'mj'
     && d?.imageBuiltinSource === 'seedance-nz';
-  const isZhenzhenBudgetPlatformSelected = isZhenzhenBudgetImageSelected || isZhenzhenBudgetMjSelected || isQwenImageTab;
+  const isZhenzhenBudgetPlatformSelected = isZhenzhenBudgetImageSelected
+    || isZhenzhenBudgetMjSelected
+    || isQwenImageTab
+    || isSeedreamLayerTab
+    || isWanImageTab;
   const budgetDefaultApiModel = modelDef.id === 'grok-image'
     ? ZHENZHEN_IMAGE_GK_V15_MODEL
     : modelDef.id === 'nano-banana-2'
@@ -448,6 +462,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   const isZhenzhenImageG2I2I = apiModel === ZHENZHEN_IMAGE_G2_I2I_MODEL;
   const isZhenzhenApimartImage = isZhenzhenBudgetImageSelected && isZhenzhenApimartImageModel(apiModel);
   const isZhenzhenLowpriceImage = apiModel === ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL;
+  const isZhenzhenGrokImageV2 = apiModel === ZHENZHEN_IMAGE_GK_V2_MODEL;
   const isZhenzhenGrokImage = apiModel === ZHENZHEN_IMAGE_GK_V15_MODEL;
   const isZhenzhenGrokImageEdit = apiModel === ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL;
   const isZhenzhenNb2Lite = apiModel === ZHENZHEN_IMAGE_NB_2_LITE_MODEL;
@@ -455,14 +470,18 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   const isZhenzhenNbPro = apiModel === ZHENZHEN_IMAGE_NB_PRO_MODEL;
   const isZhenzhenNb = isZhenzhenNb2Lite || isZhenzhenNb2 || isZhenzhenNbPro;
   const isQwenImageI2I = isQwenImageTab && isQwenImage30I2IModel(apiModel);
+  const isWanImageI2I = isWanImageTab && isWan27GlobalI2IModel(apiModel);
   const zhenzhenNbImageCount = isZhenzhenNb2Lite
     ? Math.min(4, Math.max(1, Number(d?.apimartImageCount) || 1))
     : 1;
+  const grokV2ImageCount = Math.min(10, Math.max(1, Number(d?.grokV2ImageCount) || 1));
   const seedanceNzProviderLabel = isZhenzhenBudgetPlatformSelected
     ? '贞贞的平价AI小屋'
     : '贞贞的平价AI小屋';
   const effectiveAspectRatios = isZhenzhenImageG2
     ? ZHENZHEN_IMAGE_G2_RATIOS
+    : isZhenzhenGrokImageV2
+      ? ZHENZHEN_IMAGE_GK_V2_RATIOS
     : (isZhenzhenGrokImage || isZhenzhenGrokImageEdit)
       ? ZHENZHEN_IMAGE_GK_V15_RATIOS
       : (isZhenzhenNb2 || isZhenzhenNb2Lite)
@@ -485,7 +504,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           ? ['1K']
           : isZhenzhenNbPro
             ? ['1K', '2K', '4K']
-      : (isZhenzhenGrokImage || isZhenzhenGrokImageEdit)
+      : (isZhenzhenGrokImageV2 || isZhenzhenGrokImage || isZhenzhenGrokImageEdit)
         ? []
         : modelDef.sizes;
   const effectiveSizeLevel = isZhenzhenImageG2
@@ -544,6 +563,13 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   const qwenSeed = Number.isInteger(d?.qwenSeed) ? Math.max(-1, Math.min(2147483647, d.qwenSeed)) : -1;
   const qwenNegativePrompt = typeof d?.qwenNegativePrompt === 'string' ? d.qwenNegativePrompt : '';
   const qwenPromptExtend = d?.qwenPromptExtend !== false;
+  const wanImageWidth = Math.min(4096, Math.max(512, Number(d?.wanImageWidth) || 1024));
+  const wanImageHeight = Math.min(4096, Math.max(512, Number(d?.wanImageHeight) || 1024));
+  const wanImageThinkingMode = d?.wanImageThinkingMode !== false;
+  const seedreamLayerResolution: 'auto' | '1k' | '1.5k' | '2k' = (SEEDREAM_LAYER_RESOLUTIONS as readonly string[])
+    .includes(d?.seedreamLayerResolution)
+    ? d.seedreamLayerResolution
+    : 'auto';
   const seedreamApiSource: 'zhenzhen' | 'seedance-nz' = d?.seedreamApiSource === 'seedance-nz' ? 'seedance-nz' : 'zhenzhen';
   const isSeedreamNz = isSeedream && seedreamApiSource === 'seedance-nz';
   const seedreamNzModelFamily: 'domestic' | 'overseas' = d?.seedreamNzModelFamily === 'overseas'
@@ -579,8 +605,12 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   // 参考图上限(FAL 使用 FAL_REGISTRY.maxRefs,其他走原设计)
   const maxRefs = isExternalSelected
     ? Math.max(8, modelDef.maxReferenceImages || 0)
+    : isSeedreamLayerTab
+      ? 1
     : isQwenImageTab
       ? isQwenImageI2I ? 3 : 0
+    : isWanImageTab
+      ? isWanImageI2I ? 9 : 0
     : isZhenzhenImageG2I2I
       ? 10
     : isZhenzhenLowpriceImage
@@ -589,7 +619,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         ? 14
       : isZhenzhenGrokImageEdit
           ? 1
-          : (isZhenzhenImageG2 || isZhenzhenGrokImage)
+          : (isZhenzhenImageG2 || isZhenzhenGrokImageV2 || isZhenzhenGrokImage)
             ? 0
       : (falDef?.maxRefs ?? modelDef.maxReferenceImages);
   const status: 'idle' | 'generating' | 'success' | 'error' = d?.status || 'idle';
@@ -671,6 +701,20 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   // 切换模型时,如果当前比例/尺寸不在新模型选项里则重置
   const switchModel = (mId: string) => {
     const newDef = IMAGE_MODELS.find((m) => m.id === mId) || IMAGE_MODELS[0];
+    if (newDef.paramKind === 'seedream-layer') {
+      update({
+        model: newDef.id,
+        apiModel: newDef.apiModel,
+        imageBuiltinSource: 'seedance-nz',
+        aspectRatio: '',
+        sizeLevel: '',
+        seedreamLayerResolution: (SEEDREAM_LAYER_RESOLUTIONS as readonly string[]).includes(d?.seedreamLayerResolution)
+          ? d.seedreamLayerResolution
+          : 'auto',
+        seedreamOutputFormat: d?.seedreamOutputFormat === 'jpeg' ? 'jpeg' : 'png',
+      });
+      return;
+    }
     if (newDef.paramKind === 'qwen-image-3.0') {
       update({
         model: newDef.id,
@@ -684,6 +728,19 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         qwenImageCount: Math.min(6, Math.max(1, Number(d?.qwenImageCount) || 1)),
         qwenSeed: Number.isInteger(d?.qwenSeed) ? d.qwenSeed : -1,
         qwenPromptExtend: d?.qwenPromptExtend !== false,
+      });
+      return;
+    }
+    if (newDef.paramKind === 'wan-image') {
+      update({
+        model: newDef.id,
+        apiModel: newDef.apiModel,
+        imageBuiltinSource: 'seedance-nz',
+        aspectRatio: '',
+        sizeLevel: '',
+        wanImageWidth: Math.min(4096, Math.max(512, Number(d?.wanImageWidth) || 1024)),
+        wanImageHeight: Math.min(4096, Math.max(512, Number(d?.wanImageHeight) || 1024)),
+        wanImageThinkingMode: d?.wanImageThinkingMode !== false,
       });
       return;
     }
@@ -747,9 +804,21 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
       });
       return;
     }
+    if ((WAN27_GLOBAL_IMAGE_MODELS as readonly string[]).includes(nextApiModel)) {
+      update({
+        model: 'wan-image',
+        apiModel: nextApiModel,
+        imageBuiltinSource: 'seedance-nz',
+        aspectRatio: '',
+        sizeLevel: '',
+      });
+      return;
+    }
     const nextSize = gptImage2ZhenzhenVariantSize(nextApiModel);
     if (isZhenzhenBudgetImageModel(nextApiModel)) {
-      const nextModel = nextApiModel === ZHENZHEN_IMAGE_GK_V15_MODEL || nextApiModel === ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL
+      const nextModel = nextApiModel === ZHENZHEN_IMAGE_GK_V2_MODEL
+        || nextApiModel === ZHENZHEN_IMAGE_GK_V15_MODEL
+        || nextApiModel === ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL
         ? 'grok-image'
         : nextApiModel === ZHENZHEN_IMAGE_NB_2_MODEL || nextApiModel === ZHENZHEN_IMAGE_NB_2_LITE_MODEL
           ? 'nano-banana-2'
@@ -889,8 +958,10 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
       : { finalPrompt: basePrompt, active: [], inactive: [], text: '', language: 'zh' as const };
     const finalPrompt = compiledPrompt.finalPrompt;
     const src = `image:${id.slice(0, 6)}`;
-    const promptRequired = !isZhenzhenBudgetMjSelected
-      || midjourneyNzRequiresPrompt(mjNzOperation, mjNzVideoSource);
+    const promptRequired = !isSeedreamLayerTab && (
+      !isZhenzhenBudgetMjSelected
+      || midjourneyNzRequiresPrompt(mjNzOperation, mjNzVideoSource)
+    );
     if (!basePrompt && promptRequired && (!isComfyExternal || comfyHasPromptField)) {
       setError('未连接 text 节点也未填写 prompt');
       logBus.error('生成中止: 缺少 prompt', src);
@@ -917,6 +988,11 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
       logBus.error('生成中止: Grok Image 1.5 编辑缺少参考图', src);
       return;
     }
+    if (isZhenzhenGrokImageV2 && finalPrompt.length > 20000) {
+      setError('zhenzhen-image-gk-v2 提示词最多 20000 字符');
+      logBus.error(`生成中止: Grok Image v2 提示词长度 ${finalPrompt.length} 超过 20000`, src);
+      return;
+    }
     if (isQwenImageTab && (finalPrompt.length < 5 || finalPrompt.length > 2000)) {
       setError('Qwen Image 3.0 提示词必须为 5-2000 字符');
       logBus.error(`生成中止: Qwen Image 3.0 提示词长度 ${finalPrompt.length}`, src);
@@ -925,6 +1001,29 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
     if (isQwenImageI2I && upstreamImages.length === 0) {
       setError(`${apiModel} 必须提供 1-3 张参考图`);
       logBus.error('生成中止: Qwen Image 3.0 图像编辑缺少参考图', src);
+      return;
+    }
+    if (isWanImageTab) {
+      const promptLimit = isWanImageI2I ? 2048 : 5000;
+      if (finalPrompt.length > promptLimit) {
+        setError(`${apiModel} 提示词最多 ${promptLimit} 字符`);
+        logBus.error(`生成中止: Wan Image 提示词长度 ${finalPrompt.length} 超过 ${promptLimit}`, src);
+        return;
+      }
+      if (isWanImageI2I && (upstreamImages.length < 1 || upstreamImages.length > 9)) {
+        setError(`${apiModel} 必须按顺序提供 1–9 张参考图`);
+        logBus.error(`生成中止: Wan Image 编辑参考图数量 ${upstreamImages.length}`, src);
+        return;
+      }
+    }
+    if (isSeedreamLayerTab && orderedImages.length !== 1) {
+      setError('Seedream 分层必须且只能连接或上传 1 张源图');
+      logBus.error(`生成中止: Seedream 分层源图数量 ${orderedImages.length}，要求恰好 1 张`, src);
+      return;
+    }
+    if (isSeedreamLayerTab && finalPrompt.length > 2000) {
+      setError('Seedream 分层提示词最多 2000 字符');
+      logBus.error(`生成中止: Seedream 分层提示词长度 ${finalPrompt.length}`, src);
       return;
     }
     if (isQwenImageTab && qwenSizingMode === 'custom_size' && !/^\d+\*\d+$/.test(qwenCustomSize)) {
@@ -1582,9 +1681,13 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
 
       // seedance.nz uses a dedicated asynchronous image protocol for Seedream,
       // Zhenzhen Image G-2 and APIMart image models.
-      if (isSeedreamNz || isZhenzhenBudgetImageSelected || isQwenImageTab) {
+      if (isSeedreamNz || isZhenzhenBudgetImageSelected || isQwenImageTab || isSeedreamLayerTab || isWanImageTab) {
         if (!zhenzhenSd2ApiKey) throw new Error(`请先在 API 设置中填写“${seedanceNzProviderLabel} API Key”`);
-        const providerRefs = isQwenImageTab
+        const providerRefs = isSeedreamLayerTab
+          ? allRefs.slice(0, 1)
+          : isWanImageTab
+          ? (isWanImageI2I ? allRefs.slice(0, 9) : [])
+          : isQwenImageTab
           ? (isQwenImageI2I ? allRefs.slice(0, 3) : [])
           : isZhenzhenImageG2 && !isZhenzhenImageG2I2I
           ? []
@@ -1593,14 +1696,22 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             : isZhenzhenGrokImageEdit
               ? allRefs.slice(0, 1)
               : allRefs;
-        const expectedModel = isQwenImageTab
+        const expectedModel = isSeedreamLayerTab
+          ? apiModel
+          : isWanImageTab
+          ? apiModel
+          : isQwenImageTab
           ? apiModel
           : isZhenzhenBudgetImageSelected
           ? apiModel
           : seedreamNzModelFamily === 'overseas'
             ? (providerRefs.length ? 'dola-seedream-5.0-pro-i2i' : 'dola-seedream-5.0-pro-t2i')
             : (providerRefs.length ? 'seedream-v5-pro-i2i' : 'seedream-v5-pro-t2i');
-        const imageFamilyLabel = isQwenImageTab
+        const imageFamilyLabel = isSeedreamLayerTab
+          ? 'Seedream 分层'
+          : isWanImageTab
+          ? 'Wan Image 2.7 Global'
+          : isQwenImageTab
           ? 'Qwen Image 3.0'
           : isZhenzhenImageG2
           ? 'Zhenzhen Image G-2'
@@ -1609,7 +1720,13 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           : isZhenzhenApimartImage
             ? 'APIMart Image'
             : 'Seedream';
-        const sizeLabel = isQwenImageTab
+        const sizeLabel = isSeedreamLayerTab
+          ? `${seedreamLayerResolution} · ${seedreamOutputFormat} · 全部图层`
+          : isWanImageTab
+          ? isWanImageI2I
+            ? `图像编辑 · ${providerRefs.length} 张参考图`
+            : `${wanImageWidth}x${wanImageHeight} · 思考模式${wanImageThinkingMode ? '开' : '关'}`
+          : isQwenImageTab
           ? qwenSizingMode === 'auto'
             ? `自动推荐 · n=${qwenImageCount}`
             : qwenSizingMode === 'ratio'
@@ -1621,7 +1738,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             ? `${effectiveSizeLevel.toLowerCase()} · ${effectiveAspectRatio}`
             : isZhenzhenNb
               ? `${effectiveSizeLevel.toLowerCase()} · ${effectiveAspectRatio} · n=${zhenzhenNbImageCount}`
-            : (isZhenzhenGrokImage || isZhenzhenGrokImageEdit)
+            : (isZhenzhenGrokImageV2 || isZhenzhenGrokImage || isZhenzhenGrokImageEdit)
               ? effectiveAspectRatio
           : (seedreamNzResolution === 'custom' ? seedreamNzResolvedSize : seedreamNzResolution);
         logBus.info(
@@ -1631,7 +1748,16 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         const submit = await submitSeedreamNz({
           prompt: finalPrompt,
           images: providerRefs,
-          model: isQwenImageTab
+          model: isSeedreamLayerTab
+            ? apiModel as
+              | 'seedream-v5-pro-layer-decomposition'
+              | 'dola-seedream-5.0-pro-layer-decomposition'
+            : isWanImageTab
+            ? apiModel as
+              | 'wan-2.7-global-t2i'
+              | 'wan-2.7-global-i2i'
+              | 'wan-2.7-global-i2i-pro'
+            : isQwenImageTab
             ? apiModel as
               | 'qwen-image-3.0-t2i'
               | 'qwen-image-3.0-i2i'
@@ -1646,14 +1772,17 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               | 'zhenzhen-image-g2-t2i'
               | 'zhenzhen-image-g2-i2i'
               | 'zhenzhen-image-g-v2-lowprice'
+              | 'zhenzhen-image-gk-v2'
               | 'zhenzhen-image-gk-v15'
               | 'zhenzhen-image-gk-v15-edit'
               | 'zhenzhen-image-nb-2-lite'
               | 'zhenzhen-image-nb-2'
               | 'zhenzhen-image-nb-pro'
             : undefined,
-          modelFamily: isZhenzhenBudgetImageSelected || isQwenImageTab ? undefined : seedreamNzModelFamily,
-          resolution: isQwenImageTab
+          modelFamily: isZhenzhenBudgetImageSelected || isQwenImageTab || isSeedreamLayerTab || isWanImageTab ? undefined : seedreamNzModelFamily,
+          resolution: isSeedreamLayerTab
+            ? seedreamLayerResolution
+            : isQwenImageTab
             ? qwenSizingMode === 'ratio' ? qwenResolution : undefined
             : isZhenzhenImageG2
             ? '1k'
@@ -1674,12 +1803,21 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             : isZhenzhenApimartImage
             ? effectiveAspectRatio
             : !isZhenzhenImageG2 && seedreamNzResolution === 'custom' ? seedreamNzResolvedSize : undefined,
-          n: isQwenImageTab ? qwenImageCount : isZhenzhenNb ? zhenzhenNbImageCount : isZhenzhenApimartImage ? 1 : undefined,
-          output_format: isZhenzhenBudgetImageSelected || isQwenImageTab ? undefined : seedreamOutputFormat,
+          n: isQwenImageTab
+            ? qwenImageCount
+            : isZhenzhenGrokImageV2
+              ? grokV2ImageCount
+              : isZhenzhenNb ? zhenzhenNbImageCount : isZhenzhenApimartImage ? 1 : undefined,
+          output_format: isSeedreamLayerTab
+            ? seedreamOutputFormat
+            : isZhenzhenBudgetImageSelected || isQwenImageTab ? undefined : seedreamOutputFormat,
           negative_prompt: isQwenImageTab ? qwenNegativePrompt.trim() || undefined : undefined,
           prompt_extend: isQwenImageTab ? qwenPromptExtend : undefined,
           sizing_mode: isQwenImageTab ? qwenSizingMode : undefined,
           seed: isQwenImageTab ? qwenSeed : undefined,
+          width: isWanImageTab && !isWanImageI2I ? wanImageWidth : undefined,
+          height: isWanImageTab && !isWanImageI2I ? wanImageHeight : undefined,
+          thinking_mode: isWanImageTab && !isWanImageI2I ? wanImageThinkingMode : undefined,
         }, { submissionKey: reporter?.providerSubmissionKey });
         if (!isCurrentGenerationRun(runId)) return;
         const taskId = submit.taskId;
@@ -1743,7 +1881,10 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               imageUrl: url,
               imageUrls: query.urls,
               lastPrompt: finalPrompt,
-              usedI2I: isQwenImageTab ? isQwenImageI2I : isZhenzhenImageG2 ? isZhenzhenImageG2I2I : providerRefs.length > 0,
+              usedI2I: isSeedreamLayerTab
+                ? true
+                : isWanImageTab ? isWanImageI2I
+                : isQwenImageTab ? isQwenImageI2I : isZhenzhenImageG2 ? isZhenzhenImageG2I2I : providerRefs.length > 0,
               requestId: query.requestId,
               transportHttpStatus: query.transportHttpStatus,
               upstreamHttpStatus: query.upstreamHttpStatus,
@@ -2050,7 +2191,11 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                       if (nextId === 'zhenzhen') {
                         const leavingBudgetPlatform = d?.imageBuiltinSource === 'seedance-nz'
                           || isZhenzhenBudgetImageModel(savedApiModel)
-                          || isQwenImageTab;
+                          || isQwenImageTab
+                          || isSeedreamLayerTab
+                          || isWanImageTab;
+                        const leavingDedicatedBudgetTab = isQwenImageTab || isSeedreamLayerTab || isWanImageTab;
+                        const fallbackModel = IMAGE_MODELS[0];
                         update({
                           providerSource: 'zhenzhen',
                           providerId: '',
@@ -2058,9 +2203,10 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                           imageBuiltinSource: 'zhenzhen',
                           ...(leavingBudgetPlatform
                             ? {
-                                apiModel: modelDef.apiModel,
-                                aspectRatio: modelDef.defaultAspectRatio,
-                                sizeLevel: modelDef.defaultSize,
+                                model: leavingDedicatedBudgetTab ? fallbackModel.id : modelDef.id,
+                                apiModel: leavingDedicatedBudgetTab ? fallbackModel.apiModel : modelDef.apiModel,
+                                aspectRatio: leavingDedicatedBudgetTab ? fallbackModel.defaultAspectRatio : modelDef.defaultAspectRatio,
+                                sizeLevel: leavingDedicatedBudgetTab ? fallbackModel.defaultSize : modelDef.defaultSize,
                               }
                             : {}),
                           ...clearModelscopeLoraParams(),
@@ -2546,7 +2692,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         {!isExternalSelected && <div>
           <label className="text-[10px] text-white/50 block mb-1">模型</label>
           <div
-            className={`flex gap-0.5 p-0.5 rounded ${isPixel ? '' : 'bg-white/5'}`}
+            className={`flex flex-wrap gap-0.5 p-0.5 rounded ${isPixel ? '' : 'bg-white/5'}`}
             style={isPixel ? { background: 'var(--px-muted)', border: '1.5px solid var(--px-ink)' } : undefined}
           >
             {IMAGE_MODELS
@@ -2556,6 +2702,8 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                 || m.id === 'nano-banana-pro'
                 || m.id === 'grok-image'
                 || m.id === 'qwen-image-3.0'
+                || m.id === 'wan-image'
+                || m.id === 'seedream-layer-decomposition'
                 || m.id === 'midjourney')
               .map((m) => {
               const isActive = m.id === model;
@@ -2564,7 +2712,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                   key={m.id}
                   onClick={() => switchModel(m.id)}
                   title={m.description}
-                  className={`flex-1 py-1 text-[10px] font-semibold rounded transition-all ${
+                  className={`min-w-[64px] flex-1 py-1 text-[10px] font-semibold rounded transition-all ${
                     isActive ? 'bg-amber-500/30 text-amber-200' : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                   style={
@@ -2650,6 +2798,8 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                       ? 'Nano Banana 2：支持 0.5K/1K/2K/4K、超宽/超高比例和最多 14 张参考图；单次固定 1 张输出。'
                       : isZhenzhenNbPro
                         ? 'Nano Banana Pro：支持 1K/2K/4K、标准比例和最多 14 张参考图；单次固定 1 张输出。'
+                  : isZhenzhenGrokImageV2
+                    ? 'Grok Imagine 2.0 文生图：提示词最多 20000 字符，支持一次生成 1–10 张，不发送参考图。'
                   : isZhenzhenGrokImageEdit
                     ? 'Grok Image 1.5 编辑：必须提供参考图，仅使用第 1 张。'
                     : 'Grok Image 1.5 文生图：只使用 Prompt，不发送参考图。'}
@@ -2671,6 +2821,28 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           </div>
         )}
 
+        {isWanImageTab && !isExternalSelected && (
+          <div className="rounded border border-cyan-400/25 bg-cyan-500/5 px-2 py-1.5 text-[10px] leading-4 text-cyan-100/80">
+            <div>贞贞的平价AI小屋 · {apiModel}</div>
+            <div>
+              {isWanImageI2I
+                ? '图像编辑模式：必须按顺序提供 1–9 张参考图；提示词最多 2048 字符。'
+                : '文生图模式：只发送 Prompt，不发送已连接的参考图；提示词最多 5000 字符。'}
+            </div>
+            {!zhenzhenSd2ApiKey && <div className="text-amber-300">尚未配置“贞贞的平价AI小屋 API Key”</div>}
+          </div>
+        )}
+
+        {isSeedreamLayerTab && !isExternalSelected && (
+          <div className="rounded border border-cyan-400/25 bg-cyan-500/5 px-2 py-1.5 text-[10px] leading-4 text-cyan-100/80">
+            <div>贞贞的平价AI小屋 · {apiModel}</div>
+            <div>必须且只能输入 1 张图；提示词可留空，最多 2000 字符。</div>
+            <div>国内 Seedream 与海外 Dola 共用同一参数；国内模型保持默认。</div>
+            <div>完成后按官方顺序保存底图与全部图层，不排序、不去重、不截断，不会只取第一张。</div>
+            {!zhenzhenSd2ApiKey && <div className="text-amber-300">尚未配置“贞贞的平价AI小屋 API Key”</div>}
+          </div>
+        )}
+
         {isZhenzhenNb2Lite && !isExternalSelected && (
           <div>
             <label className="text-[10px] text-white/50 block mb-1">生成张数</label>
@@ -2681,6 +2853,22 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-white/30"
             >
               {[1, 2, 3, 4].map((count) => (
+                <option key={count} value={count} style={{ background: '#18181b', color: '#ffffff' }}>{count}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {isZhenzhenGrokImageV2 && !isExternalSelected && (
+          <div>
+            <label className="text-[10px] text-white/50 block mb-1">生成张数</label>
+            <select
+              value={grokV2ImageCount}
+              onChange={(e) => update({ grokV2ImageCount: Number(e.target.value) })}
+              style={{ background: '#18181b', color: '#ffffff' }}
+              className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-white/30"
+            >
+              {Array.from({ length: 10 }, (_, index) => index + 1).map((count) => (
                 <option key={count} value={count} style={{ background: '#18181b', color: '#ffffff' }}>{count}</option>
               ))}
             </select>
@@ -2707,7 +2895,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         />
 
         {/* 比例 + 尺寸;Seedream 使用像素尺寸 + 输出格式,Grok Image 只需要比例 */}
-        {(!isFal && !isMj && !isComfyExternal && !isQwenImageTab) && (
+        {(!isFal && !isMj && !isComfyExternal && !isQwenImageTab && !isSeedreamLayerTab && !isWanImageTab) && (
           <div className={`grid gap-2 ${isSeedream || (!isGrokImage && effectiveSizes.length) ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {effectiveAspectRatios.length > 0 && <div>
               <label className="text-[10px] text-white/50 block mb-1">比例</label>
@@ -2793,6 +2981,36 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                 />
               </div>
             )}
+          </div>
+        )}
+        {isSeedreamLayerTab && !isExternalSelected && (
+          <div className="grid grid-cols-2 gap-2 rounded border border-cyan-400/25 bg-cyan-500/5 p-2">
+            <div>
+              <label className="text-[10px] text-white/50 block mb-1">分层分辨率</label>
+              <select
+                value={seedreamLayerResolution}
+                onChange={(e) => update({ seedreamLayerResolution: e.target.value })}
+                style={{ background: '#18181b', color: '#ffffff' }}
+                className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+              >
+                <option value="auto" style={{ background: '#18181b', color: '#ffffff' }}>Auto</option>
+                <option value="1k" style={{ background: '#18181b', color: '#ffffff' }}>1K</option>
+                <option value="1.5k" style={{ background: '#18181b', color: '#ffffff' }}>1.5K</option>
+                <option value="2k" style={{ background: '#18181b', color: '#ffffff' }}>2K</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] text-white/50 block mb-1">输出格式</label>
+              <select
+                value={seedreamOutputFormat}
+                onChange={(e) => update({ seedreamOutputFormat: e.target.value })}
+                style={{ background: '#18181b', color: '#ffffff' }}
+                className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+              >
+                <option value="png" style={{ background: '#18181b', color: '#ffffff' }}>PNG（推荐，保留透明层）</option>
+                <option value="jpeg" style={{ background: '#18181b', color: '#ffffff' }}>JPEG</option>
+              </select>
+            </div>
           </div>
         )}
         {isQwenImageTab && !isExternalSelected && (
@@ -2899,6 +3117,47 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                 className="h-12 w-full resize-none rounded border border-white/10 bg-black/20 px-2 py-1 text-[11px] text-white outline-none focus:border-cyan-400/60 placeholder:text-white/25"
               />
             </div>
+          </div>
+        )}
+        {isWanImageTab && !isExternalSelected && !isWanImageI2I && (
+          <div className="space-y-2 rounded border border-cyan-400/25 bg-cyan-500/5 p-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-white/50 block mb-1">宽度（512–4096）</label>
+                <input
+                  type="number"
+                  min={512}
+                  max={4096}
+                  step={8}
+                  value={wanImageWidth}
+                  onChange={(e) => update({ wanImageWidth: Math.min(4096, Math.max(512, Number(e.target.value) || 1024)) })}
+                  style={{ background: '#18181b', color: '#ffffff' }}
+                  className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-white/50 block mb-1">高度（512–4096）</label>
+                <input
+                  type="number"
+                  min={512}
+                  max={4096}
+                  step={8}
+                  value={wanImageHeight}
+                  onChange={(e) => update({ wanImageHeight: Math.min(4096, Math.max(512, Number(e.target.value) || 1024)) })}
+                  style={{ background: '#18181b', color: '#ffffff' }}
+                  className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+                />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-[10px] text-white/65">
+              <input
+                type="checkbox"
+                checked={wanImageThinkingMode}
+                onChange={(e) => update({ wanImageThinkingMode: e.target.checked })}
+                className="accent-cyan-400"
+              />
+              启用上游思考模式
+            </label>
           </div>
         )}
         {isStandardGptImage2 && (
@@ -3530,7 +3789,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
       )}
       {isZhenzhenBudgetMjSelected && videoUrl && !hasAutoOutput && (
         <div className="border-t border-white/10 p-2">
-          <video
+          <LazyVideo
             src={videoUrl}
             controls
             preload="metadata"
