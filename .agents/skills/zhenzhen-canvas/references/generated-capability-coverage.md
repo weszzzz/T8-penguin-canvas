@@ -3,22 +3,22 @@
 > Machine-generated from the real Canvas Node Schema, creative capability manifest,
 > runtime model/action catalog, and handler bindings. Do not edit by hand.
 
-- Aggregate SHA-256: `807a3946d1422bc1f03d0347dd7f7aff8f519cc13a06f9caa130766ac6942ff0`
+- Aggregate SHA-256: `ce8e142813d4014bbde48c684bb5fe113d2a306c286fc460912d51ceb836e89b`
 - Capabilities / handlers: **31 / 31**
-- Canvas nodes: **78**
-- Referenced / unreferenced nodes: **69 / 9**
-- Accounted / unexplained nodes: **78 / 0**
-- Direct capability nodes: **69**
+- Canvas nodes: **79**
+- Referenced / unreferenced nodes: **70 / 9**
+- Accounted / unexplained nodes: **79 / 0**
+- Direct capability nodes: **70**
 - Internal compatibility nodes: **1**
 - Semantically superseded nodes: **8**
 - Public capability gaps: **0**
 - Fully operable nodes: **19**
-- Runtime model/action entries: **250**
-- Dynamic node inventory (total / executable / generatable): **78 / 59 / 12**
-- Dynamic runtime inventory (LLM / image / video / audio / actions): **32 / 42 / 113 / 16 / 47**
+- Runtime model/action entries: **253**
+- Dynamic node inventory (total / executable / generatable): **79 / 60 / 12**
+- Dynamic runtime inventory (LLM / image / video / audio / actions): **34 / 42 / 114 / 16 / 47**
 - Operation risk contracts: **152** (L0 91, L1 44, L2 17, L3 0)
 - Unknown node references: **0**
-- Coverage receipt: `t8-creative-capability-coverage-receipt-v1` / `ab8a5fd7e920f1fbf5aff49ea3b26206c77f414bbc2c96c701ced2d3cb7d04cc`
+- Coverage receipt: `t8-creative-capability-coverage-receipt-v1` / `f62214d8fe64bcfd04c6ee32a25b4c274719bb72880127bcc8c9e3ec7164ecba`
 
 “Understand” means the node exists in the authoritative schema. Other columns are true only
 when at least one registered high-level capability explicitly advertises that operation.
@@ -39,6 +39,7 @@ when at least one registered high-level capability explicitly advertises that op
 | `video-edit` 视频剪辑 | core | direct-capability | — | — | `canvas.node-add`, `delivery.package`, `video-edit.compose` | yes | yes | yes | yes | yes | yes |
 | `seedance` SD2.0 | core | direct-capability | yes | — | `canvas.node-add`, `create.video`, `edit.video` | yes | yes | yes | yes | yes | yes |
 | `seedance25` SD2.5 | core | direct-capability | yes | — | `canvas.node-add`, `create.video` | yes | yes | yes | yes | yes | yes |
+| `fashvsr-video-upscale` FlashVSR 视频超分 | core | direct-capability | yes | — | `canvas.node-add` | yes | yes | yes | — | yes | yes |
 | `director-storyboard` 导演分镜台 | core | direct-capability | yes | — | `canvas.node-add`, `director.materialize`, `video-edit.compose` | yes | yes | yes | yes | yes | yes |
 | `story` Story 全自动制片 | core | direct-capability | yes | — | `canvas.node-add`, `create.story`, `director.materialize`, `story.adopt-preview`, `story.analyze`, `story.bind-asset`, `story.compile`, `story.import`, `story.plan-previews`, `video-edit.compose` | yes | yes | yes | yes | yes | yes |
 | `script-master` 剧本大师 | core | direct-capability | — | — | `canvas.node-add` | yes | yes | yes | — | yes | yes |
@@ -109,9 +110,9 @@ when at least one registered high-level capability explicitly advertises that op
 Catalog presence only means “known”. Every runtime entry is generated fail-closed and must
 receive installed / credential / region readiness at request time before it is executable.
 
-- llm: **32**
+- llm: **34**
 - image: **42**
-- video: **113**
+- video: **114**
 - audio: **16**
 - actions: **47**
 
@@ -122,7 +123,7 @@ receive installed / credential / region readiness at request time before it is e
 - Internal compatibility: `rh-config`
 - Semantically superseded: `multi-angle-3d`, `panorama-720`, `penguin-portrait`, `portrait-metadata`, `storyboard-grid`, `browser`, `edit`, `video-output`
 - Public capability gaps: none
-- Referenced without run coverage: `model-3d-upload`, `model-3d-preview`, `material-set`, `generation-target`, `feishu-bitable-input`, `feishu-bitable-output`, `video`, `script-master`, `mv-music-master`, `runninghub`, `runninghub-wallet`, `rh-tools`, `rh-toolbox`, `vibex`, `fal-toolbox`, `codex-cli-agent`, `codex-image-conjure`, `artist-style-master`, `anime-tag-master`, `comfyui-store`, `comfyui-app-maker`, `drawing-board`, `image-compare`, `frame-pair`, `loop`, `random-route`, `subflow`, `pick-from-set`, `text-split`, `resize`, `combine`, `grid-crop`, `grid-editor`, `idea`, `bp`, `relay`, `remove-ai-watermark`, `cinematic`, `video-motion`, `multi-angle-visual`, `portrait-master`, `pose-master`, `aggregate-parser`, `batch-processor`, `batch-tagger`, `topaz-image-upscale`, `topaz-video-upscale`, `face-expression-3d`, `previs-studio`, `panorama-3d`
+- Referenced without run coverage: `model-3d-upload`, `model-3d-preview`, `material-set`, `generation-target`, `feishu-bitable-input`, `feishu-bitable-output`, `video`, `fashvsr-video-upscale`, `script-master`, `mv-music-master`, `runninghub`, `runninghub-wallet`, `rh-tools`, `rh-toolbox`, `vibex`, `fal-toolbox`, `codex-cli-agent`, `codex-image-conjure`, `artist-style-master`, `anime-tag-master`, `comfyui-store`, `comfyui-app-maker`, `drawing-board`, `image-compare`, `frame-pair`, `loop`, `random-route`, `subflow`, `pick-from-set`, `text-split`, `resize`, `combine`, `grid-crop`, `grid-editor`, `idea`, `bp`, `relay`, `remove-ai-watermark`, `cinematic`, `video-motion`, `multi-angle-visual`, `portrait-master`, `pose-master`, `aggregate-parser`, `batch-processor`, `batch-tagger`, `topaz-image-upscale`, `topaz-video-upscale`, `face-expression-3d`, `previs-studio`, `panorama-3d`
 - Operations without risk contracts: none
 - Capabilities without handlers: none
 - Capabilities without verification contracts: none
