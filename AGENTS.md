@@ -2,6 +2,11 @@
 
 在修改代码、架构、配置、测试、UI、部署、GitHub 或技术文档前，完整阅读本文件、`SKILL.md`、`features.json`、`roadmap.md`、`package.json`、相关源码/测试，以及当前交接记录。项目没有 `meta.json`。
 
+## 用户默认偏好
+
+- 用户说“拉取最新代码”时，默认目标是可信上游 `upstream/main`，不是读写远端 `origin/main`。
+- 上游同步在工作树干净、无冲突且门禁通过时直接完成合并提交，不为正常流程请求确认；只有冲突、保护文件漂移、权限/网络异常、测试失败或其他无法安全判断的问题才询问用户。
+
 涉及上游同步、fork 合并、LFS 保护或合并冲突时，额外阅读 `.agents/skills/upstream-sync-merge/SKILL.md`。
 
 ## 当前权威开发路径

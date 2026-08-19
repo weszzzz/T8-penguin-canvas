@@ -24,8 +24,10 @@ conflicts; it must not invent or edit product code.
 4. Let Git attempt the three-way merge with `merge.keep-local.driver=true`.
    The local-owned paths in `.gitattributes` retain the local side.
 5. Use `--no-commit --no-ff` for the first merge attempt so the result can be
-   reviewed before any commit. If there is no conflict, verify the merge on
-   `main`; commit only after explicit authorization.
+   reviewed before any commit. If there is no conflict and the required checks
+   pass, complete the merge commit directly; do not ask for routine user
+   confirmation. Stop and ask only for conflicts, protection failures,
+   permission/network errors, failed checks, or another material safety issue.
 6. If conflicts remain, use `.github/codex/prompts/upstream-merge-advisor.md`.
    Codex may inspect only `:1`, `:2`, and `:3` Git stages and return an
    `ours`, `theirs`, or `combine-existing-hunks` decision for each path.
@@ -43,8 +45,9 @@ conflicts; it must not invent or edit product code.
   stale baseline and confirm the repository history before stopping the merge.
 - A model is read-only: no product-file writes, staging, commits, pushes,
   release work, secrets, or network-provider calls unless explicitly requested.
-- A clean merge may remain on `main`; do not commit or push without explicit
-  user authorization. A conflict receives review advice before resolution.
+- A clean merge should be committed on `main` after the required checks pass.
+  Do not push without explicit user authorization. A conflict receives review
+  advice before resolution.
 
 ## Verification
 
