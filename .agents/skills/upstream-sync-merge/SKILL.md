@@ -1,38 +1,62 @@
 ---
 name: upstream-sync-merge
-description: Safely synchronize this repository with its trusted upstream while preserving local platform integration. Use for upstream pulls, sync merges, merge conflicts, local-owned file policy, and read-only AI merge advice.
+description: Merge trusted upstream code into this fork while preserving local integration. Use for upstream syncs, branch merges, merge conflicts, protected files, LFS blockers, and sync workflows.
 ---
 
-# Upstream Sync Merge
+# Code Merge And Upstream Sync
 
 ## Overview
 
-Use Git for ordinary three-way merges. Preserve local platform integration with
-the `keep-local` merge driver. Ask Codex only to analyze real shared-file
-conflicts; it must not invent or edit product code.
+Use Git's ordinary three-way merge. In this repository, `upstream/main` is the
+trusted source and `origin/main` is the writable fork. Preserve local platform
+integration with the `keep-local` merge driver. Never copy directories,
+force-push, reset, clean, or overwrite a worktree to make a merge appear clean.
+
+When the user asks to sync or merge upstream without naming another target,
+merge `upstream/main` into the local `main`.
 
 ## Workflow
 
-1. Start from a clean `main` and fetch the selected target remote. Do not copy
-   directory trees, reset, or overwrite a working tree.
-2. Confirm the target remote before merging: `origin` is the repository's
-   read/write remote, while `upstream` is the trusted source remote. Fetch the
-   selected remote before judging divergence.
-3. Perform the sync merge directly on `main`; a temporary development branch is
-   not required for an upstream merge. Run `npm run worktree:check` before
-   modifying the merge state.
-4. Let Git attempt the three-way merge with `merge.keep-local.driver=true`.
-   The local-owned paths in `.gitattributes` retain the local side.
-5. Use `--no-commit --no-ff` for the first merge attempt so the result can be
-   reviewed before any commit. If there is no conflict and the required checks
-   pass, complete the merge commit directly; do not ask for routine user
-   confirmation. Stop and ask only for conflicts, protection failures,
-   permission/network errors, failed checks, or another material safety issue.
-6. If conflicts remain, use `.github/codex/prompts/upstream-merge-advisor.md`.
-   Codex may inspect only `:1`, `:2`, and `:3` Git stages and return an
-   `ours`, `theirs`, or `combine-existing-hunks` decision for each path.
-7. Apply only an approved decision on `main`. Never turn merge advice into a
-   feature request or refactor.
+1. Read `AGENTS.md`, `PROJECT-RUNBOOK.md`, this skill, `features.json`,
+   `package.json`, and any existing roadmap or handoff file. Missing files are
+   reported, not invented.
+2. Confirm the path, branch, HEAD, remotes, and clean state. Run
+   `npm run worktree:check`. A sync-only merge belongs on `main`; do not run
+   `npm run worktree:development`, which intentionally rejects `main`.
+3. Fetch upstream without materializing Windows LFS files on macOS, then inspect
+   divergence:
+
+   ```bash
+   git -c lfs.skipSmudge=true fetch --no-tags upstream main
+   git rev-list --left-right --count HEAD...upstream/main
+   ```
+
+   If `upstream/main` is already included, stop. A fetch failure is a network
+   or provider blocker, not a merge result.
+4. Check protected paths from `AGENTS.md` and local-owned paths from
+   `.gitattributes`. Do not edit or stage protected runtime or watermark files.
+   For LFS files, verify the declared pointer OID/size or the materialized hash;
+   never treat pointer text length as runtime size.
+5. Make a reviewable three-way merge:
+
+   ```bash
+   git config merge.keep-local.driver true
+   git merge --no-commit --no-ff upstream/main
+   ```
+
+   Local-owned files remain local. Product source, schemas, generated files,
+   package metadata, docs, and ordinary tests use normal three-way merging.
+6. If clean, verify with `git diff --cached --check`,
+   `npm run worktree:check`, `npm run feature-sync:check`, and
+   `npm run type-check`. Run focused tests only when the changed surface needs
+   them; do not launch the full test suite by default for a sync check.
+7. If checks pass, complete the merge commit on `main` when the user asked to
+   perform the merge. Never push to `origin` without explicit authorization.
+   Report a clean `--no-commit` result as merged-but-uncommitted until then.
+8. If conflicts remain, stop and show `git diff --name-only --diff-filter=U`
+   and `git ls-files -u`. Inspect only the base/local/upstream stages. Resolve
+   existing hunks in shared files; never use directory-wide `ours`, `theirs`,
+   reset, checkout, or a feature refactor as a conflict strategy.
 
 ## Boundaries
 
@@ -49,6 +73,26 @@ conflicts; it must not invent or edit product code.
   Do not push without explicit user authorization. A conflict receives review
   advice before resolution.
 
+## LFS And GitHub Workflow
+
+For source-only cloud synchronization, use `actions/checkout` with `lfs: false`.
+If checkout fails with `This repository exceeded its LFS budget`, classify it as
+an LFS infrastructure blocker and do not claim that upstream was synchronized.
+Only fetch or materialize protected Windows runtimes when the change touches
+them and LFS access is available.
+
+The optional GitHub flow is:
+
+```text
+fetch upstream/main -> guarded merge -> verify -> sync PR -> optional merge
+```
+
+Do not silently re-enable a disabled workflow. A user-authorized manual run is:
+
+```bash
+gh workflow run sync-upstream.yml --repo weszzzz/T8-penguin-canvas --ref main
+```
+
 ## Verification
 
 - Always run `git diff --check`, `npm run worktree:check`, and
@@ -63,7 +107,7 @@ conflicts; it must not invent or edit product code.
 - Do not create or switch to a temporary `codex/*` branch for this workflow;
   `main` is the canonical sync target.
 - A clean merge can stage a large release delta without changing `HEAD`; report
-  this as merged-but-uncommitted until the user authorizes the commit.
+  this as merged-but-uncommitted until verification and commit are complete.
 - When a protected-file check fails, compare the file across `HEAD`, the target
   remote, and recent history before treating it as local corruption. A shared
   mismatch can indicate stale policy metadata rather than drift.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Upstream Sync Merge"
-  short_description: "Safely sync upstream code while preserving local integration"
-  default_prompt: "Use the repository upstream-sync-merge workflow to sync upstream, preserve local-owned files, and handle only real conflicts with read-only merge advice."
+  short_description: "Merge upstream code and preserve local integration"
+  default_prompt: "Use the repository upstream-sync-merge workflow to merge upstream/main, preserve local-owned files, verify the result, and stop on real conflicts or LFS blockers."

@@ -2845,12 +2845,20 @@ async function saveRemoteSunoFileDetailed(url, materializationKey = '') {
         userAgent: 'T8-PenguinCanvas-Suno-File/1.0',
       }));
       const buffer = remote.buffer;
-      if (!Buffer.isBuffer(buffer) || buffer.length < 14) throw new Error('Suno 文件为空或不完整');
-      if (buffer.subarray(0, 4).toString('ascii') !== 'MThd') {
-        throw new Error('Suno 文件不是有效的 MIDI 文件');
-      }
+      if (!Buffer.isBuffer(buffer) || buffer.length < 4) throw new Error('音乐文件为空或不完整');
+      const isMidi = buffer.length >= 14 && buffer.subarray(0, 4).toString('ascii') === 'MThd';
+      const isZip = buffer[0] === 0x50 && buffer[1] === 0x4b
+        && ((buffer[2] === 0x03 && buffer[3] === 0x04)
+          || (buffer[2] === 0x05 && buffer[3] === 0x06)
+          || (buffer[2] === 0x07 && buffer[3] === 0x08));
+      if (!isMidi && !isZip) throw new Error('音乐文件不是有效的 MIDI 或 ZIP 文件');
       return {
-        url: storeMaterializedOutputBuffer(buffer, 'suno_midi', 'mid', materializationKey),
+        url: storeMaterializedOutputBuffer(
+          buffer,
+          isZip ? 'flowmusic_stems' : 'suno_midi',
+          isZip ? 'zip' : 'mid',
+          materializationKey,
+        ),
         error: null,
       };
     } catch (error) {
@@ -2858,11 +2866,11 @@ async function saveRemoteSunoFileDetailed(url, materializationKey = '') {
       if (!retryableRemoteOutputError(error)) break;
     }
   }
-  proxyRouteError('转存 Suno 文件失败', lastError);
+  proxyRouteError('转存音乐文件失败', lastError);
   return { url: '', error: remoteOutputDownloadFailure(lastError, 'media') };
 }
 
-async function materializeSunoNzResult(result, taskId) {
+async function materializeSunoNzResult(result, taskId, options = {}) {
   const normalizedStatus = String(result?.status || '').trim().toLowerCase();
   const completed = ['succeeded', 'success', 'completed'].includes(normalizedStatus);
   const output = {
@@ -2887,7 +2895,7 @@ async function materializeSunoNzResult(result, taskId) {
     const kind = String(artifact?.kind || 'file');
     const remoteUrl = String(artifact?.url || '').trim();
     if (!remoteUrl) continue;
-    const materializationKey = `suno-nz:${taskId || 'sync'}:${index}:${kind}`;
+    const materializationKey = `${options.materializationPrefix || 'suno-nz'}:${taskId || 'sync'}:${index}:${kind}`;
     let saved;
     if (kind === 'audio') saved = await saveRemoteAudioDetailed(remoteUrl, materializationKey);
     else if (kind === 'video') saved = await saveRemoteVideoDetailed(remoteUrl, null, materializationKey);
@@ -2909,7 +2917,7 @@ async function materializeSunoNzResult(result, taskId) {
     const item = music[index] && typeof music[index] === 'object' ? music[index] : {};
     return {
       id: String(item.id || item.audio_id || `${taskId || 'sync'}:${index}`),
-      clipId: String(item.audio_id || item.id || taskId || ''),
+      clipId: String(item.clip_id || item.audio_id || item.id || taskId || ''),
       audioUrl,
       imageUrl: output.imageUrls[index] || output.imageUrls[0] || '',
       title: safeDiagnosticText(item.title || '', 240),
@@ -3253,6 +3261,18 @@ router.get('/image/seedance-nz/status/:tid', async (req, res) => {
   try {
     const result = await seedanceNz.queryImageTask(req.params.tid, apiKey, { signal: req.t8AbortSignal });
     if (result.status === 'succeeded') {
+      if (result.operationResult && typeof result.operationResult === 'object' && result.operationResult.image_id) {
+        return res.json({
+          success: true,
+          data: {
+            status: 'completed',
+            progress: '100%',
+            operationResult: result.operationResult,
+            outputCount: 0,
+            ...seedanceNzTrace(result),
+          },
+        });
+      }
       const listedImageUrls = (Array.isArray(result.imageUrls) && result.imageUrls.length
         ? result.imageUrls
         : [result.imageUrl])
@@ -3326,6 +3346,56 @@ router.get('/image/seedance-nz/status/:tid', async (req, res) => {
       error: proxyPublicError(error, 'seedance.nz 图像查询失败', [apiKey]),
       ...seedanceNzTrace(error),
     });
+  }
+});
+
+router.post('/3d/seedance-nz/submit', async (req, res) => {
+  const settings = loadRawSettings();
+  const apiKey = String(settings?.zhenzhenSd2ApiKey || '').trim();
+  if (!apiKey) return res.status(400).json({ success: false, error: '请先在 API 设置中填写“贞贞的平价AI小屋 API Key”' });
+  try {
+    const result = await seedanceNz.submitHunyuan3dTask(req.body || {}, apiKey, { signal: req.t8AbortSignal });
+    rememberTaskKey(result.taskId, apiKey, { provider: 'seedance-nz-3d', model: result.model, taskType: result.taskType });
+    return res.json({
+      success: true,
+      data: { taskId: result.taskId, status: 'pending', progress: '0%', model: result.model, taskProvider: 'seedance-nz-3d', ...seedanceNzTrace(result) },
+    });
+  } catch (error) {
+    const status = Number(error?.status || 500);
+    proxyRouteError('proxy/3d/seedance-nz/submit 错误', error, [apiKey]);
+    return res.status(status >= 400 && status < 600 ? status : 500).json({ success: false, error: proxyPublicError(error, 'Hunyuan 3D 请求失败', [apiKey]), ...seedanceNzTrace(error) });
+  }
+});
+
+router.get('/3d/seedance-nz/status/:tid', async (req, res) => {
+  const settings = loadRawSettings();
+  const remembered = recallTaskMeta(req.params.tid, 'seedance-nz-3d');
+  const apiKey = String(remembered?.apiKey || settings?.zhenzhenSd2ApiKey || '').trim();
+  if (!apiKey) return res.status(400).json({ success: false, error: '缺少贞贞的平价AI小屋 API Key' });
+  try {
+    const result = await seedanceNz.queryHunyuan3dTask(req.params.tid, apiKey, { signal: req.t8AbortSignal });
+    if (result.status === 'succeeded') {
+      const remoteUrls = (Array.isArray(result.modelUrls) ? result.modelUrls : [result.modelUrl]).map((value) => String(value || '').trim()).filter(Boolean);
+      if (!remoteUrls.length) return res.status(502).json({ success: false, data: { status: 'failed', progress: '100%', error: '3D 任务完成但未返回可下载模型文件', recoverable: true } });
+      const modelUrls = [];
+      const failures = [];
+      for (const [index, remoteUrl] of remoteUrls.entries()) {
+        const saved = await saveRemoteFalToolboxFile(remoteUrl, 'model3d', `seedance-nz-3d:${req.params.tid}:${index}`);
+        if (saved.url) modelUrls.push(saved.url);
+        else if (saved.error) failures.push(saved.error);
+      }
+      if (!modelUrls.length || modelUrls.length !== remoteUrls.length) {
+        return res.status(502).json({ success: false, data: { status: 'materializing', progress: '99%', error: failures[0]?.message || '3D 模型下载尚未完成', recoverable: true, retryAfterMs: 800 } });
+      }
+      return res.json({ success: true, data: { status: 'completed', progress: '100%', modelUrl: modelUrls[0], modelUrls, urls: modelUrls, outputCount: modelUrls.length, ...seedanceNzTrace(result) } });
+    }
+    if (result.status === 'failed') return res.json({ success: false, data: { status: 'failed', progress: '100%', error: safeDiagnosticText(result.failReason || '3D 任务失败', 240, [apiKey]), ...seedanceNzTrace(result) } });
+    return res.json({ success: true, data: { status: result.status, progress: safeDiagnosticText(seedreamNzProgress(result.progress), 80, [apiKey]), ...seedanceNzTrace(result) } });
+  } catch (error) {
+    const status = Number(error?.status || 500);
+    proxyRouteError('proxy/3d/seedance-nz/status 错误', error, [apiKey]);
+    if (sendTaskResultQueryRecovery(res, error, { taskId: req.params.tid, status: 'materializing' })) return;
+    return res.status(status >= 400 && status < 600 ? status : 500).json({ success: false, error: proxyPublicError(error, 'Hunyuan 3D 查询失败', [apiKey]), ...seedanceNzTrace(error) });
   }
 });
 
@@ -4382,6 +4452,108 @@ router.get('/audio/suno-nz/status/:tid', async (req, res) => {
     return res.status(status >= 400 && status < 600 ? status : 500).json({
       success: false,
       error: proxyPublicError(error, 'Suno 查询失败', [apiKey]),
+      ...seedanceNzTrace(error),
+    });
+  }
+});
+
+function flowMusicResponseData(result, materialized, remembered = {}) {
+  const base = sunoNzResponseData(result, materialized, remembered);
+  const clipIds = Array.isArray(result?.clipIds)
+    ? result.clipIds.map((value) => String(value || '').trim()).filter(Boolean)
+    : [];
+  if (!clipIds.length) {
+    for (const track of base.tracks || []) {
+      const clipId = String(track?.clipId || '').trim();
+      if (clipId && !clipIds.includes(clipId)) clipIds.push(clipId);
+    }
+  }
+  return {
+    ...base,
+    model: 'flowmusic',
+    operation: result?.operation || remembered?.operation || '',
+    clipIds,
+    clipId: clipIds[0] || '',
+  };
+}
+
+router.post('/audio/flowmusic/submit', async (req, res) => {
+  const settings = loadRawSettings();
+  const apiKey = String(settings?.zhenzhenSd2ApiKey || '').trim();
+  if (!apiKey) {
+    return res.status(400).json({ success: false, error: '请先在 API 设置中填写“贞贞的平价AI小屋 API Key”' });
+  }
+  try {
+    const result = await seedanceNz.submitFlowMusicTask(req.body || {}, apiKey);
+    if (result.taskId) {
+      rememberTaskKey(result.taskId, apiKey, {
+        provider: 'flowmusic-nz',
+        taskId: result.taskId,
+        operation: result.operation,
+        resultFamily: result.resultFamily,
+      });
+    }
+    const materialized = await materializeSunoNzResult(
+      result,
+      result.taskId || `sync:${result.operation}`,
+      { materializationPrefix: 'flowmusic-nz' },
+    );
+    const responseData = flowMusicResponseData(result, materialized);
+    if (String(result.status || '').toLowerCase() === 'succeeded') {
+      const failure = sunoNzCompletedOutputFailure(result, materialized);
+      if (failure) {
+        return sendCompletedRemoteOutputFailure(res, failure, responseData, {
+          defaultCode: 'flowmusic_output_unusable',
+          defaultMessage: 'Flow Music 结果无法保存。',
+        });
+      }
+    }
+    return res.json({ success: true, data: responseData });
+  } catch (error) {
+    const status = Number(error?.status || 500);
+    proxyRouteError('proxy/audio/flowmusic/submit 错误', error, [apiKey]);
+    return res.status(status >= 400 && status < 600 ? status : 500).json({
+      success: false,
+      error: proxyPublicError(error, 'Flow Music 请求失败', [apiKey]),
+      ...seedanceNzTrace(error),
+    });
+  }
+});
+
+router.get('/audio/flowmusic/status/:tid', async (req, res) => {
+  const settings = loadRawSettings();
+  const remembered = recallTaskMeta(req.params.tid, 'flowmusic-nz');
+  const apiKey = String(remembered?.apiKey || settings?.zhenzhenSd2ApiKey || '').trim();
+  if (!apiKey) return res.status(400).json({ success: false, error: '缺少贞贞的平价AI小屋 API Key' });
+  try {
+    const result = await seedanceNz.queryFlowMusicTask(req.params.tid, apiKey, {
+      resultFamily: remembered?.resultFamily,
+    });
+    result.operation = remembered?.operation || '';
+    result.resultFamily = remembered?.resultFamily || result.resultFamily;
+    const materialized = await materializeSunoNzResult(
+      result,
+      req.params.tid,
+      { materializationPrefix: 'flowmusic-nz' },
+    );
+    const responseData = flowMusicResponseData(result, materialized, remembered);
+    if (String(result.status || '').toLowerCase() === 'succeeded') {
+      const failure = sunoNzCompletedOutputFailure(result, materialized);
+      if (failure) {
+        return sendCompletedRemoteOutputFailure(res, failure, responseData, {
+          defaultCode: 'flowmusic_output_unusable',
+          defaultMessage: 'Flow Music 结果无法保存。',
+        });
+      }
+    }
+    return res.json({ success: true, data: responseData });
+  } catch (error) {
+    const status = Number(error?.status || 500);
+    proxyRouteError('proxy/audio/flowmusic/status 错误', error, [apiKey]);
+    if (sendTaskResultQueryRecovery(res, error, { taskId: req.params.tid, data: { tracks: [] } })) return;
+    return res.status(status >= 400 && status < 600 ? status : 500).json({
+      success: false,
+      error: proxyPublicError(error, 'Flow Music 查询失败', [apiKey]),
       ...seedanceNzTrace(error),
     });
   }

@@ -247,9 +247,13 @@ function buildRuntimeCatalog() {
           || model === seedanceNz.ZHENZHEN_IMAGE_NB_2_LITE_MODEL
           ? 'nano-banana-2'
       : model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_MODEL
+        || model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_EDIT_MODEL
         || model === seedanceNz.ZHENZHEN_IMAGE_GK_V15_MODEL
         || model === seedanceNz.ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL
         ? 'grok-image'
+        : model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_SEGMENT_MODEL
+          || model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_REGION_EDIT_MODEL
+          ? 'grok-image-tools'
         : 'seedream-v5-pro';
     const maxReferenceImages = family === 'seedream-layer-decomposition'
       ? 1
@@ -268,6 +272,8 @@ function buildRuntimeCatalog() {
             ? 0
             : model === seedanceNz.ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL
               ? 1
+              : model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_EDIT_MODEL
+                ? 3
               : undefined;
     image.push(modelEntry(
       'image',
@@ -276,7 +282,7 @@ function buildRuntimeCatalog() {
       model,
       family,
       {
-        tabLabel: family === 'grok-image'
+        tabLabel: family === 'grok-image' || family === 'grok-image-tools'
           ? 'Grok'
           : family === 'wan-image'
             ? 'Wan Image'
@@ -289,10 +295,14 @@ function buildRuntimeCatalog() {
             : family === 'nano-banana-pro'
               ? '香蕉Pro'
               : family === 'seedream-v5-pro' ? 'Seedream' : 'GPT2',
-        capabilities: family === 'seedream-layer-decomposition'
+        capabilities: family === 'grok-image-tools'
+          ? (model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_SEGMENT_MODEL ? ['segment', 'metadata'] : ['region-edit', 'edit'])
+          : family === 'seedream-layer-decomposition'
           ? ['i2i', 'edit']
           : maxReferenceImages === 0 ? ['t2i'] : ['t2i', 'i2i', 'edit'],
-        parameterKind: family === 'seedream-v5-pro'
+        parameterKind: family === 'grok-image-tools'
+          ? (model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_SEGMENT_MODEL ? 'grok-segment' : 'grok-region-edit')
+          : family === 'seedream-v5-pro'
           ? 'seedream-v5'
           : family === 'qwen-image-3.0'
             ? 'qwen-image-3.0'
@@ -380,8 +390,21 @@ function buildRuntimeCatalog() {
       maxOutputs: 3,
     }));
   }
+  audio.push(modelEntry('audio', 'seedance-nz', seedanceNz.FLOWMUSIC_MODEL, 'Lyria / Flow Music', 'lyria', {
+    description: 'Flow Music 官方九项音乐创作与处理能力；请求 model 固定为 flowmusic',
+  }));
 
   const actions = [];
+  for (const model of seedanceNz.HUNYUAN3D_MODELS || []) {
+    actions.push(actionEntry('model3d', 'seedance-nz', model, model, 'hunyuan-3d', 'model3d', {
+      tab: 'Hunyuan 3D',
+      endpoint: '/v1/3d/generations',
+      orderedImageViews: model === seedanceNz.HUNYUAN3D_IMAGE_MODEL ? 8 : 0,
+      faceCount: { minimum: 10000, maximum: 1500000, default: 500000 },
+      generateTypes: [...(seedanceNz.HUNYUAN3D_GENERATE_TYPES || [])],
+      enablePbrDefault: false,
+    }));
+  }
   for (const item of models.SUNO_NZ_ACTIONS || []) {
     actions.push(actionEntry(
       'audio',
@@ -396,6 +419,23 @@ function buildRuntimeCatalog() {
         referenceType: item.referenceType,
         allowedVersions: item.allowedVersions,
         defaultVersion: item.defaultVersion,
+      },
+    ));
+  }
+  for (const [operation, spec] of Object.entries(seedanceNz.FLOWMUSIC_ACTION_SPECS || {})) {
+    actions.push(actionEntry(
+      spec.resultFamily === 'video' ? 'video' : spec.resultFamily === 'text' ? 'text' : 'audio',
+      'seedance-nz',
+      operation,
+      operation,
+      'lyria',
+      spec.resultFamily,
+      {
+        action: spec.action,
+        requiredFields: spec.requiredFields,
+        allowedFields: spec.allowedFields,
+        fixedModel: seedanceNz.FLOWMUSIC_MODEL,
+        supportsLyria35: spec.supportsLyria35,
       },
     ));
   }

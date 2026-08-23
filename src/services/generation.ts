@@ -295,6 +295,11 @@ export interface ImageQueryResult extends ProviderTransportTrace {
   code?: string;
   recoverable?: boolean;
   retryAfterMs?: number;
+  operationResult?: {
+    image_id?: string;
+    objects?: Array<Record<string, any>>;
+    [key: string]: any;
+  };
 }
 
 // apiModel 透传给后端，让轮询阶段复用与 submit 一致的分类 API Key
@@ -319,6 +324,9 @@ export interface SeedreamNzSubmitRequest {
     | 'zhenzhen-image-g2-i2i'
     | 'zhenzhen-image-g-v2-lowprice'
     | 'zhenzhen-image-gk-v2'
+    | 'zhenzhen-image-gk-v2-edit'
+    | 'zhenzhen-image-gk-v2-segment'
+    | 'zhenzhen-image-gk-v2-region-edit'
     | 'zhenzhen-image-gk-v15'
     | 'zhenzhen-image-gk-v15-edit'
     | 'zhenzhen-image-nb-2-lite'
@@ -350,6 +358,15 @@ export interface SeedreamNzSubmitRequest {
   width?: number;
   height?: number;
   thinking_mode?: boolean;
+  aspect_ratio?: string;
+  nsfw_check?: boolean;
+  operation?: 'segment' | 'region_edit';
+  source_task_id?: string;
+  include_mask_rle?: boolean;
+  image_id?: string;
+  object_indices?: number[];
+  boxes?: number[][];
+  selection_regions?: Array<Record<string, any>>;
 }
 
 export async function submitSeedreamNz(
@@ -1456,13 +1473,16 @@ export interface SeedanceSubmitRequest {
   /** 内置 Seedance 后端；旧画布未设置时后端继续按 zhenzhen-legacy 处理。 */
   taskProvider?: SeedanceTaskProvider;
   providerParams?: Record<string, any>;
+  mode?: 'text' | 'frame' | 'reference_images' | 'reference_video';
+  aspect_ratio?: string;
+  nsfw_check?: boolean;
 }
 
 export interface SeedanceSubmitResult extends ProviderTransportTrace {
   taskId: string;
   taskProvider?: Exclude<SeedanceTaskProvider, 'auto'>;
   model?: string;
-  taskType?: 't2v' | 'i2v' | 'multi';
+  taskType?: 't2v' | 'i2v' | 'v2v' | 'multi';
 }
 
 export async function submitSeedance(
@@ -1492,7 +1512,45 @@ export interface SeedanceQueryResult extends ProviderTransportTrace {
   retryAfterMs?: number;
   taskProvider?: Exclude<SeedanceTaskProvider, 'auto'>;
   model?: string;
-  taskType?: 't2v' | 'i2v' | 'multi';
+  taskType?: 't2v' | 'i2v' | 'v2v' | 'multi';
+}
+
+export type Hunyuan3DModel = 'hunyuan3d-v3.1-text-to-3d' | 'hunyuan3d-v3.1-image-to-3d';
+export interface Hunyuan3DSubmitRequest {
+  model: Hunyuan3DModel;
+  prompt: string;
+  face_count: number;
+  enable_pbr: boolean;
+  generate_type: 'Normal' | 'Geometry' | 'Sketch';
+  images?: string[];
+}
+
+export interface Hunyuan3DQueryResult extends ProviderTransportTrace {
+  status: string;
+  progress?: string;
+  modelUrl?: string;
+  modelUrls?: string[];
+  urls?: string[];
+  error?: string;
+  failReason?: string | null;
+  recoverable?: boolean;
+  retryAfterMs?: number;
+}
+
+export async function submitHunyuan3D(req: Hunyuan3DSubmitRequest, transport: ProviderSubmissionTransport = {}) {
+  const r = await fetch('/api/proxy/3d/seedance-nz/submit', {
+    method: 'POST', headers: providerSubmissionHeaders(transport), body: JSON.stringify(req), signal: transport.signal,
+  });
+  const data = await safeJsonResponse(r, 'Hunyuan 3D 提交');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data, r) as { taskId: string; model: Hunyuan3DModel; taskProvider: 'seedance-nz-3d' } & ProviderTransportTrace;
+}
+
+export async function queryHunyuan3D(taskId: string, transport: ProviderSubmissionTransport = {}): Promise<Hunyuan3DQueryResult> {
+  const r = await fetch(`/api/proxy/3d/seedance-nz/status/${encodeURIComponent(taskId)}`, { signal: transport.signal });
+  const data = await safeJsonResponse(r, 'Hunyuan 3D 查询');
+  if (!r.ok && !data?.data?.recoverable) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data || { status: 'failed', error: data?.error }, r);
 }
 
 export async function querySeedance(
@@ -1572,7 +1630,7 @@ export async function queryMinimaxH3ContextIr(
 // 完全对齐主项目 gpt-image-2-web 的 runSuno / runSunoCover / runSunoExtend
 // ========================================================================
 export type AudioMode = 'generate' | 'cover' | 'extend';
-export type AudioProviderMode = 'suno' | 'seed-audio' | 'whisper' | 'qwen3-tts' | 'minimax' | 'mureka';
+export type AudioProviderMode = 'suno' | 'seed-audio' | 'whisper' | 'qwen3-tts' | 'minimax' | 'mureka' | 'lyria';
 export type SunoPlatform = 'zhenzhen' | 'seedance-nz';
 export type WhisperResponseFormat = 'json' | 'verbose_json' | 'srt' | 'text' | 'vtt';
 
@@ -1862,6 +1920,73 @@ export async function querySunoNz(taskId: string): Promise<SunoNzTaskResult> {
   const data = await safeJsonResponse(r, '贞贞的平价AI小屋 Suno');
   if (!r.ok || !data.success) throw providerResponseError(r, data);
   return withProviderTransportTrace(data.data, r) as SunoNzTaskResult;
+}
+
+export type FlowMusicOperation =
+  | 'flowmusic-generation'
+  | 'flowmusic-lyrics'
+  | 'flowmusic-upload-audio'
+  | 'flowmusic-extend'
+  | 'flowmusic-replace'
+  | 'flowmusic-cover'
+  | 'flowmusic-stems'
+  | 'flowmusic-download-audio'
+  | 'flowmusic-video-clip';
+
+export interface FlowMusicSubmitRequest {
+  operation: FlowMusicOperation;
+  version?: 'default' | 'lyria-3.5';
+  sound_prompt?: string;
+  lyrics?: string;
+  prompt?: string;
+  title?: string;
+  bpm?: number;
+  length?: number;
+  seed?: number;
+  audioUrl?: string;
+  clip_id?: string;
+  extend_from_s?: number;
+  extend_s?: number;
+  instruction?: string;
+  start_s?: number;
+  end_s?: number;
+  strength?: number;
+  format?: 'mp3' | 'wav';
+  preset?: 'simple' | 'modern' | 'player';
+}
+
+export type FlowMusicTaskResult = Omit<SunoNzTaskResult, 'operation'> & {
+  model?: 'flowmusic';
+  operation?: FlowMusicOperation;
+  clipId?: string;
+  clipIds?: string[];
+};
+
+export async function submitFlowMusic(
+  req: FlowMusicSubmitRequest,
+  transport: ProviderSubmissionTransport = {},
+): Promise<FlowMusicTaskResult> {
+  const r = await fetch('/api/proxy/audio/flowmusic/submit', {
+    method: 'POST',
+    headers: providerSubmissionHeaders(transport),
+    body: JSON.stringify(req),
+    signal: transport.signal,
+  });
+  const data = await safeJsonResponse(r, '贞贞的平价AI小屋 Flow Music');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data, r) as FlowMusicTaskResult;
+}
+
+export async function queryFlowMusic(
+  taskId: string,
+  transport: ProviderSubmissionTransport = {},
+): Promise<FlowMusicTaskResult> {
+  const r = await fetch(`/api/proxy/audio/flowmusic/status/${encodeURIComponent(taskId)}`, {
+    signal: transport.signal,
+  });
+  const data = await safeJsonResponse(r, '贞贞的平价AI小屋 Flow Music');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data, r) as FlowMusicTaskResult;
 }
 
 export interface SeedAudioSubmitRequest {

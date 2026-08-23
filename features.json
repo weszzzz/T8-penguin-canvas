@@ -1,25 +1,293 @@
 {
   "$schema": "本文件为 T8-penguin-canvas 节点清单防丢失锁,任何节点删减都需要在 roadmap.md 中说明并更新本文件。",
-  "version": "2.9.6",
-  "lastUpdated": "2026-08-18-v2.9.6-released",
+  "version": "3.0.0",
+  "lastUpdated": "2026-08-23-v3.0.0-released",
+  "jimengCliV1417Seedance25": {
+    "status": "released-v3.0.0-live-verified",
+    "date": "2026-08-23",
+    "releaseIncluded": true,
+    "officialGuide": "https://bytedance.larkoffice.com/wiki/FVTwwm0bGiishxkKOoScdHR2nsg",
+    "officialCli": {
+      "version": "1.4.17",
+      "releaseDate": "2026-08-18",
+      "binaryCommit": "673dd28",
+      "skillMd5": "5a7867991fe42e83708569c459e07208"
+    },
+    "seedance25": {
+      "model": "seedance2.5",
+      "commands": ["text2video", "image2video", "frames2video", "multimodal2video"],
+      "durationSeconds": [4, 30],
+      "resolutions": ["480p", "720p", "1080p"],
+      "vipOnly": true,
+      "multimodal": {
+        "images": 30,
+        "videos": 10,
+        "audios": 10,
+        "total": 50,
+        "referenceMediaDurationSeconds": [2, 30],
+        "audioOnly": true
+      },
+      "fixedModelMultiframeSeparate": true
+    },
+    "seedream50Pro": {
+      "resolutions": ["1.5k", "2k", "4k"],
+      "removedResolution": "1k",
+      "imageToImageReferenceLimit": 10
+    },
+    "accountAudit": {
+      "webSession": "高级会员，页面显示 3644 积分并可见 Seedance 2.5",
+      "cliSession": "重新授权后返回 maestro 高级会员与 3644 积分，并与当前 Web 会话显示一致",
+      "sameAccountConfirmed": true,
+      "paidLiveTest": "passed-one-minimum-spec-task"
+    },
+    "liveVerification": {
+      "submissionCount": 1,
+      "model": "seedance2.5",
+      "command": "text2video",
+      "request": "4 秒 / 480p / 16:9",
+      "creditsConsumed": 48,
+      "terminalStatus": "success",
+      "downloaded": true,
+      "artifact": "output/jimeng-cli-v1417-seedance25-live/seedance25-480p-4s-live.mp4",
+      "bytes": 1315371,
+      "sha256": "787c29a9a74401ea1f111ef308c4b173914c1385650da8d1445d2e62a9d167c6",
+      "observedMedia": "MP4，854x480，H.264 + AAC，4.063991 秒",
+      "fullAudioVideoDecodePassed": true,
+      "secretFreeReport": "output/jimeng-cli-v1417-seedance25-live/report.json"
+    },
+    "workflows": [
+      "docs/workflows/jimeng-cli-seedance2.5-text2video.json",
+      "docs/workflows/jimeng-cli-seedance2.5-image2video.json",
+      "docs/workflows/jimeng-cli-seedance2.5-frames2video.json",
+      "docs/workflows/jimeng-cli-seedance2.5-multimodal.json",
+      "docs/workflows/jimeng-cli-seedance2.5-audio-only.json"
+    ],
+    "verification": [
+      "官方 v1.4.17 安装脚本、version.json、内置 SKILL.md 与全部相关子命令 -h 已逐项读取，不依据旧版本猜测参数。",
+      "后端命令路由、分辨率、时长、模型别名、图生图多参考、全能参考素材上限、纯音频、固定模型多帧边界与五份工作流的定向及相邻回归 62/62 通过。",
+      "当前 Web 高级会员账户已通过 OAuth Device Flow 重新授权给 CLI；真实 Seedance 2.5 最低规格任务完成、下载并通过 FFprobe 与 FFmpeg 全音视频解码。",
+      "发布合同回归 26/26、TypeScript、public:check、RH 工具箱、MiniMax Music3 1,022 文件完整性、31 actions / 269 runtime entries / 81/81 nodes 能力同步和 2,891 模块生产构建通过。",
+      "默认即梦视频模型仍为 seedance2.0fast_vip；旧模型、旧画布字段及智能多帧固定模型行为未回退。"
+    ],
+    "releaseEvidence": {
+      "technicalGates": "passed-before-publish",
+      "affectedUserInstallF8F10AndInstalledUpgrade": "deferred-not-passed",
+      "deferralApproval": "owner-approved-post-release-v3.0.0",
+      "sourceCommit": "92ca7a4ee8748f46fdfb1b624bff26acda6b18dd",
+      "publishedAt": "2026-08-22T17:51:47Z",
+      "releaseUrl": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.0.0",
+      "latest": true,
+      "draft": false,
+      "prerelease": false,
+      "artifacts": {
+        "T8-PenguinCanvas-Setup-3.0.0.exe": {
+          "size": 1317121080,
+          "sha256": "16adbf4c67d5a296e213dfac7147cfb3d5c4414348a3566469b1d071d0505777"
+        },
+        "T8-PenguinCanvas-Setup-3.0.0.exe.blockmap": {
+          "size": 1371933,
+          "sha256": "6b67af9b7646bdf2c7fbee59ab2ce8027997572e5b05fe9720eddad592a5d2d3"
+        },
+        "latest.yml": {
+          "size": 362,
+          "sha256": "618dd9832f181c9bdcc661cd5e4d374a5bef66f9e56ce5822f3f2f5efd6ebfde"
+        }
+      },
+      "verification": "完整发布前和独立发布后三资产回下载均通过；Tag/target、Latest、latest.yml、密封恢复记录与恢复状态清理均通过。"
+    },
+    "boundaries": [
+      "现有默认 Provider、默认模型、节点类型、旧画布字段和 v2.9.9 及更早能力均保持不变。",
+      "正式发布必须从已推送的固定源码提交执行完整 Electron/NSIS、加密、运行时归档、provenance、sealed recovery、GitHub 三资产完整回下载、固定 Tag/target 与 Latest 门禁。"
+    ]
+  },
+  "hunyuan3dAndGrokAug22": {
+    "status": "released-v2.9.9-live-verified",
+    "date": "2026-08-22",
+    "releaseIncluded": true,
+    "provider": "seedance-nz",
+    "platform": "贞贞的平价AI小屋",
+    "referenceProject": "F:/AI-T8-video-onekey/ComfyUI/custom_nodes/ComfyUI_Seedance@28d9a7957e6fe1dfa91291c938768675b2d9eeb7",
+    "officialDocs": "https://api.seedance.nz/docs/llms.txt",
+    "nodes": {
+      "model3d": {
+        "type": "model-3d",
+        "label": "3D",
+        "tabs": ["Hunyuan 3D"],
+        "tabArchitecture": "MODEL_3D_TABS is an explicit extensible registry; future 3D families add sibling tabs without changing the stable model-3d node identity.",
+        "models": [
+          "hunyuan3d-v3.1-image-to-3d",
+          "hunyuan3d-v3.1-text-to-3d"
+        ],
+        "contract": "POST /v1/3d/generations；GET /v1/3d/generations/{task_id}；图生支持 1-8 张按 front/left/right/back/top/bottom/front-left/front-right 排序的图片；face_count 10000-1500000；generate_type=Normal/Geometry/Sketch；成功 GLB 必须立即下载、校验并转存本地后才完成。",
+        "output": "输出 model3d 端口；画布自动创建现有 3D 预览节点，支持交互预览与本地文件下载。"
+      },
+      "grokImageTools": {
+        "type": "grok-image-tools",
+        "models": ["zhenzhen-image-gk-v2-segment", "zhenzhen-image-gk-v2-region-edit"],
+        "contract": "独立两阶段 UI：segment 从同画布 GK v2 源任务取得 source_task_id 并持久化 image_id/objects；region_edit 精确选择 object_indices、boxes 或 selection_regions 三者之一。"
+      },
+      "grokVideo": {
+        "tab": "Grok Video",
+        "model": "zhenzhen-video-g-omni-flash-lowprice",
+        "modes": ["text", "frame", "reference_images", "reference_video"],
+        "contract": "4/6/8/10 秒，720p/1080p/4k，16:9/9:16；参考图只允许 1 或 3 张；参考视频只允许 1 个且不发送 seconds。"
+      }
+    },
+    "workflows": [
+      "docs/workflows/hunyuan3d-v3.1-image-to-3d.json",
+      "docs/workflows/hunyuan3d-v3.1-text-to-3d.json",
+      "docs/workflows/zhenzhen-image-gk-v2-segment.json",
+      "docs/workflows/zhenzhen-image-gk-v2-region-edit.json",
+      "docs/workflows/zhenzhen-video-g-omni-flash-lowprice-text.json",
+      "docs/workflows/zhenzhen-video-g-omni-flash-lowprice-frame.json",
+      "docs/workflows/zhenzhen-video-g-omni-flash-lowprice-reference-images.json",
+      "docs/workflows/zhenzhen-video-g-omni-flash-lowprice-reference-video.json"
+    ],
+    "verification": [
+      "模型、Payload、状态查询、节点端口、运行入口、Hunyuan 3D Tab 注册、路由、本地转存、8 份无凭据工作流与能力目录专项及相邻回归 137/137 通过。",
+      "TypeScript、Provider/Proxy Node 语法与 feature-sync:check 通过；能力目录为 31 actions / 269 runtime entries / 81/81 nodes / zero public gaps。",
+      "真实串行验证：Grok v2 源图与 region_edit JPEG 均由 Sharp 解码；segment、region_edit、低价 Omni 4 秒 1280x720 H.264 视频均成功并下载，视频通过 FFmpeg 全帧解码。",
+      "Hunyuan 图生 3D 成功下载 31,198,488-byte GLB；文生 3D 在选择器修复后重新执行一次明确的新验证任务，成功下载 29,156,812-byte GLB。两份文件均验证 glTF magic、GLB v2、声明长度与实际长度一致；两种 3D 模型的本地物化链路均已验证。",
+      "隔离真实 UI 验收：核心目录开发页可添加 3D 与 Grok 分割编辑节点；Hunyuan 3D Tab、双模型、8 视图顺序、分割/区域编辑切换均可见；视频节点切到平价AI小屋后可选择低价 Omni 及四种模式，页面控制台 error=0。"
+    ],
+    "liveEvidence": {
+      "image3dReport": "output/hunyuan-grok-aug22-live/image3d-report.json",
+      "image3dSha256": "920646075628ea4d0c84056c7d56fd408ea404e6d2cc45cae42ec52dccc301e1",
+      "text3dReport": "output/hunyuan-grok-aug22-live/text3d-report.json",
+      "text3dSha256": "e8f2e75111aa48bb5bf624a71fa49385e9d1cfd1b30d3dd9868d8c71ec5695ad",
+      "secretFree": true,
+      "temporaryRecoveryStateRemoved": true
+    },
+    "releaseEvidence": {
+      "technicalGates": "passed-before-publish",
+      "affectedUserInstallF8F10AndInstalledUpgrade": "deferred-not-passed",
+      "deferralApproval": "owner-approved-post-release-v2.9.9",
+      "sourceCommit": "a68afa5a3fcd9275a6d0d802d82286496daeffd6",
+      "publishedAt": "2026-08-22T10:59:03Z",
+      "releaseUrl": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v2.9.9",
+      "latest": true,
+      "draft": false,
+      "prerelease": false,
+      "artifacts": {
+        "T8-PenguinCanvas-Setup-2.9.9.exe": {
+          "size": 1317093618,
+          "sha256": "8254c55d6da7293acc62b5d4a9da64fc31ad650a7a4c5de34a6ed0aa9560446c"
+        },
+        "T8-PenguinCanvas-Setup-2.9.9.exe.blockmap": {
+          "size": 1371975,
+          "sha256": "4119d6f2fbddc2c5ac7df723d7b3e6bed9522adc72874e92e4ad496c097ce276"
+        },
+        "latest.yml": {
+          "size": 362,
+          "sha256": "e10fd8516d95b888a78855f56e3a5c54839ccb70b64db0ecd92268114d1f1214"
+        }
+      },
+      "verification": "完整发布前和独立发布后三资产回下载均通过；Tag/target、Latest、latest.yml 与恢复状态清理均通过。"
+    },
+    "boundaries": [
+      "现有默认 Provider、默认模型、节点类型、旧画布字段和 v2.9.8 及更早功能均未改变。",
+      "正式发布必须从已推送的固定源码提交执行完整 Electron/NSIS、provenance、sealed recovery、GitHub 三资产回下载、固定 Tag/target 与 Latest 门禁。"
+    ]
+  },
+  "grokV2EditAndLyriaFlowMusic": {
+    "status": "release-authorized-v2.9.8-contract-and-live-verified",
+    "date": "2026-08-21",
+    "releaseIncluded": true,
+    "provider": "seedance-nz",
+    "platform": "贞贞的平价AI小屋",
+    "referenceProject": "F:/AI-T8-video-onekey/ComfyUI/custom_nodes/ComfyUI_Seedance@9247b9ceb2c31f7ccd43b26743469a1c03dbc075",
+    "officialDocs": "https://api.seedance.nz/docs/llms.txt",
+    "image": {
+      "tab": "Grok Image",
+      "model": "zhenzhen-image-gk-v2-edit",
+      "contract": "POST /v1/image/generations；1-3 张有序参考图；n=1-10；aspect_ratio 支持 auto 与官方固定比例；resolution=1k/2k；不发送 quality。"
+    },
+    "audio": {
+      "tab": "Lyria",
+      "fixedRequestModel": "flowmusic",
+      "operations": [
+        "flowmusic-video-clip",
+        "flowmusic-upload-audio",
+        "flowmusic-stems",
+        "flowmusic-replace",
+        "flowmusic-lyrics",
+        "flowmusic-generation",
+        "flowmusic-extend",
+        "flowmusic-download-audio",
+        "flowmusic-cover"
+      ],
+      "contract": "九个名称是 Flow Music 操作/SKU，不是九个 model 值；提交路径按操作切换，任务统一 GET /v1/music/tasks/{task_id} 查询；仅 generation/extend/replace/cover 可发送 lyria-3.5。",
+      "resultHandling": "音频、歌词文本、音乐视频和 stems ZIP 分类型转存；clip_id 持久化并可沿上游音频连接自动传给后续操作。"
+    },
+    "workflows": [
+      "docs/workflows/zhenzhen-image-gk-v2-edit.json",
+      "docs/workflows/flowmusic-generation.json",
+      "docs/workflows/flowmusic-lyrics.json",
+      "docs/workflows/flowmusic-upload-audio.json",
+      "docs/workflows/flowmusic-extend.json",
+      "docs/workflows/flowmusic-replace.json",
+      "docs/workflows/flowmusic-cover.json",
+      "docs/workflows/flowmusic-stems.json",
+      "docs/workflows/flowmusic-download-audio.json",
+      "docs/workflows/flowmusic-video-clip.json"
+    ],
+    "verification": [
+      "tests/flowMusicLyria.test.ts 覆盖模型清单、图像编辑参数、九种操作字段白名单、固定 model、精确路径、任务查询、全结果类型、工作流无密钥与运行能力目录。",
+      "2026-08-21 使用配置中的指定平价AI小屋 Key 串行真实验证 10/10：Grok v2 Edit 生成 1024x1024 JPEG 并由 Sharp 解码；Flow Music 九操作全部完成。",
+      "generation/upload/extend/replace/cover/download 的音频均由 FFmpeg 完整解码；lyrics 返回 351 字文本；stems 返回 12,104,463 bytes ZIP 并验证归档签名；video-clip 返回 720x1280 H.264/AAC MP4 并由系统 FFmpeg 完整解码。",
+      "脱敏报告 output/grok-flowmusic-live-20260821/report.json 不包含 API Key、task_id 或远程签名 URL。"
+    ],
+    "liveVerification": {
+      "verifiedAt": "2026-08-21T08:14:37.833Z",
+      "tasksPassed": "10/10",
+      "allDownloaded": true,
+      "allDecodedOrValidated": true,
+      "secretFreeReport": "output/grok-flowmusic-live-20260821/report.json",
+      "observedCompatibility": "公网 M4A 作为 flowmusic-upload-audio 的 audio_url 可成功导入并返回 clip_id；创作类二次编辑以 flowmusic-generation 返回的原生 clip_id 作为可靠来源。"
+    },
+    "releaseEvidence": {
+      "technicalGates": "must-pass-before-publish",
+      "affectedUserInstallF8F10AndInstalledUpgrade": "deferred-not-passed",
+      "deferralApproval": "owner-approved-post-release-v2.9.8"
+    }
+  },
+  "canvasCatalogMetadataCanonicalRecovery": {
+    "status": "released-v2.9.7-regression-verified",
+    "date": "2026-08-20",
+    "releaseIncluded": true,
+    "affectedVersions": [
+      "2.9.2",
+      "2.9.3",
+      "2.9.4",
+      "2.9.5",
+      "2.9.6"
+    ],
+    "symptom": "画布目录重命名后，升级或再次启动可能提示项目数据库 typed canonical JSON 不变量校验失败。",
+    "rootCause": "目录元数据写入器更新 SQL canvas_documents.updated_at 时，只把 name 与 nodeCount 写回 snapshot_json，遗漏同步 JSON updatedAt。",
+    "correction": [
+      "今后的目录元数据写入把同一个 updatedAt 同时持久化到 SQL 行和画布 JSON，保证当前 schema 的 typed canonical 不变量。",
+      "冷启动只兼容 SQL 时间严格更新、JSON 时间仍合法且更旧、name 合法非空且 nodeCount 精确等于 nodes.length 的已知旧签名。",
+      "兼容读取不会在启动时静默改写用户数据库；getCanvas 继续使用 SQL 行时间作为既有权威值，下一次真实写入才自然持久化 canonical JSON。",
+      "任何不匹配的 updatedAt、nodeCount 或其他 canonical 损坏仍失败关闭。"
+    ],
+    "verification": [
+      "目录专项 10/10、typed canonical 2/2、项目数据库基础 39/39、协作延期门 4/4、Electron/更新/运行时合同 20/20、TypeScript、2,904 模块私有构建与 79/79 节点同步通过。",
+      "测试数据库只创建于系统临时目录并在用例结束后清理；未读取、复制或修改任何用户保留项目数据库。",
+      "固定源码通过 Electron/NSIS、私有扩展、加密、运行时、provenance、sealed recovery、固定 Tag/target、三资产完整回下载和 Latest 门禁。"
+    ],
+    "boundaries": [
+      "该兼容不是通用数据库修复器，不放宽 schema、身份、revision 或其他 typed canonical 校验。",
+      "反馈用户安装、多设备协作、F8-F10 与安装升级证据按 owner-approved-post-release-v2.9.7 后补；延期不等于通过，技术门禁不可延期。"
+    ]
+  },
   "flashVsrModelNameCorrection": {
     "status": "released-v2.9.6-live-verified",
     "date": "2026-08-18",
     "releaseIncluded": true,
-    "provider": "seedance-nz",
-    "platform": "贞贞的平价AI小屋",
-    "nodeType": "fashvsr-video-upscale",
-    "displayName": "FlashVSR 视频超分",
     "currentModel": "FlashVSR_video_upscale",
-    "legacyModelAliases": [
-      "FashVSR_video_upscale"
-    ],
-    "compatibility": [
-      "新节点、模型目录、默认值与无密钥工作流只展示 FlashVSR_video_upscale。",
-      "v2.9.5 已保存画布中的 FashVSR_video_upscale 继续被 schema 和请求层接受，但提交前统一规范化为 FlashVSR_video_upscale。",
-      "内部节点 type、恢复 kind、API route 与 task identity 保持 fashvsr 兼容标识，避免历史画布和进行中任务失效。"
-    ],
-    "liveVerification": {
+    "legacyAliases": ["FashVSR_video_upscale"],
+    "officialDocsObservedModel": "FashVSR_video_upscale",
+    "liveApiVerification": {
       "submittedThisRun": true,
       "completed": true,
       "downloaded": true,
@@ -30,15 +298,19 @@
       "outputSha256": "5cb14e96c5002c3a417b11acdae159ae235dee8e46ae7d7f8574d129c2778472",
       "secretFree": true
     },
-    "verification": [
-      "新拼写 FlashVSR_video_upscale 使用同一平价 AI 小屋渠道真实提交一次并成功；结果完成下载、FFprobe 与全量解码。",
-      "FlashVSR、Seedance 2.5、视频来源与能力清单聚焦回归、TypeScript、Node/JSON 语法和 feature-sync 必须在固定源码发布前通过。",
-      "能力同步保持 31 actions / 253 runtime entries / 79/79 nodes / 0 public gaps；MiniMax Music3 安装资源继续按 1,022 文件、18 个索引、1,000 个模板保护。"
+    "stableNodeType": "fashvsr-video-upscale",
+    "compatibility": [
+      "所有新建节点、UI、Provider 请求、工作流、节点 Schema 与能力目录统一使用 FlashVSR_video_upscale。",
+      "v2.9.5 已保存画布中的旧模型值仅作为兼容别名读取，并在任何上游提交前归一化为 FlashVSR_video_upscale；稳定节点类型和恢复 kind 不变。"
     ],
-    "boundaries": [
-      "官方 llms.txt 在核对时仍显示旧拼写；本次新拼写以真实 Provider 成功任务为运行证据，不冒充文档页面已同步。",
-      "反馈用户安装、多设备协作与安装升级证据按 owner-approved-post-release-v2.9.6 后补；延期不等于通过，技术门禁不可延期。"
-    ]
+    "verification": [
+      "FlashVSR、Seedance 2.5、视频来源与能力目录专项 26/26 通过。",
+      "TypeScript type-check 与 feature-sync:check 通过；能力目录为 31 actions / 253 runtime entries / 79/79 nodes / 0 public gaps。",
+      "源码、工作流与生成能力目录不再把旧拼写作为当前可选模型；旧拼写只保留在兼容分支和回归测试中。",
+      "新拼写 FlashVSR_video_upscale 已使用平价 AI 小屋渠道真实提交一次并成功；结果完成下载、FFprobe 与全量解码。",
+      "v2.9.6 正式流程完成 Electron/NSIS、私有扩展、加密、两套运行时归档、post-build、provenance、sealed recovery、发布前三资产完整回下载及发布后 Latest/digest/size 校验。"
+    ],
+    "boundary": "截至 2026-08-18 官方 llms.txt 仍列旧拼写、未出现 FlashVSR_video_upscale；新拼写以真实 Provider 成功任务为运行证据，不冒充官方文档页面已经同步。反馈用户安装、多设备协作与安装升级证据按 owner-approved-post-release-v2.9.6 后补，延期不等于通过。"
   },
   "fashVsrAndSeedance25Native1080p": {
     "status": "released-v2.9.5-live-verified",
@@ -58,10 +330,7 @@
         "请求固定为 POST /v1/video/generations，body 只含 model 与 metadata.video_url；不发送 prompt、seconds、resolution 或 metadata.content。",
         "查询固定为 GET /v1/video/generations/{task_id}；成功结果必须下载到本地、验证并持久化后才标记节点成功。"
       ],
-      "workflow": "docs/workflows/fashvsr-video-upscale.json",
-      "legacyModelAliases": [
-        "FashVSR_video_upscale"
-      ]
+      "workflow": "docs/workflows/fashvsr-video-upscale.json"
     },
     "seedance25": {
       "models": [
@@ -72,14 +341,7 @@
         "seedance-2.5-standard-multi",
         "seedance-2.5-standard-t2v"
       ],
-      "resolutions": [
-        "480p",
-        "720p",
-        "1080p",
-        "2k",
-        "4k",
-        "native1080p"
-      ],
+      "resolutions": ["480p", "720p", "1080p", "2k", "4k", "native1080p"],
       "native4kSupported": false,
       "liveTest": "not-run-by-owner-cost-boundary",
       "savedWorkflows": 6
@@ -95,9 +357,9 @@
       "secretFree": true
     },
     "verification": [
-      "FashVSR、Seedance 2.5、前端来源、运行恢复、端口、Run 入口与能力清单定向及相邻回归 68/68 通过。",
+      "FlashVSR、Seedance 2.5、前端来源、运行恢复、端口、Run 入口与能力清单定向及相邻回归 68/68 通过。",
       "TypeScript type-check、Node/JSON 语法、feature-sync 与 2,889 模块生产构建通过；能力目录为 31 actions / 253 runtime entries / 79/79 nodes / 0 public gaps。",
-      "FashVSR 只提交一次真实付费任务并完成下载、ffprobe 与全量解码；Seedance 2.5 native1080p 依用户费用边界只按官方文档核对，没有提交付费任务。"
+      "FlashVSR 只提交一次真实付费任务并完成下载、ffprobe 与全量解码；Seedance 2.5 native1080p 依用户费用边界只按官方文档核对，没有提交付费任务。"
     ],
     "compatibility": [
       "默认视频渠道、默认模型、旧 Seedance 2.0、既有 Upscaler 与历史画布显式参数保持不变。",
@@ -133,11 +395,6 @@
           "bytes": 362,
           "sha256": "afa845f034fae4a5464f7bfe33fc6d12e0be51d3eb4885b325fd53573781eb99"
         }
-      ],
-      "verification": [
-        "正式流程完成私有构建、157 个后端源与 4 个本机私有文件加密、双运行时归档、Electron 原生模块重建、NSIS、post-build、provenance、sealed recovery、发布前完整回下载、固定 Tag/target、Latest 与 recovery 清理。",
-        "独立发布后再次完整下载三项公开资产，并匹配本地字节、SHA-256 与 GitHub digest 元数据。",
-        "MiniMax Music3 安装资源完整性为 1,022 文件、18 个风格族索引、1,000 个模板，规范化树 SHA-256 为 d836359b48a4bc3381f8d9eb370ff90dd82cb5ad9aa4e3ba0ed80da2c25b2553。"
       ]
     }
   },
@@ -1101,46 +1358,47 @@
   },
   "release": {
     "status": "published-stable-latest",
-    "version": "2.9.6",
-    "date": "2026-08-18",
-    "publishedAt": "2026-08-18T14:21:09Z",
-    "tag": "v2.9.6",
+    "version": "2.9.7",
+    "date": "2026-08-20",
+    "publishedAt": "2026-08-20T04:53:29Z",
+    "tag": "v2.9.7",
     "latest": true,
-    "sourceCommit": "dce1adf081893f290b65c3be1f14b0f150e46a1f",
+    "sourceCommit": "494d5c4d88ee356150a3a5dfa66e77d83ec6edec",
     "draft": false,
     "prerelease": false,
     "githubImmutable": false,
-    "url": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v2.9.6",
-    "artifacts": [
-      {
-        "name": "T8-PenguinCanvas-Setup-2.9.6.exe",
-        "bytes": 1354114810,
-        "sha256": "bc2670b47d3065e4be6a95a01ff0063b491ed7481897ffd6276ac3e882d58c04",
-        "sha512": "QdLywACOCKlCImC3WRZ3XUMaA3FI7sElHNRcjc2iwJ/FJXPXO5pORg1armGTSAdpqy74XAy5myYnMRJCWbiE3A=="
+    "url": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v2.9.7",
+    "artifacts": {
+      "installer": {
+        "name": "T8-PenguinCanvas-Setup-2.9.7.exe",
+        "size": 1354129105,
+        "sha256": "e90973df761bb83a0006cff146433cea0ce929b6966457b9a4e274895f6dbc66",
+        "sha512": "T2CZa2EvcoF04q69+3NcZqmJKcKdzjtf6PspOXKe2hvUDYTwa9seVjBPeemPdOtoZApH8l6dkXznFSXVEQEqmA=="
       },
-      {
-        "name": "T8-PenguinCanvas-Setup-2.9.6.exe.blockmap",
-        "bytes": 1413270,
-        "sha256": "ee1647565e22aa9cc68479908e9a84054e3a305f5042f410afd9a6cc8d9f8b49"
+      "blockmap": {
+        "name": "T8-PenguinCanvas-Setup-2.9.7.exe.blockmap",
+        "size": 1413441,
+        "sha256": "aea0604cc63a05cc642c3db6a65fd9769594125e5a5cf2dbcbcf4838bac943c6"
       },
-      {
+      "updateManifest": {
         "name": "latest.yml",
-        "bytes": 362,
-        "sha256": "03b998ab76ee7fbe4eee649567522f269ccb974b283c098117605cefaf070c6b"
+        "size": 362,
+        "sha256": "af306513d085c917a7bd78c38054ef08aa2627a14cd31eba0e6f4555319b28c2"
       }
-    ],
+    },
     "verification": [
-      "FlashVSR_video_upscale 已真实提交一次并完成下载、FFprobe 与全量解码；旧 FashVSR_video_upscale 只作为历史画布兼容输入。",
-      "MiniMax Music3 已随 v2.9.3 正式发布，v2.9.6 正式包继续完整包含其节点、工作流、官方固定 Skill 快照、1,022 个上游文件、18 个索引和 1,000 个模板。",
-      "固定源码通过 Electron/NSIS、私有扩展、157 个后端源文件加密、四个本地私有文件加密、两套运行时归档、post-build、provenance、sealed recovery、固定 Tag/target、发布前三资产完整回下载和发布后 Latest/远端 digest/size 门禁；本地 recovery 已清除。",
-      "GitHub Release 非草稿、非预发布并为 Latest；三项远端资产大小和 SHA-256 与本地正式产物一致。GitHub 仓库级 immutable release 未启用，因此继续依赖发布器的精确所有权和禁止覆盖门禁。",
-      "用户明确授权先发布、后补反馈用户安装环境、协作多端及安装升级证据；仅允许 owner-approved-post-release-v2.9.6 精确延期，延期不等于通过。"
+      "项目数据库目录元数据修复覆盖未来 canonical 写入与 v2.9.2-v2.9.6 精确旧漂移的只读启动兼容；非匹配损坏仍失败关闭。",
+      "目录专项 10/10、typed canonical 2/2、项目数据库基础 39/39、协作延期门 4/4、Electron/更新/运行时合同 20/20、TypeScript、2,904 模块私有构建与 79/79 节点同步通过。",
+      "固定 source commit 494d5c4d88ee356150a3a5dfa66e77d83ec6edec 通过 157 个后端源文件及四个本机私有文件加密、两套运行时归档完整验证、Electron native rebuild、NSIS、post-build、provenance、sealed recovery、固定 Tag/target、发布前三资产完整回下载和发布后 Latest/远端 digest/size 门禁；本地 recovery 已清除。",
+      "三项自动更新资产与本地实际字节、SHA-256、installer SHA-512 及 GitHub digest/size 一致；正式 Release 非草稿、非预发布并为 GitHub Latest。",
+      "为避免本机 7-Zip 高并发导致系统不稳定，正式打包进程使用单核亲和性、BelowNormal 优先级与 ELECTRON_BUILDER_COMPRESSION_LEVEL=0；仅降低构建资源占用，所有安装内容、post-build 与远端资产校验保持不变。",
+      "用户已明确授权先发布、后补反馈用户安装环境、协作多端、F8-F10 及安装升级证据；协作证据门只允许完全缺失的清单按 owner-approved-post-release-v2.9.7 延期，不能把延期标记为已通过，任何技术门禁失败均不可延期。"
     ]
   },
   "versionSequencePolicy": {
     "status": "active",
     "date": "2026-07-30",
-    "currentVersion": "2.9.6",
+    "currentVersion": "2.9.7",
     "rules": [
       "版本号每一段只使用 0-9；v2.6.9 的下一正式版本固定为 v2.7.0。",
       "禁止创建、打包、推送、打 tag、发布或写入自动更新元数据为 v2.6.10。",
@@ -1169,6 +1427,7 @@
       "v2.9.3 的下一正式版本固定为 v2.9.4。",
       "v2.9.4 的下一正式版本固定为 v2.9.5。",
       "v2.9.5 的下一正式版本固定为 v2.9.6。",
+      "v2.9.6 的下一正式版本固定为 v2.9.7。",
       "后续改版本前必须同步核对 package.json、package-lock.json、README、features.json、项目 SKILL.md、Release notes、自动更新元数据和 Git tag。"
     ]
   },
