@@ -85,6 +85,35 @@ Developer ID 正式发布另需以下两组之一的公证凭据，并需要 `CS
 - Windows 正式入口保持：`npm run dist:release`
 
 这些命令都有版本级授权、源码 SHA、远端 Ref、平台、架构和资产漂移门，不能绕过脚本直接用 electron-builder 或 `gh release upload --clobber` 代替。
+
+# v3.0.7 火山 PR 状态保真发布完成（2026-08-27）
+
+v3.0.7 已从同一个固定源码提交 `05b9086e57334b6b46fcf5256b87466353ab0e67` 和正式 `v3.0.7` Tag 生成 Windows 与 Apple Silicon 资产，并进入同一个非草稿、非预发布 Latest Release：<https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.0.7>。本版完成 PR #28 的 12 文件协议审计并修复旧 `Processing / Active / Failed` 选择状态在迁移/重载时丢失的问题；未合并 PR 中缺失前端、显式 `Host`、任意 CommonJS 宿主或敏感持久化。Windows 核心目录低资源正式链完成构建、加密、双运行时、native rebuild、NSIS、7/7 `app.asar` 启动合同、provenance、sealed recovery、上传和三资产完整回下载。真实 `macos-15` arm64 workflow <https://github.com/T8mars/T8-penguin-canvas/actions/runs/32993331496> 完成同源私有源恢复、ad-hoc 签名技术预览 DMG/ZIP/更新清单、追加上传及 runner 三资产完整回下载；随后本地独立验证再次完整下载三项 Mac 资产。
+
+Windows 安装包为 1,354,459,972 bytes / SHA-256 `264aa349b1448471cb645c2cac7611b1ba6defbf65b4cb9b593c48049a8d14a6`，blockmap 为 1,413,207 bytes / `2adb9d26747e44dfab349663fab5a242c4f4729909c1a5f44dc53e9aa0035759`，`latest.yml` 为 362 bytes / `627dd9137977c7b66a8ee0f67c30c56abcb26212cfe9b4f4b8fd5ed33cc6a90f`。Mac DMG 为 468,381,079 bytes / `62d131e7db9f83e22e38ac0be0b5854da5d06da45e539524f7023268e18f4b7a`，ZIP 为 461,299,243 bytes / `2f6a1e523d53550a0fe82352c68050d64f8f169f85663c86aab05b59a229beb1`，`latest-mac.yml` 为 536 bytes / `2370e49e15d4145764c0391a732477b3d681c31ef35b369abbbf5628cafbdd9f`。六项 GitHub digest/size、两个自动更新清单、Release target、Tag commit 与 Latest 均一致；Mac 仍是 ad-hoc 签名、未 notarize 的技术预览。
+
+# v3.0.7 火山 PR 状态保真发布授权（2026-08-27）
+
+v3.0.7 只修复 GitHub PR #28 旧 `volc-asset` 数据在核心迁移和重载时被错误提升为 Active 的状态保真问题，并完整继承 v3.0.6 及更早功能。Windows 必须先从固定源码提交与正式 `v3.0.7` Tag 完成低资源正式链；随后真实 `macos-15` arm64 runner 必须从同一个 Tag 构建 ad-hoc 签名技术预览 DMG、ZIP 与 `latest-mac.yml`，追加到同一个非草稿、非预发布 Release，并完整回下载三项 Mac 资产。两端固定源码、Release target、Windows 资产、Mac 资产与两个更新清单不一致时必须失败关闭。
+
+# v3.0.6 火山素材任务恢复发布完成（2026-08-27）
+
+v3.0.6 已从同一个固定源码提交 `47c3d4aa10825d409deb98bcc266cf50fb437c80` 和正式 `v3.0.6` Tag 生成 Windows 与 Apple Silicon 资产，并进入同一个非草稿、非预发布 Latest Release：<https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.0.6>。本版安全吸收 PR #28 的火山素材导入任务持久化、按需状态恢复和旧 `volc-asset` 画布迁移，没有引入任意 CommonJS 插件宿主、显式 `Host` 请求头或路径/响应泄露。Windows 核心目录使用单核、BelowNormal、`ELECTRON_BUILDER_COMPRESSION_LEVEL=0` 的低资源正式链完成三资产发布与完整回下载；真实 `macos-15` arm64 workflow <https://github.com/T8mars/T8-penguin-canvas/actions/runs/32987354091> 以 `release_tag=v3.0.6`、`source_ref=v3.0.6`、`publish=true`、`signing=unsigned-preview` 完成 DMG/ZIP/更新清单、追加上传及三资产完整回下载。
+
+Windows 安装包为 1,354,460,018 bytes / SHA-256 `49fad093930a587526ae0428aa0b474327a9b466166707935e63371c97a7f3b9`，blockmap 为 1,413,092 bytes / `15f80f9ba0aff074393008bed6a89a6a56cc918813ff7252b1b06b72919d5bf3`，`latest.yml` 为 362 bytes / `5119cecd6fcc800fcc7bd79c607fa7cb83a3c65e6dc757e456705468d22aacf0`。Mac DMG 为 468,445,338 bytes / `1ad1147c427a241bf5803c57e400e0e23a5c8aff8a177dfc23a99d4a07c398df`，ZIP 为 461,298,875 bytes / `972659e23b0018e9d955aa4b56d8ccd47f459026e208a672cb33a38c72afcaab`，`latest-mac.yml` 为 536 bytes / `320268579ba6b9adf3ad13f16e195ffb021370c0eeac958e1b18e50436f8cd13`。六项 GitHub digest/size、两个自动更新清单、Release target、Tag peeled commit 与 Latest 均一致；Mac 仍是 ad-hoc 签名、未 notarize 的技术预览。
+
+# v3.0.5 双平台启动修复发布完成（2026-08-26）
+
+v3.0.5 已从同一个固定源码提交 `d806dcddb4bf42d596e80e23f6ee3a50b5df67a2` 和正式 `v3.0.5` Tag 生成 Windows 与 Apple Silicon 资产，并进入同一个非草稿、非预发布 Latest Release：<https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.0.5>。本版补齐 `electron/i18n.cjs` 与 `electron/i18n-catalog.json`，Windows 与 macOS post-build 都通过共用的 7 项 `app.asar` 主进程启动合同。Windows 核心目录低资源正式链完成 NSIS、自动更新清单、provenance、sealed recovery、发布与校验；真实 `macos-15` arm64 workflow <https://github.com/T8mars/T8-penguin-canvas/actions/runs/32970660172> 以 `release_tag=v3.0.5`、`source_ref=v3.0.5`、`publish=true`、`signing=unsigned-preview` 完成同源绑定、私有源恢复、原生依赖、ad-hoc 签名、DMG/ZIP/清单验证、追加上传与三资产完整回下载。
+
+Windows 安装包为 1,354,449,298 bytes / SHA-256 `fda5e9f55a6a5533bd43665cec735345560669e699ad2be8ac2f7b30ad96d680`，blockmap 为 1,413,385 bytes / `9b9b19cdd167a0dcb9bfb3325c3be086895e31d4e947cf4aa8d7f6f6c14c6c31`，`latest.yml` 为 362 bytes / `86cb22b40108f420803d8e72527f5eaa9b122a3779edc79287786ee219ebdcb8`。Mac DMG 为 468,460,995 bytes / `f4fe3af8bcc4777614997f4a48b67609afdfc12b5a7f70f3efbd1b0db02ee4ee`，ZIP 为 461,288,346 bytes / `80570dde9f97609c7efc8d851171fc8ed9fc818a15dc8123621e7defcdce1ebc`，`latest-mac.yml` 为 536 bytes / `3490b34b579734ab127698bd8a32181c41560f9749cb0156a9f859a5bbbd8580`。六项 GitHub digest/size、固定 Tag/target、两个自动更新清单与 Latest 均一致；Mac 仍未使用 Apple Developer ID、未 notarize，维持技术预览边界。
+
+# v3.0.4 同源发布完成（2026-08-26）
+
+v3.0.4 已按 Windows 与 Mac 同一固定提交、同一个正式 `v3.0.4` Tag、同一个 GitHub Release 的规则完成发布。固定源码为 `916007dd3b05abd3e7f84e7a6ac69fc010ac42b7`；Windows 在核心目录通过低资源 `dist:release` 完成 NSIS、blockmap、`latest.yml` 和三资产完整回下载，Mac 由真实 `macos-15` arm64 workflow <https://github.com/T8mars/T8-penguin-canvas/actions/runs/32902049267> 完成构建、ad-hoc 签名、追加上传和三资产完整回下载。正式 Release 为 <https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.0.4>，非草稿、非预发布且为 Latest，target 与 Tag 的 peeled commit 均保持固定源码不变。
+
+Mac DMG 为 468,308,603 bytes / SHA-256 `8834401dec5f5969e16687b52527459ddaeb7dc87c0386c867190605054462e5`，ZIP 为 461,121,544 bytes / `c32d0134bd59880581b9ea7c120e10e1c2be66682c9e2fb842e1e96a2eabc386`，`latest-mac.yml` 为 536 bytes / `21ddada43a45b9d8479b72b8a7b126e280813988db4e4ab1bfc472036c577afc`。同一 Release 的 Windows 安装包为 1,354,295,401 bytes / `62a00ca1f534f0e83b3a6db8bf2169858ee0d7a63a66815c5f6529f4d3643c26`，blockmap 为 1,414,035 bytes / `d60adf03a5f002a08503a07c233e4726bf6001234b394855bcb01be72c49c0df`，`latest.yml` 为 362 bytes / `55593e4d9d07e2109876aa9021f5b08226c2c7277f9cf41d65d2404d0c7e414e`。Mac 仍未使用 Apple Developer ID、未 notarize，维持明确的技术预览边界。
+
 # v3.0.2 annotated tag 失败与 v3.0.3 修复（2026-08-26）
 
 v3.0.2 的 Windows 三项自动更新资产已通过正式门禁并发布。随后同一正式标签触发的真实 `macos-15` arm64 workflow `32882092427` 在任何 Mac 构建与资产上传前失败关闭：旧 `dist-macos.cjs` 只读取 `git ls-remote origin refs/tags/v3.0.2` 的首项，将 annotated tag 对象 SHA 当成提交 SHA，与正确的 `HEAD` / `T8_RELEASE_TARGET` 比较后误判漂移。
