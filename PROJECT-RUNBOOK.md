@@ -66,7 +66,7 @@ npm run worktree:development
 
 - 拉取和依赖更新前先检查 `git status --short --branch`。
 - 不用目录复制同步源码，不在历史 integration 与当前仓库同时改同一功能。
-- build、打包、版本升级、提交、推送、tag 和发布仍需单独明确授权。
+- build、打包、版本升级、tag 和发布仍需单独明确授权；每日上游同步在门禁通过后可自动提交并推送 `origin/main`。
 
 ### 跨平台同步
 

@@ -27,7 +27,7 @@
 - 不得编辑或暂存源/core 工作树中的 `tools/ffmpeg-runtime/ffmpeg.exe`（143,314,432 bytes，SHA-256 `754A10CE2FC4A8C974FF492B351F58C02D35124D1D602FCF30F561FB1BD0F579`）。
 - 不得编辑或暂存源/core 工作树中的 `tools/remove-ai-watermarks-runtime/README.md`（2,298 bytes，SHA-256 `04F13F0ADBB8593372FB9DDFA297A0DFB90D9EAD0325DE0CD340FCFE8B7CED56`）。
 - 不得读取 retained/historical 项目数据库；数据库测试只能创建在系统临时目录并在测试后清理。
-- 用户明确要求的日常开发可在 core 内修改、测试并按精确文件范围提交；版本升级、生产 build/打包、推送、tag 和 GitHub Release 仍须单独明确授权。未来正式包只构建一次。
+- 用户明确要求的日常开发可在 core 内修改、测试并按精确文件范围提交；版本升级、生产 build/打包、tag 和 GitHub Release 仍须单独明确授权。每日上游同步在门禁通过后可自动提交并推送 `origin/main`；未来正式包只构建一次。
 
 ## 产品版本号规则
 
