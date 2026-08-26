@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 
 const read = (relativePath: string) => readFileSync(new URL(relativePath, import.meta.url), 'utf8');
+const require = createRequire(import.meta.url);
 
 test('package metadata declares an arm64 macOS DMG/ZIP update channel without changing Windows NSIS', () => {
   const pkg = JSON.parse(read('../package.json'));
@@ -79,6 +81,18 @@ test('macOS release helpers prepare native media tools and fail closed on platfo
   assert.match(verify, /latest-mac\.yml/);
 });
 
+test('macOS source binding peels annotated remote tags to their commit', () => {
+  const { remoteRefCommit } = require('../scripts/dist-macos.cjs');
+  const ref = 'refs/tags/v3.0.2';
+  const tagObject = 'e2aa674e844e1edc25cdf10dcdab3845b6f424c9';
+  const commit = '24a4481b377aca3793c87dbb224b3c9aeccbe5c8';
+  const output = `${tagObject}\t${ref}\n${commit}\t${ref}^{}`;
+
+  assert.equal(remoteRefCommit(output, ref), commit);
+  assert.equal(remoteRefCommit(`${commit}\t${ref}`, ref), commit);
+  assert.equal(remoteRefCommit('', ref), '');
+});
+
 test('GitHub Actions builds current and future Mac releases on a real Apple Silicon runner', () => {
   const workflow = read('../.github/workflows/release-macos.yml');
 
@@ -97,9 +111,13 @@ test('GitHub Actions builds current and future Mac releases on a real Apple Sili
 
 test('macOS updater language does not tell Mac users to open an NSIS wizard', () => {
   const main = read('../electron/main.cjs');
+  const catalog = JSON.parse(read('../electron/i18n-catalog.json'));
   assert.match(main, /process\.platform === 'darwin'/);
-  assert.match(main, /正在安装更新，应用将自动重启/);
-  assert.match(main, /正在打开安装向导，请按提示完成安装/);
+  assert.match(main, /\? 'updater\.installingMac'/);
+  assert.match(main, /: 'updater\.installingWindows'/);
+  assert.equal(catalog['zh-CN'].updater.installingMac, '正在安装更新，应用将自动重启');
+  assert.equal(catalog['zh-CN'].updater.installingWindows, '正在打开安装向导，请按提示完成安装');
+  assert.notEqual(catalog['en-US'].updater.installingMac, catalog['en-US'].updater.installingWindows);
 });
 
 test('macOS release process and live release evidence are documented after publication', () => {
@@ -111,14 +129,14 @@ test('macOS release process and live release evidence are documented after publi
   assert.match(processDoc, /从下个版本开始的 Windows \+ Mac 同版流程/);
   assert.match(processDoc, /--clobber/);
   assert.equal(features.macDesktopRelease.platform, 'macOS 12+ / Apple Silicon arm64');
-  assert.equal(features.macDesktopRelease.currentReleasePlan.releaseTag, 'v3.0.0');
-  assert.equal(features.macDesktopRelease.currentReleasePlan.sourceRef, 'v3.0.0-mac.5');
-  assert.equal(features.macDesktopRelease.status, 'released-v3.0.0-mac-arm64-preview-live-verified');
+  assert.equal(features.macDesktopRelease.currentReleasePlan.releaseTag, 'v3.0.3');
+  assert.equal(features.macDesktopRelease.currentReleasePlan.sourceRef, 'v3.0.3');
+  assert.equal(features.macDesktopRelease.status, 'released-v3.0.3-mac-arm64-preview-live-verified');
   assert.equal(features.macDesktopRelease.releaseIncluded, true);
-  assert.equal(features.macDesktopRelease.releaseEvidence.sourceCommit, '69fbf1182d63f7e2c4347abbc88c70496ebad491');
+  assert.equal(features.macDesktopRelease.releaseEvidence.sourceCommit, '64d9a708dd92d38a77b710e06855ddcf6b4e652c');
   assert.equal(features.macDesktopRelease.releaseEvidence.workflowConclusion, 'success');
   assert.equal(features.macDesktopRelease.releaseEvidence.releaseTargetUnchanged, true);
   assert.equal(features.macDesktopRelease.releaseEvidence.macArtifacts.length, 3);
-  assert.equal(features.macDesktopRelease.releaseEvidence.macArtifacts[0].sha256, 'f4bfbcbd8eaadecdfa889e47307e531bb6b4b77a61dc54356319ff7ce1c4b6fe');
+  assert.equal(features.macDesktopRelease.releaseEvidence.macArtifacts[0].sha256, '18ab11a8dfbf4f23a6a66f8167160a6bae1f00c758ddcd9ca796e181b890dfa5');
   assert.equal(features.macDesktopRelease.processDoc, 'docs/macos-release.md');
 });

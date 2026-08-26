@@ -723,7 +723,7 @@ test('RH toolbox image cutout is exposed as a reusable node capability', async (
   assert.match(uploadNode, /rf\.setCenter/);
   assert.match(outputNode, /rf\.setCenter/);
   assert.match(uploadNode, /已创建 \$\{newNodes\.length\} 个输出素材节点/);
-  assert.match(outputNode, /已创建 \$\{newNodes\.length\} 个输出素材节点/);
+  assert.match(outputNode, /nodes:output\.logs\.rhImageCreated/);
   assert.match(uploadNode, /onComplete=\{\(result\) => handleProduce\(result\.imageUrls, \{ type: 'rh-capability', label: result\.tool\.title \}\)\}/);
   assert.match(outputNode, /onComplete=\{\(result\) => handleProduce\(result\.imageUrls, \{ type: 'rh-capability', label: result\.tool\.title \}\)\}/);
 });
@@ -986,6 +986,9 @@ test('RH toolbox runtime can consume private maker events without shipping maker
 test('RH toolbox maker is dev-only and guarded from packaged builds', () => {
   const registry = readFileSync(new URL('../src/config/nodeRegistry.ts', import.meta.url), 'utf8');
   const canvas = readFileSync(new URL('../src/components/Canvas.tsx', import.meta.url), 'utf8');
+  const nodeCatalog = readFileSync(new URL('../src/i18n/nodeCatalog.ts', import.meta.url), 'utf8');
+  const visibleCatalog = readFileSync(new URL('../src/i18n/nodeVisibleCatalog.ts', import.meta.url), 'utf8');
+  const i18nCheck = readFileSync(new URL('../scripts/check-i18n.ts', import.meta.url), 'utf8');
   const ports = readFileSync(new URL('../src/config/portTypes.ts', import.meta.url), 'utf8');
   const postBuild = readFileSync(new URL('../electron/_post_build.cjs', import.meta.url), 'utf8');
   const publicCheck = readFileSync(new URL('../scripts/check-public-clean.cjs', import.meta.url), 'utf8');
@@ -996,6 +999,12 @@ test('RH toolbox maker is dev-only and guarded from packaged builds', () => {
   assert.match(canvas, /const RH_TOOLBOX_MAKER_MODULE = '\.\/nodes\/RHToolboxMakerNode'/);
   assert.match(canvas, /lazyCanvasNode\(\(\) => import\(\/\* @vite-ignore \*\/ RH_TOOLBOX_MAKER_MODULE\), 'RHToolboxMakerNode'\)/);
   assert.match(canvas, /import\.meta\.env\?\.DEV \? \{ 'rh-toolbox-maker': RHToolboxMakerNode \} : \{\}/);
+  assert.match(nodeCatalog, /export const DEV_ENGLISH_NODE_CATALOG[\s\S]*?'rh-toolbox-maker'/);
+  assert.match(nodeCatalog, /\.\.\.\(import\.meta\.env\?\.DEV\s*\?\s*DEV_ENGLISH_NODE_CATALOG\s*:\s*\{\}\)/);
+  assert.match(i18nCheck, /ENGLISH_NODE_CATALOG, DEV_ENGLISH_NODE_CATALOG/);
+  assert.match(i18nCheck, /const ENGLISH_NODE_COVERAGE_CATALOG[\s\S]*?DEV_ENGLISH_NODE_CATALOG/);
+  assert.match(visibleCatalog, /const RH_TOOLBOX_MAKER_DEV_ENTRIES[\s\S]*?=\s*import\.meta\.env\?\.DEV\s*\?\s*\[[\s\S]*?\['RH工具箱制作器'/);
+  assert.match(visibleCatalog, /\.\.\.RH_TOOLBOX_MAKER_DEV_ENTRIES/);
   assert.match(ports, /import\.meta\.env\?\.DEV[\s\S]*'rh-toolbox-maker':\s*\{\s*inputs:\s*\[\],\s*outputs:\s*\['text'\]\s*\}/);
   assert.match(postBuild, /checkNoRhToolboxMaker/);
   assert.match(postBuild, /RHToolboxMakerNode/);
@@ -1310,7 +1319,7 @@ test('RH stop buttons cancel the remote RunningHub task instead of only stopping
   assert.match(runningHubNode, /await cancelRh\(tid, activeRhSiteRef\.current\)/);
   assert.match(runningHubNode, /提交返回后立即取消 RH 后台任务/);
   assert.match(runningHubNode, /stopPoll\(new Error\('已取消'\)\)/);
-  assert.match(runningHubNode, /cancelling \? '取消中\.\.\.' : '停止'/);
+  assert.match(runningHubNode, /cancelling \? t\('runningHub\.cancelling'\) : t\('runningHub\.stop'\)/);
   assert.match(rhToolsNode, /cancelRh/);
   assert.match(rhToolsNode, /stopRequestedRef/);
   assert.match(rhToolsNode, /cancelInFlightRef/);
