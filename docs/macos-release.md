@@ -10,6 +10,15 @@
 - Windows 专用 `remove-ai-watermarks` / ParseHub Python 离线归档不会塞进 Mac 包；相关本地工具需要用户自行安装兼容 Python 环境。其缺失不得影响普通画布和云端节点启动。
 - 首个未公证预览升级到未来 Developer ID 正式版时，按手动覆盖安装处理；配置正式签名后，后续版本才把 `latest-mac.yml` + ZIP 视为可交付的 Mac 自动更新链路。
 
+## v3.0.9 已发布结果
+
+- Windows 与 Mac 固定源码/Tag：`d6ed9c0bb0445d99823a5811935c8d4e2d1359d0` / `v3.0.9`，进入同一非草稿、非预发布 Latest Release：<https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.0.9>。
+- 真实 Apple Silicon workflow：<https://github.com/T8mars/T8-penguin-canvas/actions/runs/33084748534>，于 `2026-08-27T15:00:20Z` 成功完成；runner 端和本机独立验证都完整回下载三项 Mac 资产。
+- `T8-PenguinCanvas-3.0.9-mac-arm64.dmg`：468,399,962 bytes，SHA-256 `64dc6a724b71dd5906c79ca64db554074f783db58b5e6e54f696078a2a3a1fb3`。
+- `T8-PenguinCanvas-3.0.9-mac-arm64.zip`：461,304,305 bytes，SHA-256 `98fdf87857f4192fcc3e99725b0426603425251ce1b41739e8f85223f4a74be2`。
+- `latest-mac.yml`：536 bytes，SHA-256 `a4dd8699441bd0a6f0f1a68d6c451dc848eceddd136a7e8eb29d2de50da953f3`；ZIP size/SHA-512 与下载字节一致。
+- 当前仍为 ad-hoc 完整性签名、未使用 Apple Developer ID、未公证技术预览；不得描述为 Apple 已认证包。
+
 ## v3.0.0 已发布结果
 
 - 正式 Release：<https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.0.0>，非草稿、非预发布。
@@ -85,6 +94,20 @@ Developer ID 正式发布另需以下两组之一的公证凭据，并需要 `CS
 - Windows 正式入口保持：`npm run dist:release`
 
 这些命令都有版本级授权、源码 SHA、远端 Ref、平台、架构和资产漂移门，不能绕过脚本直接用 electron-builder 或 `gh release upload --clobber` 代替。
+
+# v3.0.9 启动与性能控制体验发布授权（2026-08-27）
+
+v3.0.9 只纳入核心目录开发启动稳定性和顶部画布性能控制条整合，完整继承 v3.0.8 及更早能力。Windows 必须先从固定源码提交与正式 `v3.0.9` Tag 完成低资源正式链；随后真实 `macos-15` arm64 runner 必须从同一个 Tag 构建 ad-hoc 签名技术预览 DMG、ZIP 与 `latest-mac.yml`，追加到同一个非草稿、非预发布 Release，并完整回下载三项 Mac 资产。两端固定源码、Release target、Windows 资产、Mac 资产与两个更新清单不一致时必须失败关闭。
+
+# v3.0.8 火山素材选材与本地中转发布完成（2026-08-27）
+
+v3.0.8 已从同一个固定源码提交 `5ad4408a9eefbc4c6bf32606a86ad8167e84f528` 和正式 `v3.0.8` Tag 生成 Windows 与 Apple Silicon 资产，并进入同一个非草稿、非预发布 Latest Release：<https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.0.8>。本版完成核心火山素材节点的单一有界预览栏、逐项删除/清空、通用 auto-Output 退出与安全遗留清理，并复用现有云上传目标完成本地文件中转导入。Windows 核心目录低资源正式链完成构建、加密、双运行时、native rebuild、NSIS、7/7 `app.asar` 启动合同、provenance、sealed recovery、上传、完整回下载和恢复清理。真实 `macos-15` arm64 workflow <https://github.com/T8mars/T8-penguin-canvas/actions/runs/33050616302> 完成同源私有源恢复、ad-hoc 签名技术预览 DMG/ZIP/更新清单、追加上传及 runner 完整回下载；本机独立验证再次完整下载并核对三项 Mac 资产。
+
+Windows 安装包为 1,354,463,465 bytes / SHA-256 `18d50bcef887a0c1ae4459dbe91841ec19395a9b96b46148ba0acce84bb1f999`，blockmap 为 1,413,574 bytes / `cba423e4ee5aace84122e56228c62f93747558f481a34064491fa5055fd824f1`，`latest.yml` 为 362 bytes / `1dcca85d8daf4e4ba29785b2346e5d8a59398e02771768709a95e9d45a07451b`。Mac DMG 为 468,423,467 bytes / `ecb51699973761f40e2615e2eaa8443edf69c6bc5f5c4269faaf113af79b21a2`，ZIP 为 461,302,294 bytes / `c7fdc3912928a4e7794b2e14580ef9da6d0c594f2e29db4eea726412ee6420aa`，`latest-mac.yml` 为 536 bytes / `b3bac7017e33bd4c0e1672a7bf6d5b7576a226167ef0d50b00d4b4a8d7beacf9`。六项 GitHub digest/size、两个自动更新清单、Release target、Tag commit、workflow source 与 Latest 均一致；Mac 仍是 ad-hoc 签名、未 notarize 的技术预览。
+
+# v3.0.8 火山素材选材与本地中转发布授权（2026-08-27）
+
+v3.0.8 只纳入核心 `volcengine-assets` 的单一已选素材预览栏、逐项删除/清空、通用 auto-Output 物化退出及安全遗留清理，以及复用现有云上传目标的本地文件中转导入；完整继承 v3.0.7 及更早能力。Windows 必须先从固定源码提交与正式 `v3.0.8` Tag 完成低资源正式链；随后真实 `macos-15` arm64 runner 必须从同一个 Tag 构建 ad-hoc 签名技术预览 DMG、ZIP 与 `latest-mac.yml`，追加到同一个非草稿、非预发布 Release，并完整回下载三项 Mac 资产。两端固定源码、Release target、Windows 资产、Mac 资产与两个更新清单不一致时必须失败关闭。
 
 # v3.0.7 火山 PR 状态保真发布完成（2026-08-27）
 

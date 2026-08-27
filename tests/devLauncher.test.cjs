@@ -5,12 +5,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const { waitForLocalService } = require('../scripts/wait-for-local-service.cjs');
 
 test('development launcher waits for backend before frontend and browser', () => {
   const launcherPath = path.join(__dirname, '..', 'start-dev.bat');
   const launcherBytes = fs.readFileSync(launcherPath);
   const launcher = launcherBytes.toString('utf8');
+  const cleanup = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'stop-local-dev-processes.ps1'), 'utf8');
   const newlineCount = (launcher.match(/\n/g) || []).length;
   const windowsNewlineCount = (launcher.match(/\r\n/g) || []).length;
   const backendWait = launcher.indexOf('18766/api/status');
@@ -32,11 +34,32 @@ test('development launcher waits for backend before frontend and browser', () =>
   assert.match(backendCommand, /chcp 65001 >nul && npm run dev:backend/);
   assert.match(frontendCommand, /chcp 65001 >nul && npm run dev:vite/);
   assert.doesNotMatch(launcher, /timeout \/t [23] >nul/);
+  assert.doesNotMatch(launcher, /netstat\s+-ano/);
+  assert.match(launcher, /stop-local-dev-processes\.ps1/);
+  assert.match(launcher, /-ProjectRoot "%~dp0\."/);
+  assert.match(cleanup, /Get-NetTCPConnection -State Listen -LocalPort \$ports/);
+  assert.match(cleanup, /\$owner -gt 0/);
+  assert.match(cleanup, /taskkill\.exe \/F \/T \/PID \$rootId/);
+  assert.match(cleanup, /Test-ProjectDevSeed/);
+  assert.match(cleanup, /Test-LauncherShell/);
   assert.equal(
     windowsNewlineCount,
     newlineCount,
     'start-dev.bat must use CRLF consistently because cmd.exe can concatenate bare-LF commands',
   );
+});
+
+test('development cleanup script resolves its project root after parameter binding', { skip: process.platform !== 'win32' }, () => {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'stop-local-dev-processes.ps1');
+  const result = spawnSync(
+    'powershell.exe',
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, '-PortList', '65534,65535'],
+    { encoding: 'utf8', timeout: 15_000 },
+  );
+
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /Cannot bind argument to parameter 'Path'/i);
 });
 
 test('development backend uses the Electron ABI owner and watches source dependencies', () => {
