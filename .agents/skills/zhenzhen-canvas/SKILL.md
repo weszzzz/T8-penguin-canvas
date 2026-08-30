@@ -158,6 +158,21 @@ The released Seedance 2.5 source passed 101 adjacent tests, TypeScript, public-s
 - Keep every `CanvasInner` hook before any conditional return, mount RH management modals in the document portal above ReactFlow controls, and scale the selected-node action bar with the same viewport zoom as its node.
 - The v2.9.1 flow produced one final Electron/NSIS artifact set. Installer `T8-PenguinCanvas-Setup-2.9.1.exe` is 1,364,794,815 bytes with SHA-256 `354a186710ca7bfef1274f5837b6e17747cff3e980e8eae0e7fc9b0da66a1591`; its blockmap is 1,422,590 bytes with SHA-256 `132b83ef6eb1600065d953f3de1c913a9639373c83cf7a0e4199d4ff23866aff`; `latest.yml` is 362 bytes with SHA-256 `df12efffb63c20032e98f1db697183b1c3155a509d31b9a992162df51a962ced`. Post-build, provenance, sealed recovery, exact draft ownership, GitHub digest/size metadata, full prepublish and independent postpublish remote downloads, final Latest verification, and recovery cleanup passed.
 - Affected-user installation, multi-device collaboration, and installed-upgrade evidence remain explicitly deferred under `owner-approved-post-release-v2.9.1` and must never be reported as passed before they exist.
+- Canvas persistence and recovery boundary: SQLite is the authoritative source
+  for the canvas catalog and durable canvas state. `data/canvas_*.json` files
+  are compatibility mirrors and must not be treated as an independent catalog
+  or used to overwrite newer database state. The configured `canvasAutoSavePath`
+  is the source of legacy autosave files; inspect that setting and preserve the
+  original files before recovery.
+- Legacy autosave files may lack `canvasId`, `projectId`, or `entityUid`.
+  Recover them through the application's import or restore path so the runtime
+  creates a real persisted canvas identity and revision. Do not copy a legacy
+  JSON file into a modern data directory and call it recovered.
+- When autosaves from multiple locations represent separate canvases, restore
+  each as its own canvas. Do not combine several canvases into one unless the
+  creator explicitly asks for content consolidation. Deduplicate by stable
+  canvas identity when available, otherwise by normalized content and revision;
+  retain the original autosave artifacts as recovery evidence.
 - v2.7.8 includes RH Toolbox `text.translate` through formal tool `translate-cutout-v1` / WebApp `2084616885802463233`. `runRhTextTranslation` is the only shared Provider-facing capability entry; Text, LLM/Vision user input, and text Output nodes expose the same compact `译` action and persist a bounded `smartTranslation` receipt. A changed source becomes `stale` and is not overwritten, while protected `@` media references fail closed if the Provider does not preserve their placeholders. The RH-focused suite passes 24/24, the adjacent UI/persistence suite passes 53/53, and TypeScript, capability sync, public-source checks, production frontend build, post-build RH marker checks, packaging, and release gates pass. Live RunningHub evidence remains deferred.
 - v2.7.8 includes the MiniMax H3 `shot_count` LIST as persisted Canvas `shotCount`: `0` keeps legacy AUTO behavior and fixed values are exactly `1..20`. The selection is exposed beside target duration, defaults safely for old canvases, is allowed by the generated-node schema, is persisted in `lastRun`, and is compiled into both the system constraint and user request summary before the single LLM submission. A fixed count requires consecutive `[Shot 1]..[Shot N]` labels and overrides approximate counts from the base prompt or reference template; it does not add a Provider request or silently change the default channel/model. Reference-node regression passes 46/46 with the bundled runtime, while Canvas H3 and related authority/capability/preflight/doctor regression passes 71/71. Packaging and release gates pass; live Provider evidence remains deferred.
 
