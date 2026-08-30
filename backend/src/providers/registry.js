@@ -339,6 +339,17 @@ function normalizeNumber(value, fallback, min, max) {
   return Math.max(min, Math.min(max, Math.round(n)));
 }
 
+function normalizeImageSizeOverride(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (!text) return '';
+  const match = text.match(/^(\d{3,5})x(\d{3,5})$/);
+  if (!match) return '';
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 256 || height < 256 || width > 8192 || height > 8192) return '';
+  return `${width}x${height}`;
+}
+
 function normalizePlainObject(value, maxEntries = 64) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   const out = {};
@@ -473,6 +484,7 @@ function normalizeProvider(raw, previous = null) {
     baseUrl,
     enabled: normalizeBoolean(raw.enabled, false),
     apiKey: cleanSecret(raw.apiKey || raw.api_key, previousConfig.apiKey),
+    imageSizeOverride: normalizeImageSizeOverride(raw.imageSizeOverride || raw.image_size_override || previousConfig.imageSizeOverride),
     imageModels: normalizeModelList(raw.imageModels || raw.image_models),
     videoModels: normalizeModelList(raw.videoModels || raw.video_models),
     chatModels: normalizeModelList(raw.chatModels || raw.chat_models),
