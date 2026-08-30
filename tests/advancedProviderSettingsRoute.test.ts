@@ -63,6 +63,14 @@ test('settings route persists advancedProviders with masking and secret preserva
           imageModels: ['MusePublic/489_ckpt_FLUX_1'],
         },
         {
+          id: 'custom-openai',
+          protocol: 'openai-compatible',
+          enabled: true,
+          baseUrl: 'https://api.example.com/v1',
+          apiKey: 'openai-secret-123456',
+          imageSizeOverride: '1024X1536',
+        },
+        {
           id: 'bad url',
           protocol: 'modelscope',
           baseUrl: 'ftp://not-allowed',
@@ -77,8 +85,10 @@ test('settings route persists advancedProviders with masking and secret preserva
   const modelscope = masked.data.advancedProviders.find((p: any) => p.id === 'modelscope');
   assert.equal(modelscope.apiKey, '****3456');
   assert.equal(modelscope.hasApiKey, true);
-  assert.equal(masked.data.advancedProviderSummary.enabledCount, 1);
-  assert.equal(masked.data.advancedProviderSummary.configuredKeyCount, 1);
+  const customOpenAi = masked.data.advancedProviders.find((p: any) => p.id === 'custom-openai');
+  assert.equal(customOpenAi.imageSizeOverride, '1024x1536');
+  assert.equal(masked.data.advancedProviderSummary.enabledCount, 2);
+  assert.equal(masked.data.advancedProviderSummary.configuredKeyCount, 2);
   assert.equal(masked.data.advancedProviders.some((p: any) => p.id === 'bad url'), false);
   assert.equal(JSON.stringify(masked.data).includes('ms-secret-123456'), false);
 

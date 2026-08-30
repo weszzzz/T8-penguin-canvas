@@ -66,6 +66,17 @@ function selectedModel(requested, providerModels, fallback) {
   return model;
 }
 
+function imageSizeOverride(provider) {
+  if (provider?.protocol !== 'openai-compatible') return '';
+  const value = String(provider?.imageSizeOverride || '').trim().toLowerCase();
+  const match = value.match(/^(\d{3,5})x(\d{3,5})$/);
+  if (!match) return '';
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 256 || height < 256 || width > 8192 || height > 8192) return '';
+  return `${width}x${height}`;
+}
+
 function bearerHeaders(provider) {
   return {
     Accept: 'application/json',
@@ -559,6 +570,24 @@ function buildAgnesImageJsonBody(provider, input, model, prompt, refs = []) {
   return body;
 }
 
+function providerErrorDetail(raw) {
+  const error = raw?.error;
+  const message = [
+    typeof error === 'object' ? error?.message : '',
+    raw?.message,
+    raw?.detail,
+    typeof error === 'string' ? error : '',
+    raw?.error_description,
+  ]
+    .map((value) => trimBodyForError(value))
+    .find(Boolean) || '';
+  const code = trimBodyForError(
+    typeof error === 'object' ? (error?.code || error?.type) : (raw?.code || raw?.type),
+  );
+  if (!message) return code;
+  return code && !message.toLowerCase().includes(code.toLowerCase()) ? `${code}: ${message}` : message;
+}
+
 async function generateChat(provider, input = {}, options = {}) {
   const validation = validateProvider(provider, { apiKeyRequired: true });
   if (!validation.ok) return validation;
@@ -740,6 +769,7 @@ async function generateImage(provider, input = {}, options = {}) {
   const refsInput = collectReferenceImageInputs(input.images, input.referenceImages, input.reference_images);
   const hasReferenceImages = refsInput.length > 0;
   const useAgnesJson = useAgnesImageJson(provider, model);
+  const size = imageSizeOverride(provider) || String(input.size || '').trim();
 
   let url;
   let requestBody;
@@ -760,7 +790,7 @@ async function generateImage(provider, input = {}, options = {}) {
       }
     }
     url = providerEndpointUrl(provider, '/images/generations', ['imageGenerationEndpoint', 'image_generation_endpoint']);
-    requestBody = JSON.stringify(buildAgnesImageJsonBody(provider, input, model, prompt, refs));
+    requestBody = JSON.stringify(buildAgnesImageJsonBody(provider, { ...input, size }, model, prompt, refs));
     requestHeaders = bearerHeaders(provider);
   } else if (hasReferenceImages) {
     let files;
@@ -778,14 +808,14 @@ async function generateImage(provider, input = {}, options = {}) {
       return { ok: false, code: 'invalid_reference', providerId: provider.id, protocol: provider.protocol, error: '参考图解析失败。' };
     }
     url = providerEndpointUrl(provider, '/images/edits', ['imageEditEndpoint', 'image_edit_endpoint']);
-    requestBody = buildImageEditFormData({ model, prompt, input, files });
+    requestBody = buildImageEditFormData({ model, prompt, input: { ...input, size }, files });
     requestHeaders = bearerMultipartHeaders(provider);
   } else {
     const body = {
       model,
       prompt,
     };
-    if (input.size) body.size = String(input.size);
+    if (size) body.size = size;
     if (input.n != null) body.n = Number(input.n);
     if (input.quality) body.quality = String(input.quality);
     if (input.response_format) body.response_format = String(input.response_format);
@@ -813,7 +843,7 @@ async function generateImage(provider, input = {}, options = {}) {
         providerId: provider.id,
         protocol: provider.protocol,
         model,
-        error: `扩展图像调用失败：HTTP ${res.status}${raw?.message ? ` ${trimBodyForError(raw.message)}` : ''}`,
+        error: `扩展图像调用失败：HTTP ${res.status}${providerErrorDetail(raw) ? ` · ${providerErrorDetail(raw)}` : ''}`,
         raw,
         ...trace,
       };
@@ -968,6 +998,8 @@ module.exports = {
   generateChat,
   generateImage,
   generateVideo,
+  imageSizeOverride,
+  providerErrorDetail,
   providerEndpointUrl,
   readChatEventStream,
   testProvider,

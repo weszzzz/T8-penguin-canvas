@@ -12,14 +12,14 @@
 ## 当前权威开发路径
 
 - 当前宿主的权威路径先读 `PROJECT-RUNBOOK.md`，不得把另一操作系统的绝对路径套到本机。
-- macOS 当前仓库为 `/Users/wes/Documents/T8-penguin-canvas`。`main` 用于读取、拉取、上游同步合并和检查，不启动开发服务；代码修改或开发启动前必须使用获准的非 release 开发分支，并让 `npm run worktree:development` 通过。
+- macOS 当前仓库为 `/Users/wes/Documents/T8-penguin-canvas`。`main` 是默认的读取、开发、拉取、上游同步合并和检查分支；代码修改或开发启动前运行 `npm run worktree:development`。只有专用 `T8-penguin-canvas-dev-*` 工作树、release 路径和 detached HEAD 继续受额外限制。
 - Windows 路径 `E:\PenguinPravite\T8-penguin-canvas` 只在 Windows 宿主上作为默认开发目录；其历史集成事实继续保留，不代表 macOS 任务应切换到该路径。
 - merge commit 的第一父提交是 core checkpoint `4e3061094014b5dc2720d52ed178a62e8469a9d3`，第二父提交是 release/F2 checkpoint `e0c6679b5a22539dd5b4983165ecc3f9d5c790e1`。
 - `E:\PenguinPravite\T8-penguin-canvas` 的 `codex/vibex-workbench-node` 已无损采用双父语义 merge commit `68b5f72526a7272cc9787f6fda8b27a6f2fb54c8` 及后续修复；F2 与 core 的代码已经统一。
 - `E:\PenguinPravite\T8-penguin-canvas-dev-integration-f2-core-20260720` 只保留为已完成集成的历史参考，不再作为必需开发入口，也不要在两个目录同时修改同一功能。
 - `E:\PenguinPravite\T8-penguin-canvas-release-2.5.7` 继续冻结，不得在任何 release 命名路径开发。
 - release/F2 的旧 `T8_ALLOW_LEGACY_F2_WORKTREE=1` 例外已随 HEAD 从 `9b6f6a4...` 移动到 checkpoint 而永久失效；这只用于继续阻止在旧 release 目录开发，不限制 canonical core。
-- `npm run worktree:check` 在所有宿主都必须通过。`npm run worktree:development` 只在实际代码开发前要求通过；release 路径上的失败是保护机制，不得绕过。`T8-penguin-canvas-dev-*` 仍可在特殊隔离任务中使用，但不是默认要求。
+- `npm run worktree:check` 在所有宿主都必须通过。实际代码开发或启动前运行 `npm run worktree:development`；release 路径和 detached HEAD 上的失败是保护机制，不得绕过。`T8-penguin-canvas-dev-*` 仅在需要隔离时使用，不是默认要求。
 
 ## 永久保护
 

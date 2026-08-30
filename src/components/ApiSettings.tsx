@@ -1270,6 +1270,7 @@ export default function ApiSettingsModal({ open, onClose }: ApiSettingsModalProp
     const isVolc = provider.protocol === 'volcengine';
     const isModelScope = provider.protocol === 'modelscope';
     const isAgnes = provider.protocol === 'agnes';
+    const isOpenAiCompatible = provider.protocol === 'openai-compatible';
     const sectionCls = isPixel
       ? 't8-api-settings-provider-panel border p-3 space-y-4 min-w-0'
       : 't8-api-settings-provider-panel border rounded-xl p-3 sm:p-4 space-y-4 min-w-0';
@@ -1617,6 +1618,19 @@ export default function ApiSettingsModal({ open, onClose }: ApiSettingsModalProp
                   className={fieldInputCls}
                   placeholder={guide?.baseUrlPlaceholder || 'https://api.example.com/v1'}
                 />
+              </label>
+            )}
+            {isOpenAiCompatible && (
+              <label className="space-y-1">
+                <span className={`text-[11px] ${labelCls}`}>{t('providerForm.imageSizeOverride')}</span>
+                <input
+                  value={provider.imageSizeOverride || ''}
+                  onChange={(e) => updateAdvancedProvider(provider.id, { imageSizeOverride: e.target.value })}
+                  className={fieldInputCls}
+                  placeholder={t('providerForm.imageSizeOverridePlaceholder')}
+                  inputMode="numeric"
+                />
+                <span className={`block text-[10px] leading-relaxed ${hintCls}`}>{t('providerForm.imageSizeOverrideHint')}</span>
               </label>
             )}
           </div>

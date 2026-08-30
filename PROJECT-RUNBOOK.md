@@ -13,8 +13,8 @@ T8 Penguin Canvas 的源码、开发启动、检查与跨平台入口说明。�
 
 - Codex 项目 ID：`7d7159ce-4d74-4c4b-b4b5-7b00da870c2f`（项目名：`t8 画布`）。
 - Git `origin`：`https://github.com/weszzzz/T8-penguin-canvas.git`；这是当前读写远端，不能从 `package.json` 的上游元数据猜测推送目标。
-- macOS 当前默认分支为 `main`，用于读取、拉取、上游同步合并和检查，不启动开发服务。
-- 代码开发必须在获准的非 release 开发分支进行。
+- macOS 当前默认分支为 `main`，用于读取、代码开发、开发启动、拉取、上游同步合并和检查。
+- `T8-penguin-canvas-dev-*` 仅在需要隔离时使用；release 命名路径和 detached HEAD 不得用于日常开发。
 - 历史 integration 与 release 目录不是日常开发入口。
 
 ## 安装
@@ -26,7 +26,7 @@ npm --prefix backend install
 
 ## 开发启动入口
 
-两个入口都只能在获准的非 release 开发分支使用。启动前必须先执行：
+两个入口都可以在 canonical core 的 `main` 或其他已连接开发分支使用；启动前必须先执行：
 
 ```bash
 npm run worktree:development
@@ -38,7 +38,7 @@ macOS 图形入口：
 ./start-dev.command
 ```
 
-当前图形脚本本身未内置 worktree role 门，所以上述手动预检不可省略；在门禁接入脚本前，不得从 `main` 或 release 路径直接运行。
+当前图形脚本本身未内置 worktree role 门，所以上述手动预检不可省略；release 命名路径或 detached HEAD 不得直接运行。
 
 终端入口：
 
@@ -56,7 +56,7 @@ npm run worktree:check
 npm run type-check
 ```
 
-实际代码修改前，进入获准的非 release 开发分支后再运行：
+实际代码修改前，在 `main` 或其他已连接开发分支上运行：
 
 ```bash
 npm run worktree:development

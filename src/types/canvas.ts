@@ -150,6 +150,7 @@ export interface AdvancedProviderConfig {
   allowRemote?: boolean;
   apiKey?: string;
   hasApiKey?: boolean;
+  imageSizeOverride?: string;
   imageModels?: string[];
   videoModels?: string[];
   chatModels?: string[];

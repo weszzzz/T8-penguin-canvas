@@ -262,6 +262,50 @@ test('OpenAI compatible image generation normalizes url and b64_json results', a
   assert.equal(calls[0].body.n, 2);
 });
 
+test('OpenAI compatible image generation applies a provider image size override', async () => {
+  const calls: any[] = [];
+  const provider = {
+    id: 'custom-openai',
+    protocol: 'openai-compatible',
+    baseUrl: 'https://api.example.com/v1',
+    apiKey: 'sk-secret',
+    imageSizeOverride: '1024x1024',
+    imageModels: ['gpt-image-2'],
+  };
+
+  const result = await openaiCompatible.generateImage(provider, {
+    prompt: 'a tiny penguin',
+    size: '768x1344',
+  }, {
+    fetchImpl: async (url: string, init: any) => {
+      calls.push({ url, body: JSON.parse(init.body) });
+      return jsonResponse({ data: [{ url: 'https://cdn.example.com/penguin.png' }] });
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(calls[0].body.size, '1024x1024');
+});
+
+test('OpenAI compatible image errors include nested upstream details', async () => {
+  const provider = {
+    id: 'custom-openai',
+    protocol: 'openai-compatible',
+    baseUrl: 'https://api.example.com/v1',
+    apiKey: 'sk-secret',
+    imageModels: ['gpt-image-2'],
+  };
+
+  const result = await openaiCompatible.generateImage(provider, {
+    prompt: 'a tiny penguin',
+  }, {
+    fetchImpl: async () => jsonResponse({ error: { code: 'invalid_size', message: 'size is not supported' } }, 400),
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error, '扩展图像调用失败：HTTP 400 · invalid_size: size is not supported');
+});
+
 test('OpenAI compatible image edit posts reference images to images/edits as multipart form data', async () => {
   const calls: any[] = [];
   const provider = {
