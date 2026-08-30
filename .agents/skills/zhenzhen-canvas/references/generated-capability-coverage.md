@@ -3,22 +3,22 @@
 > Machine-generated from the real Canvas Node Schema, creative capability manifest,
 > runtime model/action catalog, and handler bindings. Do not edit by hand.
 
-- Aggregate SHA-256: `3b5557e0bd1442bbeb08417321cdeba7c3476174d2d69d6fedbf95c47fb30325`
-- Capabilities / handlers: **31 / 31**
-- Canvas nodes: **82**
-- Referenced / unreferenced nodes: **73 / 9**
-- Accounted / unexplained nodes: **82 / 0**
-- Direct capability nodes: **73**
+- Aggregate SHA-256: `c09df5268478a924492a6f0e1d2f25292ec56192c7db686cdc0d4a0d7f3f3f55`
+- Capabilities / handlers: **39 / 39**
+- Canvas nodes: **83**
+- Referenced / unreferenced nodes: **74 / 9**
+- Accounted / unexplained nodes: **83 / 0**
+- Direct capability nodes: **74**
 - Internal compatibility nodes: **1**
 - Semantically superseded nodes: **8**
 - Public capability gaps: **0**
-- Fully operable nodes: **19**
-- Runtime model/action entries: **277**
-- Dynamic node inventory (total / executable / generatable): **82 / 63 / 12**
-- Dynamic runtime inventory (LLM / image / video / audio / actions): **34 / 45 / 123 / 17 / 58**
-- Operation risk contracts: **152** (L0 91, L1 44, L2 17, L3 0)
+- Fully operable nodes: **20**
+- Runtime model/action entries: **278**
+- Dynamic node inventory (total / executable / generatable): **83 / 64 / 13**
+- Dynamic runtime inventory (LLM / image / video / audio / actions): **34 / 45 / 124 / 17 / 58**
+- Operation risk contracts: **196** (L0 115, L1 53, L2 28, L3 0)
 - Unknown node references: **0**
-- Coverage receipt: `t8-creative-capability-coverage-receipt-v1` / `fd2b985344c298df01487fe47d7c923032a499625e1959608863508d7a79a501`
+- Coverage receipt: `t8-creative-capability-coverage-receipt-v1` / `63578987affd57afc8996aefd24a7f4f95b127457f49a007f056467aa5fb05d4`
 
 “Understand” means the node exists in the authoritative schema. Other columns are true only
 when at least one registered high-level capability explicitly advertises that operation.
@@ -53,6 +53,7 @@ when at least one registered high-level capability explicitly advertises that op
 | `minimax-h3-official-prompt-enhancer` MiniMax H3官方提示词增强器 | inspiration | direct-capability | yes | yes | `canvas.node-add`, `create.script` | yes | yes | yes | yes | yes | yes |
 | `seedance20-prompt-enhancer` Seedance 2.0提示词增强器 | inspiration | direct-capability | yes | yes | `canvas.node-add`, `create.script` | yes | yes | yes | yes | yes | yes |
 | `mv-music-master` MV 音乐大师 | core | direct-capability | yes | yes | `canvas.node-add` | yes | yes | yes | — | yes | yes |
+| `localization-master` 多语言本地化大师 | core | direct-capability | yes | yes | `canvas.node-add`, `localization.cast-voices`, `localization.compose`, `localization.create`, `localization.generate-dub`, `localization.package`, `localization.transcribe`, `localization.translate`, `localization.verify` | yes | yes | yes | yes | yes | yes |
 | `runninghub` RunningHub | rh | direct-capability | yes | — | `canvas.node-add` | yes | yes | yes | — | yes | yes |
 | `runninghub-wallet` RH钱包应用 | rh | direct-capability | yes | — | `canvas.node-add` | yes | yes | yes | — | yes | yes |
 | `rh-config` RH 配置 | rh | internal-compat | — | — | — | — | — | — | — | — | — |
@@ -115,7 +116,7 @@ receive installed / credential / region readiness at request time before it is e
 
 - llm: **34**
 - image: **45**
-- video: **123**
+- video: **124**
 - audio: **17**
 - actions: **58**
 
