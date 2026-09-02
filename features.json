@@ -1,7 +1,228 @@
 {
   "$schema": "本文件为 T8-penguin-canvas 节点清单防丢失锁,任何节点删减都需要在 roadmap.md 中说明并更新本文件。",
-  "version": "3.1.1",
-  "lastUpdated": "2026-08-30-v3.1.1-released-live-verified",
+  "version": "3.1.3",
+  "lastUpdated": "2026-09-02-v3.1.3-released-dual-platform-verified",
+  "startupPosterCarousel": {
+    "status": "released-v3.1.3-live-verified",
+    "date": "2026-09-02",
+    "releaseIncluded": true,
+    "campaignId": "free-online-canvas-2026-09",
+    "targetUrl": "https://api.seedance.nz/canvas",
+    "asset": "src/assets/startup-posters/free-online-infinite-canvas.png",
+    "interaction": [
+      "使用选定的叠层卡片视觉；当前单海报隐藏无意义的上一张、下一张、序号和手势提示，多海报时自动启用真实卡片叠层。",
+      "多海报支持滚轮与触控板累积阈值、鼠标拖动、触控滑动、左右方向键、Home/End 和显式前后按钮；一次手势最多切换一张。",
+      "整张海报与立即体验按钮均打开 https://api.seedance.nz/canvas；Electron 优先使用受控 openExternal IPC并兼容旧版 void 成功返回，浏览器先取得 about:blank 安全句柄、清空 opener 后再跳转，避免 Chromium 在 noopener 已成功打开时返回 null 导致假失败。",
+      "右上角关闭、Esc、焦点圈定和焦点恢复完整；动画遵守 prefers-reduced-motion，弹层打开期间阻止背景画布滚轮和页面滚动。"
+    ],
+    "readiness": "仅在当前项目、当前画布、权威 revision、已加载画布 ID 与 ReactFlow 初始化全部指向同一活动画布后开始等待；随后还必须满足画布/Pane 具有真实可见尺寸、加载占位消失、预计可见节点全部挂载、连续 3 次稳定采样、至少 900ms 沉淀、一次非超时空闲机会以及全部海报图片完成加载解码，才允许弹层进入 DOM。画布未创建、仍繁忙、隐藏、加载中、失败或海报解码失败时不显示黑框。",
+    "suppressionContract": {
+      "durationMs": 604800000,
+      "sameVersion": "勾选并关闭或跳转后，从该次操作时间起完整等待 7x24 小时；到期毫秒即重新显示。",
+      "versionUpgrade": "优先读取 Electron main 通过 t8pc:get-info 返回的运行时版本，并以 Vite 注入的 package.json 版本兜底；版本不一致时立即清除旧记录并显示新版本海报。",
+      "newVersionRestart": "新版本再次勾选后，以新版本号和新的操作时间重新开始 7 天计时。",
+      "unchecked": "未勾选时仅在当前 renderer 会话内关闭，下一次应用启动重新显示，不会在切换画布时重复弹出。",
+      "storageFailure": "localStorage/sessionStorage 缺失、损坏或拒绝访问时失败开放，海报仍可显示且应用不会崩溃。"
+    },
+    "verification": [
+      "专项自动化 9/9 通过，覆盖同版本第 7 天前 1ms、精确到期边界、Electron 版本升级即时失效、新版本重新计时、未勾选仅本次启动、损坏/拒绝存储失败开放、运行时版本兜底、多海报循环与叠层位置、画布可见稳定门槛以及 Electron/浏览器跳转返回合同。",
+      "TypeScript、i18n（4413 个键 / 83 个节点）与完整 npm run build 通过；海报原图以 2048x1536 原尺寸进入构建产物。",
+      "独立临时数据库和全新 headless Chrome 的真实 UI 验收通过：预置 12 个真实文本节点，弹层首次进入 DOM 时 12/12 节点已渲染、画布加载占位已消失、2048x1536 海报已完成加载解码，实测沉淀 944ms；桌面卡片 720x540，390x844 移动端无横纵溢出，单海报不显示导航/进度，浏览器运行错误为 0。",
+      "通过真实 Chrome 指针点击立即体验，确认创建 https://api.seedance.nz/canvas 目标页面并关闭弹层，没有出现跳转假失败提示。",
+      "实机验证持久记录严格为 604800000ms；同版本重载保持隐藏，模拟版本变化后立即重新显示并清除旧记录。截图与报告保存在 artifacts/startup-poster-ui。",
+      "已随 v3.1.3 正式发布；海报资源已进入 Windows 与 macOS 正式包，双平台固定源码、自动更新清单与 GitHub 远端完整回下载均通过。"
+    ]
+  },
+  "electronReleaseV313": {
+    "status": "released-v3.1.3-dual-platform-verified",
+    "date": "2026-09-02",
+    "releaseIncluded": true,
+    "version": "3.1.3",
+    "tag": "v3.1.3",
+    "latest": true,
+    "sourceCommit": "ed7e9e71c0b45e732eac89fcc6e4324ac5a7a1e9",
+    "publishedAt": "2026-09-02T09:00:24Z",
+    "url": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.3",
+    "scope": [
+      "Creator Agent 首次打开只在当前项目、当前画布、权威 revision 与 ReactFlow 初始化全部就绪后挂载，避免画布仍在恢复时抢跑会话/模型请求并误报操作失败。",
+      "Creator Agent 保持宽屏自然对话、三项真实 LLM 建议、回复期间下一轮草稿/附件/引用可继续准备、历史搜索与最新回复定位，并补齐对话级草稿隔离和无效画布引用清理。",
+      "Creator Agent 新增有界文档落地能力，可从受控上传内容提取 PDF 与文本型资料，向真实 LLM 提供带来源标记的创作上下文；不把文件路径、凭据或原始 Provider 响应写入对话。",
+      "Creator 专用 API 设置改为聚焦的凭据入口，补齐焦点圈定、Esc 关闭、关闭后焦点返回与背景对话隔离，避免设置层和创作面板互相抢键盘。",
+      "新增启动活动海报：只在权威画布和真实可见节点稳定且图片解码完成后显示；单海报保持极简，多海报支持滚轮、拖动、触控和键盘切换，受控跳转在线画布，并按 Electron 版本精确支持 7 天内不再显示。",
+      "贞贞的平价AI小屋 Hailuo TAB 新增 hailuo-h3-max-t2v 与 hailuo-h3-max-i2v，严格执行文档规定的提示词、5-15 秒、480P/768P、比例和首尾帧合同，并附两份无凭据工作流。",
+      "完整保留 v3.1.2 及更早全部节点、模型、工作流、Provider 协议、MiniMax Music3、Veo Omni 1.1、多语言本地化大师、默认渠道与旧画布字段。"
+    ],
+    "verification": [
+      "Hailuo H3 Max 两模型已各提交一次真实任务并完成终态、下载、FFprobe 与 FFmpeg 全片解码；后续复验复用同一任务和本地结果，没有重复扣费。",
+      "启动海报专项自动化与真实浏览器 UI 验收已覆盖权威画布就绪、节点稳定、原图解码、桌面/移动布局、受控外链、多海报交互和精确版本化 7 天抑制。",
+      "正式发布前低资源串行门禁通过 221/221：前端/启动海报/Hailuo/API 设置 65/65、Electron 运行时 Creator Repository/Route/LLM/文档/UI 111/111、Electron/更新器/macOS/运行时/发布合同 45/45；TypeScript、4413 个双语键、39 actions / 280 runtime / 83/83 nodes / 0 public gaps 能力同步、公开源码与 2,949 模块生产构建均通过。",
+      "Windows 正式链已通过私有前后端、170 个后端源与 4 个私有文件加密、双运行时、native rebuild、NSIS、7 文件 app.asar 启动合同、provenance、sealed recovery、GitHub 自动更新资产和完整回下载；发布恢复文件已清除。",
+      "真实 macos-15 arm64 workflow 33611804369 从同一不可变 v3.1.3 / ed7e9e71c0b45e732eac89fcc6e4324ac5a7a1e9 构建，通过私有源恢复、原生依赖、ad-hoc 签名、DMG/ZIP/updater、追加上传和 runner 回下载；本机独立验证又完整下载并核对三项 Mac 资产。",
+      "双平台六资产合并后再次完整下载 Windows 三件套，与本地正式构建、GitHub digest/size 和 latest.yml SHA-512 对账通过；Release 为非草稿、非预发布 Latest，固定 Tag 未移动。"
+    ],
+    "artifacts": {
+      "windows": {
+        "T8-PenguinCanvas-Setup-3.1.3.exe": {
+          "bytes": 1377933066,
+          "sha256": "ed7495cec5a502b287fed1cfb3653cfeb18dfe1862498780c76c4acd50a21dc7"
+        },
+        "T8-PenguinCanvas-Setup-3.1.3.exe.blockmap": {
+          "bytes": 1437328,
+          "sha256": "9275a2058ed179f6fde7f0583259cdba98e22c17f91af68be7139f4408f6454e"
+        },
+        "latest.yml": {
+          "bytes": 362,
+          "sha256": "fd38baa7e2bcdb769a70f6f7676c99df845d0153a7b8d6afdfb35b35a6b85b4f"
+        }
+      },
+      "macosArm64": {
+        "signing": "ad-hoc unsigned preview; no Apple Developer ID notarization",
+        "workflowRun": "https://github.com/T8mars/T8-penguin-canvas/actions/runs/33611804369",
+        "T8-PenguinCanvas-3.1.3-mac-arm64.dmg": {
+          "bytes": 513796205,
+          "sha256": "4ee4b765b40345ca3c614143994c9570bbf4465e1c0928e561575636d729a1f1"
+        },
+        "T8-PenguinCanvas-3.1.3-mac-arm64.zip": {
+          "bytes": 505761814,
+          "sha256": "90896bead53370b1bba40afcf46893e49ea2d7f21a858b0289b7a562b8955800"
+        },
+        "latest-mac.yml": {
+          "bytes": 536,
+          "sha256": "2a2097edc23f7743bc2568c5d3c6dd0c775533823044894570e4bd935e707310"
+        }
+      }
+    },
+    "evidenceBoundary": {
+      "technicalGates": "must-pass-before-release",
+      "affectedUserInstallF8F10AndInstalledUpgrade": "deferred-not-passed",
+      "deferralApproval": "owner-approved-post-release-v3.1.3",
+      "rule": "证据后补只适用于反馈用户安装、多端协作、F8-F10、真人自然语言体验、设备级读屏/触控/缩放与安装升级；测试、构建、加密、运行时、app.asar 启动合同、NSIS、provenance、sealed recovery、固定 Tag/target、Windows/Mac 自动更新资产与完整性验证不可延期。"
+    }
+  },
+  "hailuoH3MaxVideoModels": {
+    "status": "released-v3.1.3-live-verified",
+    "date": "2026-09-01",
+    "releaseIncluded": true,
+    "provider": "seedance-nz",
+    "platform": "贞贞的平价AI小屋",
+    "videoTab": "hailuo-2.3",
+    "models": [
+      "hailuo-h3-max-t2v",
+      "hailuo-h3-max-i2v"
+    ],
+    "officialDocs": {
+      "url": "https://api.seedance.nz/docs/llms.txt",
+      "checkedAt": "2026-09-01",
+      "lastModified": "Mon, 31 Aug 2026 23:54:18 GMT",
+      "sha256": "25f9f103297de3ed88a55e39b828e4f57470af10707e5042251f62551e657580"
+    },
+    "contract": {
+      "shared": "两个模型均强制 1-20480 字符提示词、5-15 秒字符串时长以及 480P/768P 分辨率。",
+      "t2v": "不接受参考素材；metadata.ratio 必填且仅允许 21:9、16:9、4:3、1:1、3:4、9:16。",
+      "i2v": "必须提供 1 张首帧，可选第 2 张尾帧；只发送顶层 images，不发送 metadata.ratio，也不接受视频或音频参考。",
+      "compatibility": "只在贞贞的平价AI小屋 Hailuo TAB 追加两个显式模型；Hailuo 2.3、普通/Global H3、MiniMax H3 OW、默认渠道、默认模型与旧画布字段不迁移。"
+    },
+    "workflows": [
+      "docs/workflows/hailuo-h3-max-t2v.json",
+      "docs/workflows/hailuo-h3-max-i2v.json"
+    ],
+    "verification": {
+      "offline": "模型清单、动态控件、请求隔离、无效枚举、提示词、首尾帧、无凭据工作流和 TypeScript 均通过专项验证。",
+      "live": [
+        {
+          "model": "hailuo-h3-max-t2v",
+          "attempts": 1,
+          "status": "succeeded",
+          "bytes": 1546195,
+          "sha256": "38c428fab75ee1bacc51023ef4c60fb1a76b8521f192bd67c54c24b526c98887",
+          "media": "832x480 · 5.184s · H.264 MP4 · full decode passed"
+        },
+        {
+          "model": "hailuo-h3-max-i2v",
+          "attempts": 1,
+          "status": "succeeded",
+          "bytes": 1151850,
+          "sha256": "996521a3321efcdc456b7b03dfa7a30c06db65b07e5b913373ba7794523a3372",
+          "media": "480x480 · 5.184s · H.264 MP4 · full decode passed"
+        }
+      ],
+      "sanitizedReport": "output/hailuo-h3-max-live-20260901/report.json",
+      "credentialsPersisted": false,
+      "submissionRule": "每个模型只提交一次；完成后复用同一任务下载与重新解码，没有重复提交。",
+      "scope": "已随 v3.1.3 正式发布；固定源码、Windows 与真实 macOS arm64 双平台包、自动更新清单及远端完整回下载均通过。"
+    }
+  },
+  "creatorAgentV2InteractionHardening": {
+    "status": "released-v3.1.3-live-verified",
+    "date": "2026-09-01",
+    "releaseIncluded": true,
+    "highlights": [
+      "修复 CreatorAgentPanelV2 热更新期间残留 blocksComposer 引用导致整个画布被错误边界接管的问题；当前源码、TypeScript 与运行页面均无该标识符或异常。",
+      "LLM 回复期间输入框保持可编辑，用户可提前写下一条想法；完成、停止或失败恢复只在输入框仍为空时还原上一条内容，不覆盖新草稿。",
+      "草稿从画布级改为对话级隔离，新对话保持空白，切回原对话恢复其文字、附件和画布引用；旧版画布级草稿只迁移一次。",
+      "历史对话新增本地搜索、双行完整标题与时间；恢复长对话时定位最新助手回复，并在用户停留上方时显示查看新回复入口。",
+      "每次打开历史都会清空上次筛选，关闭并重新打开 Creator 时会重新定位最新助手回复，避免旧搜索和旧滚动位置让用户误以为内容消失。",
+      "自动选择的 LLM、图像和视频模型名称允许完整换行显示；窄屏和触控布局给历史、新对话、设置与画布引用补充可见文字标签。",
+      "已删除的画布节点引用会在发送前主动清除并提示；Creator 面板通过 body Portal 脱离 canvas-shell 的 isolation 堆叠上下文，修复窄屏下侧栏控件压在对话内容之上的重叠。",
+      "Creator 懒加载在空闲期预取；首次打开时立即显示同主题六步骨架与对话框，不再只剩启动图标。",
+      "桌面 Creator 面板从 440px 扩展为 660–760px 自适应宽度，实际 1280px 视口约 717px；回复保持适合阅读的行宽，媒体预览同步扩大，长文本不再挤成狭长段落。",
+      "最新三项建议固定在对话区与输入框之间，桌面三列、窄屏单列；即使长回复滚动或用户开始准备下一轮，三个选择也始终可见。",
+      "LLM 回复期间附件上传、画布引用、历史查看、设置检查与下一轮草稿互不锁死；当前轮完成不会清空用户为下一轮准备的文字、附件或画布引用。",
+      "520px 及以下保留六个进度点，并额外显示“第 N/6 步 · 当前阶段”，不依赖颜色或隐藏文字理解当前进度。",
+      "首次打开不再只依赖快速重试：必须确认当前项目、活动画布、权威 revision 与 ReactFlow 初始化属于同一画布后才挂载 Creator，画布切换或加载失败会立即撤销就绪状态。",
+      "上传 PDF 与文本型资料会在受控边界内提取有界文本并附来源标记后交给真实 LLM；空文件、超限、不可提取内容和不支持格式会明确失败，不把本机路径带进模型上下文。",
+      "Creator 专用 API 设置只展示当前所需凭据区，支持键盘焦点圈定、Esc 关闭、背景对话 inert 与关闭后焦点返回。"
+    ],
+    "verification": [
+      "Creator V2 前端交互与相邻专项纳入正式 65/65 回归；Electron 运行时 Creator Repository/Route/LLM/文档/UI 串行回归 111/111，TypeScript 通过。",
+      "真实本地画布无控制台错误；1280x720 桌面面板实测宽 716.8px，520x800 与 360x740 窄屏均无横向溢出，关闭重开定位最新回复，历史筛选重开归零，三个建议持续可见。",
+      "真实 LLM 调用返回“已准备好继续创作。”；回复期间预写的“下一轮草稿：加入暖色晨光”连续保留到正式回复完成。桌面和两档窄屏截图位于 artifacts/creator-agent-wide-fixes-20260901/。",
+      "首次启动的隔离真实浏览器验收确认：画布权威状态就绪后 Creator 才出现，六阶段、对话框和启动提示正常，控制台错误为 0；临时项目数据与测试进程已清理。",
+    "已随 v3.1.3 正式发布；固定源码、Windows 与真实 macOS arm64 双平台包、自动更新清单及远端完整回下载均通过。"
+    ]
+  },
+  "electronReleaseV312": {
+    "status": "released-live-verified",
+    "date": "2026-08-31",
+    "releaseIncluded": true,
+    "version": "3.1.2",
+    "tag": "v3.1.2",
+    "sourceCommit": "b2c776a2da22ee8a753561375c986c9155765698",
+    "releaseUrl": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.2",
+    "publishedAt": "2026-08-31T09:07:19Z",
+    "latest": true,
+    "macWorkflow": "https://github.com/T8mars/T8-penguin-canvas/actions/runs/33376172560",
+    "artifacts": [
+      { "name": "T8-PenguinCanvas-Setup-3.1.2.exe", "size": 1360758784, "sha256": "019c70b144c919207e9f5db3b827d802dbb9063ef8b3895378e50c98ecca6a40" },
+      { "name": "T8-PenguinCanvas-Setup-3.1.2.exe.blockmap", "size": 1418279, "sha256": "48afd60e6c107d5225819964775d3a073cfb9bfdd89f22571f4672f4f42db7ac" },
+      { "name": "latest.yml", "size": 362, "sha256": "2ff3465378796f9060500f177760e357e62f17c7d3254dcaf49bbc195f9fa788" },
+      { "name": "T8-PenguinCanvas-3.1.2-mac-arm64.dmg", "size": 493926733, "sha256": "4420cefe0cd5b114922c182b144f52739bd1d1b5a38d4730ab6753679625e70e" },
+      { "name": "T8-PenguinCanvas-3.1.2-mac-arm64.zip", "size": 486544879, "sha256": "298f121779a33a810d259a56036798b15bbc08c861556f822cb47192dd2a1ff5" },
+      { "name": "latest-mac.yml", "size": 536, "sha256": "3c8424f556a69f3dc7f6a1f7da6a8381244275f888f314c2a55836dd4998fc0b" }
+    ],
+    "scope": [
+      "Creator Agent 默认入口切换到极简 V2：六步进度、自然对话、三个语义分工明确的建议、单一生成确认、对话内媒体和右上角四项模型设置；每轮正式回复恰好调用一次用户选择的真实 LLM，不使用离线模板冒充成功且全程不显示费用。",
+      "多语言本地化大师完成可恢复分批翻译、归档语言恢复、逐句审阅、单句重配、IndexTTS 2.5 设备许可与五语离线推理硬化；未修改节目声轨保持 0 dB，失败和重启复用同一任务。",
+      "输出素材与放置架移除 60 项静默截断，折叠显示 5 项、展开后按 20 项继续加载；全部已生成资产保持可访问。",
+      "Story 与单节点运行使用稳定提交身份并合并重复启动，防止同一镜头或同一节点因重复事件多次提交，同时保留用户稍后明确重试。",
+      "只有 queued/running 活动 Run 钉住全画布快照；终态 Run 保留运行证据但释放快照容量，避免历史 Run 长期累积触发 SQLite 临时存储空间不足。",
+      "完整保留 v3.1.1 及更早全部节点、模型、工作流、Provider 协议、MiniMax Music3、Veo Omni 1.1、旧画布字段与默认渠道。"
+    ],
+    "verification": [
+      "Creator Agent 真实 Provider 验收覆盖 11 类用户表达和独立 LLM 评审；自然搭档感、精简度、意图对齐、建议差异与下一步可用性均为 5/5，且不保存 API Key 或 Provider 原始敏感响应。",
+      "Creator Repository / LLM / Route / Action / Run 恢复 / 前端 / 双语、Story 稳定提交、输出素材完整访问与 Run 快照容量专项共 235 项回归通过；TypeScript、4378 条双语键、39 actions / 278 runtime / 83/83 nodes、公开源码、Music3 资源和 2945 模块生产构建通过。",
+      "Windows 单核/BelowNormal/零压缩正式链完成后端与 4 个私有文件加密、双运行时、native rebuild、NSIS、app.asar/post-build、provenance、sealed recovery、上传与三资产完整回下载；退出码 0 且 recovery 已清除。",
+      "真实 macos-15 arm64 workflow 33376172560 从同一不可变 v3.1.2 Tag 完成原生依赖、ad-hoc 签名、DMG/ZIP/更新清单、追加上传和 runner 完整回下载；本机独立验证再次完整下载三项 Mac 资产。",
+      "Mac 三资产追加后，本机 Windows 复验器仅额外放行名称精确匹配 v3.1.2 的 Mac 三件套，继续拒绝未知、跨版本、重复或缺失资产；再次完整下载 1,360,758,784-byte Windows 安装包、blockmap 与 latest.yml，并与正式构建字节、GitHub digest/size 及清单 SHA-512 全部对账通过。",
+      "六项 GitHub 资产 size/SHA-256、两个自动更新清单、固定 Tag/target、workflow source 与 GitHub Latest 全部一致。"
+    ],
+    "evidenceBoundary": {
+      "technicalGates": "passed-before-release",
+      "affectedUserInstallF8F10AndInstalledUpgrade": "deferred-not-passed",
+      "deferralApproval": "owner-approved-post-release-v3.1.2",
+      "rule": "证据后补只适用于反馈用户安装、多端协作、F8-F10、真人自然语言/听感、设备级交互与安装升级；测试、构建、加密、运行时、app.asar 启动合同、NSIS、provenance、sealed recovery、固定 Tag/target、Windows/Mac 自动更新资产与完整性验证不可延期。"
+    }
+  },
   "electronReleaseV311": {
     "status": "released-live-verified",
     "date": "2026-08-30",
@@ -11,7 +232,7 @@
     "sourceCommit": "6188f7547062e9c01578994fb5247f8e30f3f208",
     "releaseUrl": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.1",
     "publishedAt": "2026-08-30T01:57:01Z",
-    "latest": true,
+    "latest": false,
     "macWorkflow": "https://github.com/T8mars/T8-penguin-canvas/actions/runs/33286855296",
     "artifacts": [
       { "name": "T8-PenguinCanvas-Setup-3.1.1.exe", "size": 1321222616, "sha256": "12d45cc3bf390f69325d0a69af5a38a5c57a6ab3c30ca967453d2ff032667f17" },
@@ -1819,6 +2040,27 @@
     "status": "released-v3.1.1-live-translation-and-five-language-tts-verified",
     "date": "2026-08-30",
     "releaseIncluded": true,
+    "currentHardening": {
+      "status": "released-v3.1.2-live-verified",
+      "releaseIncluded": true,
+      "scope": [
+        "工作台改为按真实创作顺序推进的素材、翻译、配音、交付四步；字幕模式自动省略配音步，只渲染当前阶段，完成阶段保留可回看标记。",
+        "源文本先在草稿区编辑，只有显式解析或转写才替换权威源文；未应用草稿会阻止翻译、配音和交付，不再因输入中途变化清空已完成分支。",
+        "翻译按语言/Provider/模型/术语摘要持久化批次检查点，成功批次可精确续跑；删除目标语言改为归档，重新启用时恢复该语言进度。",
+        "译文、发音、情绪、时长或角色修改会把对应句标为配音过期；支持仅重配本句并替换原时间槽，其他句和底噪/音乐保持不变，存在过期句时禁止交付。",
+        "本机 IndexTTS 许可证回执绑定固定模型仓库与 revision，安装和配音只认设备本地回执，不再信任画布或请求中的布尔字段。",
+        "审阅支持仅看需处理/全部/已批准、每页 50 句、回译/置信度/警告/ASR/时长编辑；一键批准只批准高置信且无警告的句子。",
+        "配音专用交付不再伪造字幕文本；批量交付可一次打包全部选中语言分支，不重复运行已经完成的付费或本地阶段。"
+      ],
+      "verification": [
+        "真实贞贞平价小屋 bytedance/doubao-seed-2.1-pro 再次完成 EN/JA/ES/AR 四次上下文翻译；ZH 继续为零调用恒等分支，五语术语、数字与占位符质量门通过。",
+        "新的五语串行实测全部为本轮新推理且通过：ZH/EN/JA/ES/AR ASR 相似度分别为 1、0.793651、1、0.990476、0.676923；停止 Worker 后全部复用相同任务与 hash。",
+        "单句重配真实验收通过；启用情绪控制时 Worker 会按需加载 QwenEmotion 并在低显存模式卸载，无法加载时明确降级并记录 warning，不再因 use_emo_text 配置崩溃。",
+        "单句替换前后未修改节目声轨差异均为 0 dB；FFmpeg 混音使用 normalize=0，视频换轨使用 apad 与 shortest，避免未替换音频被减半或短配音截断视频。",
+        "脱敏证据位于 artifacts/localization-master-live/translation-report.json、indextts-five-language-report.json 与 line-retry-report.json；不含 API Key、签名 URL 或 Provider 原始响应。"
+      ],
+      "boundary": "本轮已随 v3.1.2 固定源码完成 Windows 与真实 macOS arm64 双平台正式发布和六资产完整性验证；反馈用户安装与设备侧证据按授权后补，不视为已经通过。"
+    },
     "nodeType": "localization-master",
     "exampleWorkflow": "docs/workflows/localization-master.json",
     "defaultLlm": {
@@ -2179,63 +2421,37 @@
     ]
   },
   "release": {
-    "status": "published-stable-latest",
-    "version": "3.0.9",
-    "date": "2026-08-27",
-    "publishedAt": "2026-08-27T14:52:37Z",
-    "tag": "v3.0.9",
+    "status": "released-v3.1.3-dual-platform-verified",
+    "version": "3.1.3",
+    "date": "2026-09-02",
+    "tag": "v3.1.3",
     "latest": true,
-    "sourceCommit": "d6ed9c0bb0445d99823a5811935c8d4e2d1359d0",
+    "sourceCommit": "ed7e9e71c0b45e732eac89fcc6e4324ac5a7a1e9",
+    "publishedAt": "2026-09-02T09:00:24Z",
     "draft": false,
     "prerelease": false,
-    "githubImmutable": false,
-    "url": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.0.9",
-    "artifacts": {
-      "installer": {
-        "name": "T8-PenguinCanvas-Setup-3.0.9.exe",
-        "size": 1354465393,
-        "sha256": "261da569f2c539c9e059e439af9696132cca3feb90a08cdc735a9f8d48d5e62d",
-        "sha512": "LEFmpCwfkbCVvC0UKkZEADMf0qPVj0f3qlFIg2vFw4qJIho+zyJiZSWkmuQ9PAUE+Z2UDXjYwCT/Ze/Qn2SIig=="
-      },
-      "blockmap": {
-        "name": "T8-PenguinCanvas-Setup-3.0.9.exe.blockmap",
-        "size": 1412817,
-        "sha256": "3a3c71c99148d5cd6c8de4152a0758556abc6067391c4c160e9667c02145b749"
-      },
-      "updateManifest": {
-        "name": "latest.yml",
-        "size": 362,
-        "sha256": "138b36c3ac7659f76d175410b85c1647ac91629e71847cebbd148a9056196e5c"
-      },
-      "macDmg": {
-        "name": "T8-PenguinCanvas-3.0.9-mac-arm64.dmg",
-        "size": 468399962,
-        "sha256": "64dc6a724b71dd5906c79ca64db554074f783db58b5e6e54f696078a2a3a1fb3"
-      },
-      "macZip": {
-        "name": "T8-PenguinCanvas-3.0.9-mac-arm64.zip",
-        "size": 461304305,
-        "sha256": "98fdf87857f4192fcc3e99725b0426603425251ce1b41739e8f85223f4a74be2"
-      },
-      "macUpdateManifest": {
-        "name": "latest-mac.yml",
-        "size": 536,
-        "sha256": "a4dd8699441bd0a6f0f1a68d6c451dc848eceddd136a7e8eb29d2de50da953f3"
-      }
-    },
+    "url": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.3",
     "verification": [
-      "v3.0.9 完整承接 v3.0.8 及更早能力，修复核心目录开发启动门与 PowerShell 清理脚本实机参数绑定问题，并把自动/高性能控制移动到顶部工具条最后一位。",
-      "开发启动/worktree/协作发布门 15/15、性能控制 16/16、Electron 更新/国际化/单实例/macOS 18/18、Electron 打包合同 16/16 断言、TypeScript、4,254 条双语键、2,948 模块构建、82/82 节点同步、31 actions / 277 runtime 和公开源码检查通过。",
-      "固定 source commit d6ed9c0bb0445d99823a5811935c8d4e2d1359d0 通过 160 个后端源文件及四个本机私有文件加密、两套 Windows 运行时归档、Electron native rebuild、NSIS、Windows/Mac 共用 7/7 app.asar 启动合同、provenance、sealed recovery、Windows 三资产完整回下载、真实 macos-15 arm64 构建、runner 与本机独立 Mac 三资产完整回下载；本地 recovery 已清除。",
-      "六项自动更新资产的实际字节、SHA-256 与 GitHub digest/size 一致；正式 Release 非草稿、非预发布并为 GitHub Latest。",
-      "为避免本机 7-Zip 高并发导致系统不稳定，正式打包进程使用单核亲和性、BelowNormal 优先级与 ELECTRON_BUILDER_COMPRESSION_LEVEL=0；仅降低构建资源占用，所有安装内容、post-build 与远端资产校验保持不变。",
-      "用户已明确授权先发布、后补反馈用户安装环境、协作多端、F8-F10 及安装升级证据；协作证据门只允许完全缺失的清单按 owner-approved-post-release-v3.0.9 延期，不能把延期标记为已通过，任何技术门禁失败均不可延期。"
-    ]
+      "用户已明确授权更新 SKILL.md、features.json、正式 Electron 构建、推送 GitHub 并发布新版 Release。",
+      "固定源码/Tag ed7e9e71c0b45e732eac89fcc6e4324ac5a7a1e9 已发布为非草稿、非预发布 GitHub Latest；origin/main 与发布分支均已推送该固定源码，发布后证据提交不移动 Tag。",
+      "Windows 正式链完成构建、加密、双运行时、native rebuild、NSIS、app.asar 合同、provenance、sealed recovery、上传与完整回下载，退出码 0 且 recovery 已清除。",
+      "真实 macOS arm64 workflow https://github.com/T8mars/T8-penguin-canvas/actions/runs/33611804369 成功完成同源构建、ad-hoc 签名、DMG/ZIP/更新清单、追加上传和 runner 回下载；本机独立回下载再次通过。",
+      "双平台六资产合并后再次完整下载 Windows 三资产并与本地字节、GitHub SHA-256/大小及 latest.yml SHA-512 对账通过。",
+      "反馈用户安装、多端协作、F8-F10、真人自然语言体验、设备级交互与安装升级证据只按 owner-approved-post-release-v3.1.3 后补，不视为已经通过。"
+    ],
+    "assets": {
+      "T8-PenguinCanvas-Setup-3.1.3.exe": "1377933066 bytes / sha256 ed7495cec5a502b287fed1cfb3653cfeb18dfe1862498780c76c4acd50a21dc7",
+      "T8-PenguinCanvas-Setup-3.1.3.exe.blockmap": "1437328 bytes / sha256 9275a2058ed179f6fde7f0583259cdba98e22c17f91af68be7139f4408f6454e",
+      "latest.yml": "362 bytes / sha256 fd38baa7e2bcdb769a70f6f7676c99df845d0153a7b8d6afdfb35b35a6b85b4f",
+      "T8-PenguinCanvas-3.1.3-mac-arm64.dmg": "513796205 bytes / sha256 4ee4b765b40345ca3c614143994c9570bbf4465e1c0928e561575636d729a1f1",
+      "T8-PenguinCanvas-3.1.3-mac-arm64.zip": "505761814 bytes / sha256 90896bead53370b1bba40afcf46893e49ea2d7f21a858b0289b7a562b8955800",
+      "latest-mac.yml": "536 bytes / sha256 2a2097edc23f7743bc2568c5d3c6dd0c775533823044894570e4bd935e707310"
+    }
   },
   "versionSequencePolicy": {
     "status": "active",
     "date": "2026-07-30",
-    "currentVersion": "3.0.9",
+    "currentVersion": "3.1.3",
     "rules": [
       "版本号每一段只使用 0-9；v2.6.9 的下一正式版本固定为 v2.7.0。",
       "禁止创建、打包、推送、打 tag、发布或写入自动更新元数据为 v2.6.10。",
@@ -2265,6 +2481,8 @@
       "v2.9.4 的下一正式版本固定为 v2.9.5。",
       "v2.9.5 的下一正式版本固定为 v2.9.6。",
       "v2.9.6 的下一正式版本固定为 v2.9.7。",
+      "v3.1.1 的下一正式版本固定为 v3.1.2。",
+      "v3.1.2 的下一正式版本固定为 v3.1.3。",
       "后续改版本前必须同步核对 package.json、package-lock.json、README、features.json、项目 SKILL.md、Release notes、自动更新元数据和 Git tag。"
     ]
   },
@@ -14715,6 +14933,24 @@
     "status": "released-v3.1.1-live-verified",
     "date": "2026-08-29",
     "releaseIncluded": true,
+    "currentHardening": {
+      "status": "released-v3.1.2-live-verified",
+      "releaseIncluded": true,
+      "scope": [
+        "未发送草稿、附件和引用按项目/画布隔离保存于 sessionStorage；切换画布不串稿，新建对话在存在未发送内容时先确认。",
+        "质量模式按画布保存；结构化作品卡默认保持简洁，但可展开查看全部字段，不再静默隐藏第 13 项以后的内容。",
+        "运行监视优先跟踪全部活动 Run 与最近完成项，减少大历史画布的轮询和详情请求；空状态与窄屏布局压缩，创作者更快进入一句话开工。",
+        "费用只展示 Provider 可核实账单或明确未知，不用 token 估算冒充实际金额；用户与 Provider 原文继续标记为不可翻译内容。",
+        "Provider 网络错误保留脱敏底层错误码以便诊断；结构化正式作品继续使用可恢复 SSE，HTTP 524 或结果不明时不自动重放付费请求。"
+      ],
+      "verification": [
+        "真实贞贞平价小屋 bytedance/doubao-seed-2.1-pro 工具诊断只调用一次 LLM，121623ms 返回 Creator Work revision 1 与 create.image 提议。",
+        "提议生成 11 个安全预览操作；批准前 Provider、Canvas 与文件副作用均为 0，Canvas revision 保持 1→1，未提交付费图像任务。",
+        "脱敏证据位于 artifacts/creator-agent-live/tool-diagnostic-report.json；不含 API Key、签名 URL 或 Provider 原始响应。",
+        "Creator Agent/Tool/UI 聚焦测试 88/88 通过；正式结构 JSON 仍在完整 Schema、接地和质量门之前保持有界内存态。"
+      ],
+      "boundary": "本轮体验硬化已随 v3.1.2 固定源码完成 Windows 与真实 macOS arm64 双平台发布和六资产完整性验证；v3.1.1 历史发布事实保持不变，反馈用户安装与设备侧体验仍按授权后补。"
+    },
     "schemas": {
       "work": "t8-creator-work-snapshot-v1",
       "artifactVersion": "t8-creator-work-artifact-version-v1",
