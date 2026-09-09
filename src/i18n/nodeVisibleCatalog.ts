@@ -132,6 +132,25 @@ const EXTRA_ENTRIES: ReadonlyArray<readonly [string, string]> = [
   ['MiniMax H3 Max 图生视频；提示词与首帧必填，可选尾帧，5-15 秒，480P/768P。', 'MiniMax H3 Max image-to-video; prompt and first frame required, optional last frame, 5-15 seconds, 480P/768P.'],
   ['MiniMax H3 Max Turbo 文生视频；提示词必填，5-15 秒，480p/768p，使用六种固定比例。', 'MiniMax H3 Max Turbo text-to-video; prompt required, 5-15 seconds, 480p/768p, with six fixed aspect ratios.'],
   ['MiniMax H3 Max Turbo 图生视频；提示词与首帧必填，可选尾帧，5-15 秒，480p/768p。', 'MiniMax H3 Max Turbo image-to-video; prompt and first frame required, optional last frame, 5-15 seconds, 480p/768p.'],
+  ['MiniMax-H3（V2 多模态视频）', 'MiniMax-H3 (V2 multimodal video)'],
+  ['MiniMax-H3 独立 V2 协议；支持纯文本、首尾关键帧、多模态参考与驱动音频。', 'MiniMax-H3 uses the dedicated V2 protocol and supports text-only, first/last keyframes, multimodal references, and drive audio.'],
+  ['MiniMax-H3 使用独立 V2 协议：提示词必填；图片可按开关分配首帧、尾帧，其余作为参考图；视频和音频作为多模态参考。', 'MiniMax-H3 uses the dedicated V2 protocol. A prompt is required; assign images as first/last frames with the switches, while remaining images, videos, and audio become multimodal references.'],
+  ['贞贞的平价AI小屋 API · 4-15 秒；提供驱动音频后支持 4-60 秒 · 480P / 768P', 'Zhenzhen Budget AI House API · 4-15 seconds, or 4-60 seconds with drive audio · 480P / 768P'],
+  ['素材角色与音频控制', 'Media roles and audio controls'],
+  ['第 1 图作首帧', 'Use image 1 as first frame'],
+  ['下一图作尾帧', 'Use next image as last frame'],
+  ['第 1 音频作驱动', 'Use audio 1 as drive audio'],
+  ['未分配为关键帧的图片会作为参考图；未分配为驱动的音频会作为参考音频。', 'Images not assigned as keyframes become reference images; audio not assigned as drive audio becomes reference audio.'],
+  ['音频模式', 'Audio mode'],
+  ['API 默认', 'API default'],
+  ['锁定源音频', 'Lock source audio'],
+  ['重混源音频', 'Remix source audio'],
+  ['仅作参考', 'Reference only'],
+  ['原生音频', 'Native audio'],
+  ['驱动音频同时作参考', 'Also use drive audio as reference'],
+  ['音频降噪强度', 'Audio denoise strength'],
+  ['是', 'Yes'],
+  ['否', 'No'],
   ['H3 Max 文生视频必须填写提示词，不发送参考素材；比例会随请求提交。', 'H3 Max text-to-video requires a prompt and sends no reference media; the selected aspect ratio is submitted.'],
   ['H3 Max 图生视频必须填写提示词并使用第 1 张首帧图，可选第 2 张尾帧图；比例跟随输入图片且不会发送。', 'H3 Max image-to-video requires a prompt and first frame, with an optional second last frame; aspect ratio follows the input frames and is not submitted.'],
   ['H3 Max Turbo 文生视频必须填写提示词，不发送参考素材；比例会随请求提交。', 'H3 Max Turbo text-to-video requires a prompt and sends no reference media; the selected aspect ratio is submitted.'],
@@ -340,6 +359,10 @@ export function localizeNodeDynamicText(source: string) {
   if (/^画布 · .+/.test(source)) return source.replace(/^画布/, 'Canvas');
   match = source.match(/^图像 \((\d+)\)$/);
   if (match) return `Images (${match[1]})`;
+  match = source.match(/^视频 (\d+) 起始秒$/);
+  if (match) return `Video ${match[1]} start (seconds)`;
+  match = source.match(/^音频降噪强度 · (.+)$/);
+  if (match) return `Audio denoise strength · ${match[1] === '0（锁定）' ? '0 (locked)' : match[1]}`;
   match = source.match(/^→ 输出 (图像|视频|音频|文本) \(端口色 (.+)\)$/);
   if (match) {
     const kind = NODE_VISIBLE_CATALOG.englishByChinese[match[1]] || match[1];

@@ -1,0 +1,57 @@
+{
+  "schema": "t8-workflow-fragment",
+  "version": 1,
+  "title": "MiniMax-H3 文生视频（贞贞的平价AI小屋 · V2）",
+  "nodes": [
+    {
+      "id": "minimax-h3-v2-text",
+      "type": "video",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "label": "MiniMax-H3 文生视频",
+        "mainId": "hailuo-2.3",
+        "model": "MiniMax-H3",
+        "videoBuiltinSource": "seedance-nz",
+        "ratio": "16:9",
+        "duration": 4,
+        "resolution": "480P",
+        "prompt": "清晨的纸风筝从安静海岸升起，镜头平稳跟随，柔和晨光与海面反射保持连续",
+        "localPrompt": "清晨的纸风筝从安静海岸升起，镜头平稳跟随，柔和晨光与海面反射保持连续",
+        "minimaxH3FirstFrameEnabled": false,
+        "minimaxH3LastFrameEnabled": false,
+        "minimaxH3DriveAudioEnabled": false,
+        "minimaxH3AudioMode": "api_default",
+        "minimaxH3DenoiseStrength": 0.35,
+        "minimaxH3AddDriveAsReference": "api_default",
+        "minimaxH3VideoStartSeconds": [
+          0,
+          0,
+          0
+        ],
+        "reuseResult": false
+      }
+    }
+  ],
+  "edges": [],
+  "nodeCount": 1,
+  "edgeCount": 0,
+  "nodeTypes": [
+    "video"
+  ],
+  "topologyPreview": {
+    "nodes": [
+      {
+        "id": "minimax-h3-v2-text",
+        "type": "video",
+        "label": "MiniMax-H3 文生视频",
+        "x": 50,
+        "y": 50
+      }
+    ],
+    "edges": []
+  },
+  "savedAt": "2026-09-06T00:00:00.000Z"
+}

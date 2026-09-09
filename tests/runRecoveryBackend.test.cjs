@@ -82,7 +82,12 @@ test('recovery descriptors map only allowlisted kinds to fixed loopback routes',
   });
   const hailuo = normalizeRunRecoveryDescriptor({ kind: 'hailuo', taskId: 'hailuo/task', model: 'hailuo-2.3-t2v-standard' });
   assert.deepEqual(recoveryRequest('http://127.0.0.1:18766', hailuo), {
-    url: 'http://127.0.0.1:18766/api/proxy/video/hailuo/status/hailuo%2Ftask',
+    url: 'http://127.0.0.1:18766/api/proxy/video/hailuo/status/hailuo%2Ftask?model=hailuo-2.3-t2v-standard',
+    options: { method: 'GET' },
+  });
+  const minimaxH3V2 = normalizeRunRecoveryDescriptor({ kind: 'hailuo', taskId: 'minimax/task', model: 'MiniMax-H3' });
+  assert.deepEqual(recoveryRequest('http://127.0.0.1:18766', minimaxH3V2), {
+    url: 'http://127.0.0.1:18766/api/proxy/video/hailuo/status/minimax%2Ftask?model=MiniMax-H3',
     options: { method: 'GET' },
   });
   const flux3 = normalizeRunRecoveryDescriptor({ kind: 'flux3', taskId: 'flux/task', model: 'flux-3-video-global-t2v' });
@@ -98,6 +103,11 @@ test('recovery descriptors map only allowlisted kinds to fixed loopback routes',
   const upscaler = normalizeRunRecoveryDescriptor({ kind: 'upscaler', taskId: 'upscaler/task', model: 'zhenzhen-upscaler' });
   assert.deepEqual(recoveryRequest('http://127.0.0.1:18766', upscaler), {
     url: 'http://127.0.0.1:18766/api/proxy/video/upscaler/status/upscaler%2Ftask',
+    options: { method: 'GET' },
+  });
+  const vosr2 = normalizeRunRecoveryDescriptor({ kind: 'vosr2', taskId: 'vosr2/task', model: 'vosr2-video-upscale' });
+  assert.deepEqual(recoveryRequest('http://127.0.0.1:18766', vosr2), {
+    url: 'http://127.0.0.1:18766/api/proxy/video/vosr2/status/vosr2%2Ftask',
     options: { method: 'GET' },
   });
   const vidu = normalizeRunRecoveryDescriptor({ kind: 'vidu', taskId: 'vidu/task', model: 'vidu-q3-turbo-t2v' });

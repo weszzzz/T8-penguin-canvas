@@ -8,14 +8,16 @@ export type ProviderType = 'zhenzhen' | 'llm-direct' | 'runninghub';
 // ========== 图像 ==========
 // paramKind:决定调用上游时使用哪种参数协议
 //  - 'gpt-size'    : OpenAI 兼容,size 字段为像素串(1024x1024 等),编辑端点 multipart
+//  - 'gpt-image-2.5': 贞贞 AI 工坊 GPT Image 2.5 同步协议,无参考图 JSON generations,有参考图 multipart edits
 //  - 'banana-ratio': nano-banana 协议,使用 aspect_ratio + image_size(1K/2K/4K) + image[]
 //  - 'grok-image'  : Grok Image 协议,JSON /generations,参考图默认 base64 dataURL
 //  - 'seedream-v5' : Seedream V5 Pro 协议,JSON /generations,size 为像素串,image[] 可选
 //  - 'seedream-layer': Seedream V5 Pro 分层协议,单图输入,返回底图 + 有序图层列表
 //  - 'qwen-image-3.0': Qwen Image 3.0 协议,auto / 比例+分辨率 / 自定义 W*H 三种互斥尺寸模式
 //  - 'wan-image'   : Wan 2.7 Global 图像协议,T2I 使用宽高/思考模式,I2I 使用 1-9 张参考图
+//  - 'vosr2-upscale': Vosr2 单图超分协议,只发送 model + images[1]
 //  - 'mj'          : Midjourney 协议,走专属 /api/proxy/mj/* 路由(speed_map + sref/oref)
-export type ImageParamKind = 'gpt-size' | 'banana-ratio' | 'grok-image' | 'seedream-v5' | 'seedream-layer' | 'qwen-image-3.0' | 'wan-image' | 'mj';
+export type ImageParamKind = 'gpt-size' | 'gpt-image-2.5' | 'banana-ratio' | 'grok-image' | 'seedream-v5' | 'seedream-layer' | 'qwen-image-3.0' | 'wan-image' | 'vosr2-upscale' | 'mj';
 
 export interface ImageModelDef {
   id: string;             // 节点内部 id(如 'gpt-image-2')
@@ -26,7 +28,13 @@ export interface ImageModelDef {
   paramKind: ImageParamKind;
   capabilities: ('t2i' | 'i2i' | 'edit' | 'text-render')[];
   // 子模型变体(对齐主项目 gpt-image-2-web 的 g_model / n_model 下拉)
-  apiModelOptions: Array<{ value: string; label: string }>;
+  apiModelOptions: Array<{
+    value: string;
+    label: string;
+    paramKind?: ImageParamKind;
+    sizes?: string[];
+    maxReferenceImages?: number;
+  }>;
   // 比例选项(双协议通用,Auto/1:1/16:9 …)
   aspectRatios: string[];
   defaultAspectRatio: string;
@@ -48,6 +56,51 @@ const BANANA_PRO_RATIOS = ['Auto', '1:1', '16:9', '4:3', '4:5', '3:2', '2:3', '3
 // gpt-image-2-web Grok Image Tab 的比例集合,默认参考图传入方式为 Base64
 const GROK_IMAGE_RATIOS = ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3'];
 
+export const GPT_IMAGE_25_MODELS = [
+  'gpt-image-2.5-flare',
+  'gpt-image-2.5-flare-2k',
+  'gpt-image-2.5-flare-4k',
+  'gpt-image-2.5-sunburst',
+  'gpt-image-2.5-sunburst-2k',
+  'gpt-image-2.5-sunburst-4k',
+] as const;
+export type GptImage25Model = typeof GPT_IMAGE_25_MODELS[number];
+export const GPT_IMAGE_25_QUALITIES = ['auto', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
+export const GPT_IMAGE_25_SIZES = [
+  '1024x1024',
+  '1536x1024',
+  '1024x1536',
+  '2048x2048',
+  '2048x1152',
+  '1152x2048',
+  '3840x2160',
+  '2160x3840',
+  'custom',
+] as const;
+export const GPT_IMAGE_25_BACKGROUNDS = ['auto', 'opaque'] as const;
+export const GPT_IMAGE_25_MODERATION = ['auto', 'low'] as const;
+export const GPT_IMAGE_25_MAX_IMAGES = 14;
+export const GPT_IMAGE_25_PROMPT_MAX_LENGTH = 32_000;
+
+export function isGptImage25Model(apiModel: string | undefined | null): apiModel is GptImage25Model {
+  return (GPT_IMAGE_25_MODELS as readonly string[]).includes(String(apiModel || '').trim());
+}
+
+export function validateGptImage25Size(size: string): string | null {
+  const match = String(size || '').trim().toLowerCase().match(/^(\d+)x(\d+)$/);
+  if (!match) return '尺寸必须使用 WIDTHxHEIGHT，例如 1024x1024';
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (width % 16 !== 0 || height % 16 !== 0) return '宽和高都必须是 16 的倍数';
+  if (width > 3840 || height > 3840) return '宽和高都不能超过 3840';
+  const shortEdge = Math.min(width, height);
+  const longEdge = Math.max(width, height);
+  if (shortEdge <= 0 || longEdge / shortEdge > 3) return '宽高比必须在 1:3 到 3:1 之间';
+  const pixels = width * height;
+  if (pixels < 655_360 || pixels > 8_294_400) return '总像素必须在 655,360 到 8,294,400 之间';
+  return null;
+}
+
 export const GPT_IMAGE_2_ZHENZHEN_SIZE_VARIANTS: Record<string, '2K' | '4K'> = {
   'gpt-image-2-2K': '2K',
   'gpt-image-2-4K': '4K',
@@ -56,6 +109,36 @@ export const GPT_IMAGE_2_ZHENZHEN_SIZE_VARIANTS: Record<string, '2K' | '4K'> = {
 export const ZHENZHEN_IMAGE_G2_T2I_MODEL = 'zhenzhen-image-g2-t2i';
 export const ZHENZHEN_IMAGE_G2_I2I_MODEL = 'zhenzhen-image-g2-i2i';
 export const ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL = 'zhenzhen-image-g-v2-lowprice';
+export const ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL = 'zhenzhen-image-g-v2.5-lowprice';
+export const ZHENZHEN_IMAGE_G25_FLARE_MODEL = 'zhenzhen-image-g-v2.5-flare';
+export const ZHENZHEN_IMAGE_G25_SUNBURST_MODEL = 'zhenzhen-image-g-v2.5-sunburst';
+export const ZHENZHEN_IMAGE_G25_MODELS = [
+  ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL,
+  ZHENZHEN_IMAGE_G25_FLARE_MODEL,
+  ZHENZHEN_IMAGE_G25_SUNBURST_MODEL,
+] as const;
+export const ZHENZHEN_IMAGE_G25_OFFICIAL_MODELS = [
+  ZHENZHEN_IMAGE_G25_FLARE_MODEL,
+  ZHENZHEN_IMAGE_G25_SUNBURST_MODEL,
+] as const;
+export type ZhenzhenImageG25Model = typeof ZHENZHEN_IMAGE_G25_MODELS[number];
+export const ZHENZHEN_IMAGE_G25_RESOLUTIONS = ['1k', '2k', '4k'] as const;
+export const ZHENZHEN_IMAGE_G25_LOWPRICE_SIZES = [
+  'auto', '1:1', '1:3', '3:1', '16:9', '9:16', '4:3', '3:4',
+  '3:2', '2:3', '5:4', '4:5', '2:1', '1:2', '21:9', '9:21',
+] as const;
+export const ZHENZHEN_IMAGE_G25_OFFICIAL_SIZES = [
+  'preserve_reference', 'auto', '1:1', '3:2', '2:3', '4:3', '3:4',
+  '5:4', '4:5', '16:9', '9:16', '2:1', '1:2', '21:9', '9:21',
+  '3:1', '1:3', 'custom',
+] as const;
+export const ZHENZHEN_IMAGE_G25_QUALITIES = ['auto', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
+export const ZHENZHEN_IMAGE_G25_OUTPUT_FORMATS = ['png', 'jpeg', 'webp'] as const;
+export const ZHENZHEN_IMAGE_G25_BACKGROUNDS = ['auto', 'transparent', 'opaque'] as const;
+export const ZHENZHEN_IMAGE_G25_MODERATION = ['low', 'auto'] as const;
+export const ZHENZHEN_IMAGE_G25_PROMPT_MAX_LENGTH = 5_000;
+export const ZHENZHEN_IMAGE_G25_LOWPRICE_MAX_IMAGES = 15;
+export const ZHENZHEN_IMAGE_G25_OFFICIAL_MAX_IMAGES = 16;
 export const ZHENZHEN_IMAGE_GK_V15_MODEL = 'zhenzhen-image-gk-v15';
 export const ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL = 'zhenzhen-image-gk-v15-edit';
 export const ZHENZHEN_IMAGE_GK_V2_MODEL = 'zhenzhen-image-gk-v2';
@@ -73,6 +156,7 @@ export const ZHENZHEN_BUDGET_GPT2_MODEL_OPTIONS = [
   { value: ZHENZHEN_IMAGE_G2_T2I_MODEL, label: ZHENZHEN_IMAGE_G2_T2I_MODEL },
   { value: ZHENZHEN_IMAGE_G2_I2I_MODEL, label: ZHENZHEN_IMAGE_G2_I2I_MODEL },
   { value: ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL, label: ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL },
+  ...ZHENZHEN_IMAGE_G25_MODELS.map((value) => ({ value, label: value })),
 ] as const;
 export const ZHENZHEN_BUDGET_GROK_MODEL_OPTIONS = [
   { value: ZHENZHEN_IMAGE_GK_V2_MODEL, label: ZHENZHEN_IMAGE_GK_V2_MODEL },
@@ -90,6 +174,7 @@ export const ZHENZHEN_BUDGET_BANANA_PRO_MODEL_OPTIONS = [
 export const ZHENZHEN_IMAGE_G2_MODEL_OPTIONS = ZHENZHEN_BUDGET_GPT2_MODEL_OPTIONS.slice(0, 2);
 export const ZHENZHEN_APIMART_IMAGE_MODELS = [
   ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL,
+  ...ZHENZHEN_IMAGE_G25_MODELS,
   ZHENZHEN_IMAGE_GK_V2_MODEL,
   ZHENZHEN_IMAGE_GK_V2_EDIT_MODEL,
   ZHENZHEN_IMAGE_GK_V2_SEGMENT_MODEL,
@@ -100,9 +185,11 @@ export const ZHENZHEN_APIMART_IMAGE_MODELS = [
   ZHENZHEN_IMAGE_NB_2_MODEL,
   ZHENZHEN_IMAGE_NB_PRO_MODEL,
 ] as const;
+export const VOSR2_IMAGE_UPSCALE_MODEL = 'vosr2-image-upscale';
 export const ZHENZHEN_BUDGET_IMAGE_MODELS = [
   ...ZHENZHEN_IMAGE_G2_MODELS,
   ...ZHENZHEN_APIMART_IMAGE_MODELS,
+  VOSR2_IMAGE_UPSCALE_MODEL,
 ] as const;
 export const ZHENZHEN_IMAGE_G2_RATIOS = ['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16', '21:9'];
 export const ZHENZHEN_IMAGE_GK_V15_RATIOS = ['1:1', '16:9', '9:16', '3:2', '2:3'];
@@ -122,6 +209,14 @@ export const ZHENZHEN_IMAGE_NB_EXTREME_RATIOS = [
 
 export function isZhenzhenImageG2Model(apiModel: string | undefined | null): boolean {
   return (ZHENZHEN_IMAGE_G2_MODELS as readonly string[]).includes(String(apiModel || '').trim());
+}
+
+export function isZhenzhenImageG25Model(apiModel: string | undefined | null): apiModel is ZhenzhenImageG25Model {
+  return (ZHENZHEN_IMAGE_G25_MODELS as readonly string[]).includes(String(apiModel || '').trim());
+}
+
+export function isZhenzhenImageG25OfficialModel(apiModel: string | undefined | null): boolean {
+  return (ZHENZHEN_IMAGE_G25_OFFICIAL_MODELS as readonly string[]).includes(String(apiModel || '').trim());
 }
 
 export const QWEN_IMAGE_30_T2I_MODELS = [
@@ -204,6 +299,13 @@ export const IMAGE_MODELS: ImageModelDef[] = [
     apiModelOptions: [
       { value: 'gpt-image-2-all', label: 'gpt-image-2-all' },
       { value: 'gpt-image-2', label: 'gpt-image-2' },
+      ...GPT_IMAGE_25_MODELS.map((value) => ({
+        value,
+        label: value,
+        paramKind: 'gpt-image-2.5' as const,
+        sizes: [...GPT_IMAGE_25_SIZES],
+        maxReferenceImages: GPT_IMAGE_25_MAX_IMAGES,
+      })),
       { value: 'gpt-image-2-2K', label: 'gpt-image-2-2K' },
       { value: 'gpt-image-2-4K', label: 'gpt-image-2-4K' },
       { value: 'gpt-image-2-fal', label: 'gpt-image-2-fal' },
@@ -348,6 +450,25 @@ export const IMAGE_MODELS: ImageModelDef[] = [
     supportsReference: true,
     maxReferenceImages: 9,
     description: 'Wan 2.7 Global · 文生图与 1–9 图编辑',
+  },
+  {
+    id: VOSR2_IMAGE_UPSCALE_MODEL,
+    apiModel: VOSR2_IMAGE_UPSCALE_MODEL,
+    label: 'Vosr2 图片超分',
+    tabLabel: 'Vosr2',
+    provider: 'zhenzhen',
+    paramKind: 'vosr2-upscale',
+    capabilities: ['i2i'],
+    apiModelOptions: [
+      { value: VOSR2_IMAGE_UPSCALE_MODEL, label: VOSR2_IMAGE_UPSCALE_MODEL },
+    ],
+    aspectRatios: [],
+    defaultAspectRatio: '',
+    sizes: [],
+    defaultSize: '',
+    supportsReference: true,
+    maxReferenceImages: 1,
+    description: 'Vosr2 · 单张图片超分，固定输出 4K',
   },
   // ========================================================================
   // Midjourney — 完全对齐 gpt-image-2-web/index.html runMJ L4437~L4694
@@ -697,6 +818,12 @@ export const HAILUO_H3_MAX_VIDEO_RESOLUTIONS = [
   ...HAILUO_H3_MAX_TURBO_VIDEO_RESOLUTIONS,
 ] as const;
 export const HAILUO_H3_MAX_VIDEO_RATIOS = ['21:9', '16:9', '4:3', '1:1', '3:4', '9:16'] as const;
+export const MINIMAX_H3_V2_MODEL = 'MiniMax-H3';
+export const MINIMAX_H3_V2_RATIOS = [
+  '16:9', '1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '21:9', 'adaptive', 'auto', 'api_default',
+] as const;
+export const MINIMAX_H3_V2_DURATIONS = Array.from({ length: 57 }, (_, index) => index + 4);
+export const MINIMAX_H3_V2_RESOLUTIONS = ['480P', '768P'] as const;
 export const MINIMAX_H3_OW_VIDEO_MODELS = [
   'minimax-h3-ow-t2v',
   'minimax-h3-ow-r2v',
@@ -755,6 +882,7 @@ const SEEDANCE25_RESOLUTIONS = ['480p', '720p', '1080p', '2k', '4k', 'native1080
 export const FLASHVSR_VIDEO_UPSCALE_MODEL = 'FlashVSR_video_upscale';
 /** @deprecated Kept as an internal symbol alias so existing imports remain source-compatible. */
 export const FASHVSR_VIDEO_UPSCALE_MODEL = FLASHVSR_VIDEO_UPSCALE_MODEL;
+export const VOSR2_VIDEO_UPSCALE_MODEL = 'vosr2-video-upscale';
 
 export function isZhenzhenApimartVideoModel(apiModel: string | undefined | null): boolean {
   return (ZHENZHEN_APIMART_VIDEO_MODELS as readonly string[]).includes(String(apiModel || '').trim());
@@ -1040,6 +1168,23 @@ export const VIDEO_MODELS: VideoModelDef[] = [
           maxRefAudios: 0,
         };
       }),
+      {
+        value: MINIMAX_H3_V2_MODEL,
+        label: 'MiniMax-H3（V2 多模态视频）',
+        description: 'MiniMax-H3 独立 V2 协议；支持纯文本、首尾关键帧、多模态参考与驱动音频。',
+        ratios: [...MINIMAX_H3_V2_RATIOS],
+        defaultRatio: '16:9',
+        durations: MINIMAX_H3_V2_DURATIONS,
+        defaultDuration: 4,
+        resolutions: [...MINIMAX_H3_V2_RESOLUTIONS],
+        defaultResolution: '480P',
+        supportImages: true,
+        supportVideos: true,
+        supportAudios: true,
+        maxRefImages: 11,
+        maxRefVideos: 3,
+        maxRefAudios: 4,
+      },
       {
         value: 'minimax-h3-ow-t2v',
         label: 'minimax-h3-ow-t2v（MiniMax H3 OW 文生视频）',
@@ -1331,6 +1476,25 @@ export const VIDEO_MODELS: VideoModelDef[] = [
     description: 'FlashVSR · 单个 480P、3-15 秒视频超分',
     apiModelOptions: [
       { value: FASHVSR_VIDEO_UPSCALE_MODEL, label: FASHVSR_VIDEO_UPSCALE_MODEL },
+    ],
+    ratios: [],
+    defaultRatio: '',
+    durations: [],
+    resolutions: [],
+    defaultResolution: '',
+    supportImages: false,
+    supportVideos: true,
+    maxRefImages: 0,
+  },
+  {
+    id: VOSR2_VIDEO_UPSCALE_MODEL,
+    label: 'Vosr2',
+    kind: 'upscaler',
+    provider: 'zhenzhen',
+    builtinSource: 'seedance-nz',
+    description: 'Vosr2 · 单个视频超分，固定输出 2K',
+    apiModelOptions: [
+      { value: VOSR2_VIDEO_UPSCALE_MODEL, label: VOSR2_VIDEO_UPSCALE_MODEL },
     ],
     ratios: [],
     defaultRatio: '',

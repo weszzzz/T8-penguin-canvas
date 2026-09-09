@@ -3,7 +3,7 @@
  * 所有请求走 /api/proxy/* (后端会注入对应 Key 并转存结果)
  */
 import type { AdvancedProviderConfig } from '../types/canvas';
-import type { SunoNzOperation, SunoNzResultFamily } from '../providers/models';
+import type { ImageParamKind, SunoNzOperation, SunoNzResultFamily } from '../providers/models';
 import { normalizeProviderErrorMessage } from '../utils/providerErrorMessage.ts';
 
 export interface ProviderTransportTrace {
@@ -101,7 +101,7 @@ async function safeJsonResponse(response: Response, label: string): Promise<any>
 export interface GenerateImageRequest {
   model: string;          // 节点 id (gpt-image-2 / nano-banana-2 / nano-banana-pro / grok-image / seedream-v5-pro)
   apiModel?: string;       // 上游真实模型名(优先使用)
-  paramKind?: 'gpt-size' | 'banana-ratio' | 'grok-image' | 'seedream-v5' | 'seedream-layer' | 'qwen-image-3.0' | 'wan-image' | 'mj';
+  paramKind?: ImageParamKind;
   prompt: string;
   n?: number;
   // 主参数(双协议通用):
@@ -113,6 +113,7 @@ export interface GenerateImageRequest {
   images?: string[];
   quality?: string;
   moderation?: 'auto' | 'low';
+  background?: 'auto' | 'opaque';
   // 兼容旧参数:若传了 size(像素串)则优先用、image 单张也会并入 images
   size?: string;
   image?: string;
@@ -317,12 +318,15 @@ export async function queryImageStatus(taskId: string, apiModel?: string, transp
 }
 
 export interface SeedreamNzSubmitRequest {
-  prompt: string;
+  prompt?: string;
   images?: string[];
   model?:
     | 'zhenzhen-image-g2-t2i'
     | 'zhenzhen-image-g2-i2i'
     | 'zhenzhen-image-g-v2-lowprice'
+    | 'zhenzhen-image-g-v2.5-lowprice'
+    | 'zhenzhen-image-g-v2.5-flare'
+    | 'zhenzhen-image-g-v2.5-sunburst'
     | 'zhenzhen-image-gk-v2'
     | 'zhenzhen-image-gk-v2-edit'
     | 'zhenzhen-image-gk-v2-segment'
@@ -344,13 +348,19 @@ export interface SeedreamNzSubmitRequest {
     | 'wan-2.7-global-i2i'
     | 'wan-2.7-global-i2i-pro'
     | 'seedream-v5-pro-layer-decomposition'
-    | 'dola-seedream-5.0-pro-layer-decomposition';
+    | 'dola-seedream-5.0-pro-layer-decomposition'
+    | 'vosr2-image-upscale';
   modelFamily?: 'domestic' | 'overseas';
   resolution?: 'auto' | '0.5k' | '1k' | '1.5k' | '2k' | '4k';
   ratio?: 'adaptive' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16' | '21:9' | '2:3' | '3:2' | '4:5' | '5:4';
   size?: string;
   n?: number;
-  output_format?: 'png' | 'jpeg';
+  output_format?: 'png' | 'jpeg' | 'webp';
+  quality?: 'auto' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+  output_compression?: number;
+  background?: 'auto' | 'transparent' | 'opaque';
+  moderation?: 'low' | 'auto';
+  custom_size?: string;
   negative_prompt?: string;
   prompt_extend?: boolean;
   sizing_mode?: 'auto' | 'ratio' | 'custom_size';
@@ -1197,7 +1207,8 @@ export type HailuoModel =
   | 'minimax-h3-ow-r2v-fast'
   | 'minimax-h3-ow-ref2va-audio-drive-fast'
   | 'minimax-h3-ow-fl2va-audio-drive-fast'
-  | 'minimax-h3-ow-t2v-fast';
+  | 'minimax-h3-ow-t2v-fast'
+  | 'MiniMax-H3';
 
 export type Hailuo23Model = Extract<HailuoModel, `hailuo-2.3-${string}`>;
 export type HailuoDuration = 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
@@ -1205,19 +1216,28 @@ export type HailuoDuration = 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
 export interface HailuoSubmitRequest {
   model: HailuoModel;
   prompt?: string;
-  duration: HailuoDuration;
+  duration: number;
   ratio: string;
   resolution: '480p' | '480P' | '720p' | '768p' | '768P' | '1080p' | '2K';
   images?: string[];
   videos?: string[];
   audios?: string[];
+  firstFrame?: string;
+  lastFrame?: string;
+  referenceImages?: string[];
+  referenceVideos?: Array<{ url: string; startTimeSeconds?: number }>;
+  referenceAudios?: string[];
+  driveAudio?: string;
+  audioMode?: 'api_default' | 'lock_source' | 'remix_source' | 'reference_only' | 'native';
+  denoiseStrength?: number;
+  addDriveAsReference?: 'api_default' | 'true' | 'false';
 }
 
 export async function submitHailuo(req: HailuoSubmitRequest, transport: ProviderSubmissionTransport = {}): Promise<{
   taskId: string;
   taskProvider: 'seedance-nz';
   model: string;
-  taskType: 't2v' | 'i2v' | 'r2v' | 'multi';
+  taskType: 't2v' | 'i2v' | 'r2v' | 'multi' | 'minimax-h3-v2';
 } & ProviderTransportTrace> {
   const r = await fetch('/api/proxy/video/hailuo/submit', {
     method: 'POST',
@@ -1230,8 +1250,17 @@ export async function submitHailuo(req: HailuoSubmitRequest, transport: Provider
   return withProviderTransportTrace(data.data, r);
 }
 
-export async function queryHailuo(taskId: string, transport: ProviderSubmissionTransport = {}): Promise<HappyHorseQueryResult> {
-  const r = await fetch(`/api/proxy/video/hailuo/status/${encodeURIComponent(taskId)}`, { signal: transport.signal });
+export async function queryHailuo(
+  taskId: string,
+  modelOrTransport?: HailuoModel | ProviderSubmissionTransport,
+  explicitTransport: ProviderSubmissionTransport = {},
+): Promise<HappyHorseQueryResult> {
+  const model = typeof modelOrTransport === 'string' ? modelOrTransport : undefined;
+  const transport = modelOrTransport && typeof modelOrTransport === 'object'
+    ? modelOrTransport
+    : explicitTransport;
+  const modelQuery = model ? `?model=${encodeURIComponent(model)}` : '';
+  const r = await fetch(`/api/proxy/video/hailuo/status/${encodeURIComponent(taskId)}${modelQuery}`, { signal: transport.signal });
   const data = await safeJsonResponse(r, 'Hailuo 查询');
   if (!r.ok || !data.success) throw providerResponseError(r, data);
   return withProviderTransportTrace(data.data, r);
@@ -1533,6 +1562,34 @@ export interface SeedanceQueryResult extends ProviderTransportTrace {
   taskProvider?: Exclude<SeedanceTaskProvider, 'auto'>;
   model?: string;
   taskType?: 't2v' | 'i2v' | 'v2v' | 'multi';
+}
+
+export interface Vosr2VideoSubmitRequest {
+  model: 'vosr2-video-upscale';
+  videos: string[];
+}
+
+export async function submitVosr2Video(req: Vosr2VideoSubmitRequest, transport: ProviderSubmissionTransport = {}): Promise<{
+  taskId: string;
+  model: 'vosr2-video-upscale';
+  taskType: 'upscale';
+} & ProviderTransportTrace> {
+  const r = await fetch('/api/proxy/video/vosr2/submit', {
+    method: 'POST',
+    headers: providerSubmissionHeaders(transport),
+    body: JSON.stringify(req),
+    signal: transport.signal,
+  });
+  const data = await safeJsonResponse(r, 'Vosr2 视频超分提交');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data, r);
+}
+
+export async function queryVosr2Video(taskId: string, transport: ProviderSubmissionTransport = {}): Promise<HappyHorseQueryResult> {
+  const r = await fetch(`/api/proxy/video/vosr2/status/${encodeURIComponent(taskId)}`, { signal: transport.signal });
+  const data = await safeJsonResponse(r, 'Vosr2 视频超分查询');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data, r);
 }
 
 export type Hunyuan3DModel = 'hunyuan3d-v3.1-text-to-3d' | 'hunyuan3d-v3.1-image-to-3d';

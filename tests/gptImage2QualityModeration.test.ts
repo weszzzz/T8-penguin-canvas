@@ -13,10 +13,9 @@ test('GPT Image 2 exposes quality and moderation with Auto defaults only on the 
   assert.match(imageNode, /const isStandardGptImage2 = !isExternalSelected[\s\S]*modelDef\.paramKind === 'gpt-size'[\s\S]*!isFal[\s\S]*!isZhenzhenImageG2/);
   assert.match(imageNode, /const gptImageQuality:[\s\S]*: 'auto';/);
   assert.match(imageNode, /const gptImageModeration:[\s\S]*\? 'low' : 'auto';/);
-  for (const value of ['auto', 'high', 'medium', 'low']) {
-    assert.match(imageNode, new RegExp(`<option value="${value}"[^>]*>`, 'i'));
-  }
-  assert.match(imageNode, /<label[^>]*>内容审查<\/label>[\s\S]*<option value="auto"[\s\S]*<option value="low"/);
+  assert.match(imageNode, /\['auto', 'high', 'medium', 'low'\] as const/);
+  assert.match(imageNode, /\.map\(\(quality\) => \([\s\S]*value=\{quality\}/);
+  assert.match(imageNode, /<label[^>]*>\{translate\('nodes:generation\.contentReview'\)\}<\/label>[\s\S]*<option value="auto"[\s\S]*<option value="low"/);
   assert.match(imageNode, /quality: isStandardGptImage2 \? gptImageQuality : undefined/);
   assert.match(imageNode, /moderation: isStandardGptImage2 \? gptImageModeration : undefined/);
 });
@@ -34,7 +33,7 @@ test('GPT Image 2 request and schema preserve validated quality and moderation c
   assert.match(proxy, /form\.append\('quality', normalizedQuality\)/);
   assert.match(proxy, /form\.append\('moderation', normalizedModeration\)/);
   assert.match(canvas, /gptImageQuality: 'auto', gptImageModeration: 'auto'/);
-  assert.deepEqual(image.generation.allowedDataFields.gptImageQuality.enum, ['auto', 'high', 'medium', 'low']);
+  assert.deepEqual(image.generation.allowedDataFields.gptImageQuality.enum, ['auto', 'high', 'medium', 'low', 'xhigh', 'max']);
   assert.deepEqual(image.generation.allowedDataFields.gptImageModeration.enum, ['auto', 'low']);
   assert.equal(image.generation.defaults.gptImageQuality, 'auto');
   assert.equal(image.generation.defaults.gptImageModeration, 'auto');

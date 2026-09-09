@@ -1,0 +1,121 @@
+{
+  "schema": "t8-workflow-fragment",
+  "version": 1,
+  "title": "MiniMax-H3 首尾关键帧视频（贞贞的平价AI小屋 · V2）",
+  "nodes": [
+    {
+      "id": "minimax-h3-v2-first-frame",
+      "type": "upload",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "label": "上传首帧图",
+        "uploadType": "image",
+        "lockedUploadType": "image"
+      }
+    },
+    {
+      "id": "minimax-h3-v2-last-frame",
+      "type": "upload",
+      "position": {
+        "x": 0,
+        "y": 220
+      },
+      "data": {
+        "label": "上传尾帧图",
+        "uploadType": "image",
+        "lockedUploadType": "image"
+      }
+    },
+    {
+      "id": "minimax-h3-v2-keyframes",
+      "type": "video",
+      "position": {
+        "x": 440,
+        "y": 40
+      },
+      "data": {
+        "label": "MiniMax-H3 首尾帧视频",
+        "mainId": "hailuo-2.3",
+        "model": "MiniMax-H3",
+        "videoBuiltinSource": "seedance-nz",
+        "ratio": "adaptive",
+        "duration": 4,
+        "resolution": "480P",
+        "prompt": "保持主体身份、服装、构图与光线一致，从首帧自然连续地过渡到尾帧，镜头缓慢推进",
+        "localPrompt": "保持主体身份、服装、构图与光线一致，从首帧自然连续地过渡到尾帧，镜头缓慢推进",
+        "minimaxH3FirstFrameEnabled": true,
+        "minimaxH3LastFrameEnabled": true,
+        "minimaxH3DriveAudioEnabled": false,
+        "minimaxH3AudioMode": "api_default",
+        "minimaxH3DenoiseStrength": 0.35,
+        "minimaxH3AddDriveAsReference": "api_default",
+        "minimaxH3VideoStartSeconds": [
+          0,
+          0,
+          0
+        ],
+        "reuseResult": false
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "minimax-h3-v2-first-frame-to-minimax-h3-v2-keyframes",
+      "source": "minimax-h3-v2-first-frame",
+      "target": "minimax-h3-v2-keyframes"
+    },
+    {
+      "id": "minimax-h3-v2-last-frame-to-minimax-h3-v2-keyframes",
+      "source": "minimax-h3-v2-last-frame",
+      "target": "minimax-h3-v2-keyframes"
+    }
+  ],
+  "nodeCount": 3,
+  "edgeCount": 2,
+  "nodeTypes": [
+    "upload",
+    "upload",
+    "video"
+  ],
+  "topologyPreview": {
+    "nodes": [
+      {
+        "id": "minimax-h3-v2-first-frame",
+        "type": "upload",
+        "label": "上传首帧图",
+        "x": 50,
+        "y": 50
+      },
+      {
+        "id": "minimax-h3-v2-last-frame",
+        "type": "upload",
+        "label": "上传尾帧图",
+        "x": 50,
+        "y": 270
+      },
+      {
+        "id": "minimax-h3-v2-keyframes",
+        "type": "video",
+        "label": "MiniMax-H3 首尾帧视频",
+        "x": 490,
+        "y": 90
+      }
+    ],
+    "edges": [
+      {
+        "id": "minimax-h3-v2-first-frame-to-minimax-h3-v2-keyframes",
+        "source": "minimax-h3-v2-first-frame",
+        "target": "minimax-h3-v2-keyframes"
+      },
+      {
+        "id": "minimax-h3-v2-last-frame-to-minimax-h3-v2-keyframes",
+        "source": "minimax-h3-v2-last-frame",
+        "target": "minimax-h3-v2-keyframes"
+      }
+    ]
+  },
+  "savedAt": "2026-09-06T00:00:00.000Z"
+}

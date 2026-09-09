@@ -9,6 +9,7 @@ export type RunRecoveryKind =
   | 'kling'
   | 'upscaler'
   | 'fashvsr'
+  | 'vosr2'
   | 'vidu'
   | 'seed-audio'
   | 'suno'
@@ -33,7 +34,7 @@ export interface RunRecoveryDescriptor {
   maxPolls?: number;
 }
 const RECOVERY_KINDS = new Set<RunRecoveryKind>([
-  'runninghub', 'seedance', 'seedream-nz', 'wan', 'happyhorse', 'hailuo', 'flux3', 'kling', 'upscaler', 'fashvsr', 'vidu', 'seed-audio', 'suno',
+  'runninghub', 'seedance', 'seedream-nz', 'wan', 'happyhorse', 'hailuo', 'flux3', 'kling', 'upscaler', 'fashvsr', 'vosr2', 'vidu', 'seed-audio', 'suno',
   'image', 'mj', 'video', 'image-fal', 'video-fal',
 ]);
 
@@ -93,7 +94,9 @@ export function inferRunRecoveryDescriptor(payload: Record<string, unknown>): Ru
   if (provider === 'seedance-nz') {
     const lowerModel = model.toLowerCase();
     if (lowerModel.includes('seed-audio')) return { version: 1, kind: 'seed-audio', taskId, model, pollIntervalMs, maxPolls };
-    if (lowerModel.includes('seedream')) return { version: 1, kind: 'seedream-nz', taskId, model, pollIntervalMs, maxPolls };
+    if (lowerModel.includes('seedream') || lowerModel === 'vosr2-image-upscale') {
+      return { version: 1, kind: 'seedream-nz', taskId, model, pollIntervalMs, maxPolls };
+    }
     if (lowerModel.startsWith('wan-')) return { version: 1, kind: 'wan', taskId, model, pollIntervalMs, maxPolls };
     if (lowerModel.startsWith('happyhorse-')) return { version: 1, kind: 'happyhorse', taskId, model, pollIntervalMs, maxPolls };
     if (lowerModel.startsWith('hailuo-')) return { version: 1, kind: 'hailuo', taskId, model, pollIntervalMs, maxPolls };
@@ -101,6 +104,9 @@ export function inferRunRecoveryDescriptor(payload: Record<string, unknown>): Ru
     if (lowerModel.startsWith('kling-')) return { version: 1, kind: 'kling', taskId, model, pollIntervalMs, maxPolls };
     if (model === 'FlashVSR_video_upscale' || model === 'FashVSR_video_upscale') {
       return { version: 1, kind: 'fashvsr', taskId, model, pollIntervalMs, maxPolls };
+    }
+    if (lowerModel === 'vosr2-video-upscale') {
+      return { version: 1, kind: 'vosr2', taskId, model, pollIntervalMs, maxPolls };
     }
     if (lowerModel === 'zhenzhen-upscaler') return { version: 1, kind: 'upscaler', taskId, model, pollIntervalMs, maxPolls };
     if (lowerModel.startsWith('vidu-')) return { version: 1, kind: 'vidu', taskId, model, pollIntervalMs, maxPolls };

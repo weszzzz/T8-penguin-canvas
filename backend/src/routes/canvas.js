@@ -245,13 +245,14 @@ function scheduleCanvasListMirrorUpdate(canvasId, update) {
 }
 
 function writeCanvasListCompatibilityMirror(canvasId, document, options) {
+  const explicitName = document.name || document.title || options.createListItem?.name;
   const update = {
-    name: String(document.name || document.title || options.createListItem?.name || canvasId),
     nodeCount: document.nodes.length,
     updatedAt: Number(document.updatedAt) || Date.now(),
     revision: Number(document.revision) || undefined,
     createListItem: options.createListItem,
   };
+  if (typeof explicitName === 'string' && explicitName.trim()) update.name = explicitName;
   const lastWriteAt = lastCanvasListMirrorWriteAt.get(canvasId) || 0;
   if (options.throttleListMirror
     && lastWriteAt > 0

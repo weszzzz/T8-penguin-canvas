@@ -178,6 +178,12 @@ const SEEDREAM_V5_RESPONSE_DEADLINE_MS = boundedProxyInteger(
   30_000,
   10 * 60_000,
 );
+const GPT_IMAGE_25_RESPONSE_DEADLINE_MS = boundedProxyInteger(
+  process.env.T8_GPT_IMAGE_25_RESPONSE_DEADLINE_MS,
+  15 * 60_000,
+  30_000,
+  15 * 60_000,
+);
 const PROXY_REMOTE_IDLE_TIMEOUT_MS = boundedProxyInteger(
   process.env.T8_PROXY_REMOTE_IDLE_TIMEOUT_MS,
   15_000,
@@ -203,6 +209,8 @@ let proxySafeRemoteTestOptions = null;
 const providerResponseTimings = new WeakMap();
 let providerDispatcher = null;
 let providerPublicDnsDispatcher = null;
+let providerLongResponseDispatcher = null;
+const SYSTEM_FETCH_BRIDGE_MARKER = Symbol.for('t8-penguin-canvas.system-fetch-bridge.v1');
 
 const PROVIDER_NETWORK_ERROR_CODES = new Set([
   'ENOTFOUND',
@@ -256,6 +264,7 @@ function providerPublicDnsLookup(
 
 function createProviderDispatcher(options = {}) {
   const usePublicDns = options.publicDns === true;
+  const responseTimeout = Number(options.responseTimeoutMs);
   return new UndiciAgent({
     // This dispatcher is a recovery path only. The first request deliberately
     // uses the runtime's native fetch path (the same behavior as v2.5.3) so
@@ -264,6 +273,10 @@ function createProviderDispatcher(options = {}) {
     // switch, therefore keep-alive is disabled here.
     pipelining: 0,
     connectTimeout: Math.min(PROXY_REMOTE_DEADLINE_MS, PROVIDER_CONNECT_TIMEOUT_MS),
+    ...(Number.isFinite(responseTimeout) && responseTimeout > 0 ? {
+      headersTimeout: responseTimeout,
+      bodyTimeout: responseTimeout,
+    } : {}),
     // Let Undici race usable IPv4/IPv6 addresses instead of getting stuck on
     // an enabled-but-unroutable IPv6 interface after a TUN/VPN switch.
     autoSelectFamily: true,
@@ -288,17 +301,28 @@ function currentProviderDispatcher(publicDns = false) {
   return providerDispatcher;
 }
 
+function currentProviderLongResponseDispatcher() {
+  if (!providerLongResponseDispatcher) {
+    providerLongResponseDispatcher = createProviderDispatcher({
+      responseTimeoutMs: GPT_IMAGE_25_RESPONSE_DEADLINE_MS,
+    });
+  }
+  return providerLongResponseDispatcher;
+}
+
 function rotateProviderDispatcher() {
-  const previous = [providerDispatcher, providerPublicDnsDispatcher].filter(Boolean);
+  const previous = [providerDispatcher, providerPublicDnsDispatcher, providerLongResponseDispatcher].filter(Boolean);
   providerDispatcher = null;
   providerPublicDnsDispatcher = null;
+  providerLongResponseDispatcher = null;
   for (const dispatcher of previous) void dispatcher.close().catch(() => {});
 }
 
 async function resetProviderDispatcherForTests() {
-  const previous = [providerDispatcher, providerPublicDnsDispatcher].filter(Boolean);
+  const previous = [providerDispatcher, providerPublicDnsDispatcher, providerLongResponseDispatcher].filter(Boolean);
   providerDispatcher = null;
   providerPublicDnsDispatcher = null;
+  providerLongResponseDispatcher = null;
   await Promise.all(previous.map((dispatcher) => dispatcher.close().catch(() => {})));
 }
 
@@ -371,7 +395,7 @@ function providerFetchDeadlineMs(options = {}) {
     proxySafeRemoteTestOptions?.providerDeadlineMs ?? options?.deadlineMs,
     PROXY_REMOTE_DEADLINE_MS,
     10,
-    10 * 60_000,
+    15 * 60_000,
   );
 }
 
@@ -416,7 +440,9 @@ async function fetchProviderResponse(url, init = {}, label = 'Provider', options
       const requestHeaders = providerIdempotencyHeaders(init?.headers, method);
       const explicitDispatcher = init?.dispatcher;
       const recoveryDispatcher = explicitDispatcher
-        || (attempt > 0 ? currentProviderDispatcher(false) : null);
+        || (options?.longResponseWindow === true && !globalThis.fetch?.[SYSTEM_FETCH_BRIDGE_MARKER]
+          ? currentProviderLongResponseDispatcher()
+          : (attempt > 0 ? currentProviderDispatcher(false) : null));
       const requestInit = {
         ...init,
         headers: requestHeaders,
@@ -1483,6 +1509,74 @@ function normalizeImageApiModel(model) {
   if (raw === 'gemini-3-pro-image-4k-preview') return 'gemini-3-pro-image-4k';
   if (gptImage2ZhenzhenVariantSize(raw)) return 'gpt-image-2';
   return raw;
+}
+
+const GPT_IMAGE_25_MODELS = Object.freeze([
+  'gpt-image-2.5-flare',
+  'gpt-image-2.5-flare-2k',
+  'gpt-image-2.5-flare-4k',
+  'gpt-image-2.5-sunburst',
+  'gpt-image-2.5-sunburst-2k',
+  'gpt-image-2.5-sunburst-4k',
+]);
+const GPT_IMAGE_25_MODEL_SET = new Set(GPT_IMAGE_25_MODELS);
+const GPT_IMAGE_25_QUALITY_SET = new Set(['auto', 'low', 'medium', 'high', 'xhigh', 'max']);
+const GPT_IMAGE_25_BACKGROUND_SET = new Set(['auto', 'opaque']);
+const GPT_IMAGE_25_MODERATION_SET = new Set(['auto', 'low']);
+const GPT_IMAGE_25_MAX_IMAGES = 14;
+const GPT_IMAGE_25_PROMPT_MAX_LENGTH = 32_000;
+
+function isGptImage25Model(model) {
+  return GPT_IMAGE_25_MODEL_SET.has(String(model || '').trim());
+}
+
+function gptImage25InputError(message) {
+  return Object.assign(new Error(`GPT Image 2.5 ${message}`), { status: 400 });
+}
+
+function validateGptImage25Size(size) {
+  const normalized = String(size || '1024x1024').trim().toLowerCase();
+  const match = normalized.match(/^(\d+)x(\d+)$/);
+  if (!match) throw gptImage25InputError('尺寸必须使用 WIDTHxHEIGHT，例如 1024x1024');
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (width % 16 !== 0 || height % 16 !== 0) throw gptImage25InputError('宽和高都必须是 16 的倍数');
+  if (width > 3840 || height > 3840) throw gptImage25InputError('宽和高都不能超过 3840');
+  const shortEdge = Math.min(width, height);
+  const longEdge = Math.max(width, height);
+  if (shortEdge <= 0 || longEdge / shortEdge > 3) throw gptImage25InputError('宽高比必须在 1:3 到 3:1 之间');
+  const pixels = width * height;
+  if (pixels < 655_360 || pixels > 8_294_400) {
+    throw gptImage25InputError('总像素必须在 655,360 到 8,294,400 之间');
+  }
+  return normalized;
+}
+
+function validateGptImage25Request({ model, prompt, size, quality, background, moderation, n, refs }) {
+  if (!isGptImage25Model(model)) throw gptImage25InputError(`不支持模型 ${String(model || '(空)').slice(0, 120)}`);
+  const normalizedPrompt = String(prompt || '').trim();
+  if (!normalizedPrompt) throw gptImage25InputError('prompt 不得为空');
+  if (normalizedPrompt.length > GPT_IMAGE_25_PROMPT_MAX_LENGTH) throw gptImage25InputError('prompt 不能超过 32000 字符');
+  const normalizedQuality = String(quality || 'auto').trim().toLowerCase();
+  if (!GPT_IMAGE_25_QUALITY_SET.has(normalizedQuality)) throw gptImage25InputError(`不支持 quality=${normalizedQuality || '(空)'}`);
+  const normalizedBackground = String(background || 'auto').trim().toLowerCase();
+  if (!GPT_IMAGE_25_BACKGROUND_SET.has(normalizedBackground)) throw gptImage25InputError(`不支持 background=${normalizedBackground || '(空)'}`);
+  const normalizedModeration = String(moderation || 'auto').trim().toLowerCase();
+  if (!GPT_IMAGE_25_MODERATION_SET.has(normalizedModeration)) throw gptImage25InputError(`不支持 moderation=${normalizedModeration || '(空)'}`);
+  const normalizedN = Number(n == null ? 1 : n);
+  if (!Number.isInteger(normalizedN) || normalizedN < 1 || normalizedN > 10) throw gptImage25InputError('n 必须是 1–10 的整数');
+  if (Array.isArray(refs) && refs.length > GPT_IMAGE_25_MAX_IMAGES) {
+    throw gptImage25InputError(`最多输入 ${GPT_IMAGE_25_MAX_IMAGES} 张参考图`);
+  }
+  return {
+    model: String(model).trim(),
+    prompt: normalizedPrompt,
+    quality: normalizedQuality,
+    size: validateGptImage25Size(size),
+    n: normalizedN,
+    background: normalizedBackground,
+    moderation: normalizedModeration,
+  };
 }
 
 function gptImage2ZhenzhenVariantSize(model) {
@@ -3016,7 +3110,7 @@ async function buildGeminiOfficialContents(prompt, refs) {
 //   - Gemini 3 官方图像模型: JSON /v1/models/{model}:generateContent + generationConfig.responseFormat.image
 //   - Grok Image: JSON /generations?async=true { model, prompt, aspect_ratio, image:[base64...]? }
 // ========================================================================
-async function callImageUpstreamAsync({ apiKey, finalApiModel, paramKind, prompt, n, aspect_ratio, image_size, refs, size, quality, moderation, response_format, output_format, signal }) {
+async function callImageUpstreamAsync({ apiKey, finalApiModel, paramKind, prompt, n, aspect_ratio, image_size, refs, size, quality, moderation, background, response_format, output_format, signal }) {
   const upstreamBase = `${config.ZHENZHEN_BASE_URL}/v1/images`;
   const auth = `Bearer ${apiKey}`;
   const ar = String(aspect_ratio || '').trim();
@@ -3024,6 +3118,51 @@ async function callImageUpstreamAsync({ apiKey, finalApiModel, paramKind, prompt
   const lvlLower = String(image_size || '1K').toLowerCase();
   const lvlUpper = String(image_size || '2K').toUpperCase();
   const hasRefs = Array.isArray(refs) && refs.length > 0;
+
+  // ===== GPT Image 2.5（贞贞的AI工坊同步协议）=====
+  // 无参考图使用 JSON /generations；有参考图使用 multipart /edits，绝不附加 async 查询参数或白图占位。
+  if (paramKind === 'gpt-image-2.5' || isGptImage25Model(finalApiModel)) {
+    const payload = validateGptImage25Request({
+      model: finalApiModel,
+      prompt,
+      size,
+      quality,
+      background,
+      moderation,
+      n,
+      refs,
+    });
+    let url;
+    let init;
+    if (hasRefs) {
+      const convertedRefs = await collectConvertedImageRefs(refs, 'GPT Image 2.5 参考图');
+      if (convertedRefs.length !== refs.length) {
+        throw gptImage25InputError(`参考图读取不完整（${convertedRefs.length}/${refs.length}），已中止生成`);
+      }
+      const form = new FormData();
+      for (const [key, value] of Object.entries(payload)) {
+        if (key !== 'background' || value !== 'auto') form.append(key, String(value));
+      }
+      appendConvertedImagesToForm(form, convertedRefs);
+      url = `${upstreamBase}/edits`;
+      init = { method: 'POST', headers: { Authorization: auth }, body: form, signal };
+    } else {
+      const body = { ...payload };
+      if (body.background === 'auto') delete body.background;
+      url = `${upstreamBase}/generations`;
+      init = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: auth },
+        body: JSON.stringify(body),
+        signal,
+      };
+    }
+    console.log('[upstream] GPT Image 2.5 sync →', hasRefs ? '/edits' : '/generations', 'model:', finalApiModel, 'size:', payload.size, 'n:', payload.n, { refs: refs.length });
+    return await fetchProviderResponse(url, init, 'GPT Image 2.5', {
+      deadlineMs: GPT_IMAGE_25_RESPONSE_DEADLINE_MS,
+      longResponseWindow: true,
+    });
+  }
 
   // ===== Gemini 3 官方图像格式(对齐 Nano Banana 2 Lite / Gemini 3 Pro Image generateContent) =====
   if (isOfficialGeminiImageModel(finalApiModel)) {
@@ -3758,7 +3897,13 @@ router.get('/video/hailuo/status/:tid', async (req, res) => {
   const apiKey = String(remembered?.apiKey || settings?.zhenzhenSd2ApiKey || '').trim();
   if (!apiKey) return res.status(400).json({ success: false, error: '缺少贞贞的平价AI小屋 API Key' });
   try {
-    const result = await seedanceNz.queryTask(req.params.tid, apiKey, { signal: req.t8AbortSignal });
+    const requestedModel = String(req.query?.model || '').trim() === seedanceNz.MINIMAX_H3_V2_MODEL
+      ? seedanceNz.MINIMAX_H3_V2_MODEL
+      : '';
+    const taskModel = remembered?.model || requestedModel;
+    const result = taskModel === seedanceNz.MINIMAX_H3_V2_MODEL
+      ? await seedanceNz.queryMinimaxH3V2Task(req.params.tid, apiKey, { signal: req.t8AbortSignal })
+      : await seedanceNz.queryTask(req.params.tid, apiKey, { signal: req.t8AbortSignal });
     const materialized = await materializeRemoteTaskOutput({
       status: result.status,
       remoteUrl: result.videoUrl,
@@ -3775,7 +3920,7 @@ router.get('/video/hailuo/status/:tid', async (req, res) => {
         ? safeDiagnosticText(result.failReason || 'Hailuo 任务失败', 240, [apiKey])
         : '',
       taskProvider: seedanceNz.PROVIDER_ID,
-      model: remembered?.model || '',
+      model: taskModel || '',
       taskType: remembered?.taskType || '',
       ...seedanceNzTrace(result),
     };
@@ -4189,6 +4334,83 @@ router.get('/video/fashvsr/status/:tid', async (req, res) => {
     return res.status(status >= 400 && status < 600 ? status : 500).json({
       success: false,
       error: proxyPublicError(error, 'FlashVSR 视频超分查询失败', [apiKey]),
+      ...seedanceNzTrace(error),
+    });
+  }
+});
+
+router.post('/video/vosr2/submit', async (req, res) => {
+  const settings = loadRawSettings();
+  const apiKey = String(settings?.zhenzhenSd2ApiKey || '').trim();
+  if (!apiKey) {
+    return res.status(400).json({ success: false, error: '请先在 API 设置中填写“贞贞的平价AI小屋 API Key”' });
+  }
+  try {
+    const result = await seedanceNz.submitVosr2VideoTask(req.body || {}, apiKey, { signal: req.t8AbortSignal });
+    rememberTaskKey(result.taskId, apiKey, {
+      provider: 'vosr2-nz',
+      model: result.model,
+      taskType: result.taskType,
+    });
+    return res.json({
+      success: true,
+      data: {
+        taskId: result.taskId,
+        model: result.model,
+        taskType: result.taskType,
+        ...seedanceNzTrace(result),
+      },
+    });
+  } catch (error) {
+    const status = Number(error?.status || 500);
+    proxyRouteError('proxy/video/vosr2/submit 错误', error, [apiKey]);
+    return res.status(status >= 400 && status < 600 ? status : 500).json({
+      success: false,
+      error: proxyPublicError(error, 'Vosr2 视频超分请求失败', [apiKey]),
+      ...seedanceNzTrace(error),
+    });
+  }
+});
+
+router.get('/video/vosr2/status/:tid', async (req, res) => {
+  const settings = loadRawSettings();
+  const remembered = recallTaskMeta(req.params.tid, 'vosr2-nz');
+  const apiKey = String(remembered?.apiKey || settings?.zhenzhenSd2ApiKey || '').trim();
+  if (!apiKey) return res.status(400).json({ success: false, error: '缺少贞贞的平价AI小屋 API Key' });
+  try {
+    const result = await seedanceNz.queryVosr2VideoTask(req.params.tid, apiKey, { signal: req.t8AbortSignal });
+    const materialized = await materializeRemoteTaskOutput({
+      status: result.status,
+      remoteUrl: result.videoUrl,
+      kind: 'video',
+      materializationKey: `vosr2-nz:${req.params.tid}`,
+      providerFetchImpl: seedanceNz.fetchRemote,
+    });
+    const responseData = {
+      status: result.status,
+      progress: safeDiagnosticText(result.progress || '', 80, [apiKey]),
+      videoUrl: materialized.url,
+      failReason: result.status === 'failed'
+        ? safeDiagnosticText(result.failReason || 'Vosr2 视频超分任务失败', 240, [apiKey])
+        : '',
+      model: remembered?.model || seedanceNz.VOSR2_VIDEO_UPSCALE_MODEL,
+      taskType: remembered?.taskType || 'upscale',
+      ...seedanceNzTrace(result),
+    };
+    if (materialized.failure) {
+      return sendCompletedRemoteOutputFailure(res, materialized.failure, responseData, {
+        defaultCode: 'vosr2_output_unusable',
+        defaultMessage: 'Vosr2 视频结果无法保存。',
+      });
+    }
+    return res.json({ success: true, data: responseData });
+  } catch (error) {
+    const status = Number(error?.status || 500);
+    proxyRouteError('proxy/video/vosr2/status 错误', error, [apiKey]);
+    if (sendTaskResultQueryRecovery(res, error, { taskId: req.params.tid })) return;
+    return res.status(status >= 400 && status < 600 ? status : 500).json({
+      success: false,
+      error: proxyPublicError(error, 'Vosr2 视频超分查询失败', [apiKey]),
       ...seedanceNzTrace(error),
     });
   }
@@ -4695,7 +4917,7 @@ router.post('/image', async (req, res) => {
     model, apiModel, paramKind: paramKindIn,
     prompt, n,
     aspect_ratio, image_size,
-    images, image, size, quality, moderation, response_format, output_format, providerParams,
+    images, image, size, quality, moderation, background, response_format, output_format, providerParams,
   } = req.body || {};
   // v1.2.9.15: 一体化「专属优先 fallback 通用」校验
   if (!ensureKeyOrSelectedGroup(settings, res, apiModel || model || '', '图像', providerParams)) return;
@@ -4704,7 +4926,7 @@ router.post('/image', async (req, res) => {
   const gptImage2ForcedSize = gptImage2ZhenzhenVariantSize(originalApiModel);
   const finalApiModel = normalizeImageApiModel(originalApiModel);
   const ml = `${originalApiModel} ${finalApiModel}`.toLowerCase();
-  const paramKind = paramKindIn || (ml.includes('seedream-v5') ? 'seedream-v5' : (ml.includes('grok') && ml.includes('image') ? 'grok-image' : (isBananaImageModel(ml) ? 'banana-ratio' : 'gpt-size')));
+  const paramKind = paramKindIn || (isGptImage25Model(finalApiModel) ? 'gpt-image-2.5' : (ml.includes('seedream-v5') ? 'seedream-v5' : (ml.includes('grok') && ml.includes('image') ? 'grok-image' : (isBananaImageModel(ml) ? 'banana-ratio' : 'gpt-size'))));
   if (!finalApiModel) return res.status(400).json({ success: false, error: 'model 必填' });
   const refs = Array.isArray(images) ? images.filter(Boolean) : [];
   if (typeof image === 'string' && image && !refs.includes(image)) refs.unshift(image);
@@ -4721,7 +4943,7 @@ router.post('/image', async (req, res) => {
     apiKey = String(settings.zhenzhenApiKey || '');
     const r = await callImageUpstreamAsync({
       apiKey, finalApiModel, paramKind,
-      prompt, n, aspect_ratio, image_size: gptImage2ForcedSize || image_size, refs, size: gptImage2ForcedSize ? undefined : size, quality, moderation, response_format, output_format,
+      prompt, n, aspect_ratio, image_size: gptImage2ForcedSize || image_size, refs, size: gptImage2ForcedSize ? undefined : size, quality, moderation, background, response_format, output_format,
       signal: req.t8AbortSignal,
     });
     if (!r.ok) {
@@ -4772,7 +4994,7 @@ router.post('/image/submit', async (req, res) => {
   let apiKey = String(settings?.zhenzhenApiKey || '');
   try {
     const { model, apiModel, paramKind: paramKindIn, prompt, n,
-            aspect_ratio, image_size, images, image, size, quality, moderation, response_format, output_format, providerParams } = req.body || {};
+            aspect_ratio, image_size, images, image, size, quality, moderation, background, response_format, output_format, providerParams } = req.body || {};
     // v1.2.9.15: 一体化「专属优先 fallback 通用」校验
     if (!ensureKeyOrSelectedGroup(settings, res, apiModel || model || '', '图像', providerParams)) return;
     apiKey = String(settings.zhenzhenApiKey || '');
@@ -4781,7 +5003,7 @@ router.post('/image/submit', async (req, res) => {
     const gptImage2ForcedSize = gptImage2ZhenzhenVariantSize(originalApiModel);
     const finalApiModel = normalizeImageApiModel(originalApiModel);
     const ml = `${originalApiModel} ${finalApiModel}`.toLowerCase();
-    const paramKind = paramKindIn || (ml.includes('seedream-v5') ? 'seedream-v5' : (ml.includes('grok') && ml.includes('image') ? 'grok-image' : (isBananaImageModel(ml) ? 'banana-ratio' : 'gpt-size')));
+    const paramKind = paramKindIn || (isGptImage25Model(finalApiModel) ? 'gpt-image-2.5' : (ml.includes('seedream-v5') ? 'seedream-v5' : (ml.includes('grok') && ml.includes('image') ? 'grok-image' : (isBananaImageModel(ml) ? 'banana-ratio' : 'gpt-size'))));
     if (!finalApiModel) return res.status(400).json({ success: false, error: 'model 必填' });
     const refs = Array.isArray(images) ? images.filter(Boolean) : [];
     if (typeof image === 'string' && image && !refs.includes(image)) refs.unshift(image);
@@ -4797,7 +5019,8 @@ router.post('/image/submit', async (req, res) => {
     apiKey = String(settings.zhenzhenApiKey || '');
     const r = await callImageUpstreamAsync({
       apiKey, finalApiModel, paramKind,
-      prompt, n, aspect_ratio, image_size: gptImage2ForcedSize || image_size, refs, size: gptImage2ForcedSize ? undefined : size, quality, moderation, response_format, output_format,
+      prompt, n, aspect_ratio, image_size: gptImage2ForcedSize || image_size, refs, size: gptImage2ForcedSize ? undefined : size, quality, moderation, background, response_format, output_format,
+      signal: req.t8AbortSignal,
     });
     if (!r.ok) {
       const providerError = await boundedProviderHttpError(r, 'Image submit failed');

@@ -1,7 +1,198 @@
 {
   "$schema": "本文件为 T8-penguin-canvas 节点清单防丢失锁,任何节点删减都需要在 roadmap.md 中说明并更新本文件。",
-  "version": "3.1.4",
-  "lastUpdated": "2026-09-04-v3.1.4-dual-platform-release-verified",
+  "version": "3.1.5",
+  "lastUpdated": "2026-09-09-v3.1.5-release-authorized-image-g25",
+  "zhenzhenImageG25Budget20260909": {
+    "status": "release-candidate-v3.1.5-live-verified",
+    "date": "2026-09-09",
+    "releaseIncluded": true,
+    "channel": "贞贞的平价AI小屋（api.seedance.nz）",
+    "tab": "图像节点 / GPT2 / gpt-image-2",
+    "models": [
+      "zhenzhen-image-g-v2.5-lowprice",
+      "zhenzhen-image-g-v2.5-flare",
+      "zhenzhen-image-g-v2.5-sunburst"
+    ],
+    "source": {
+      "apiDocumentation": "https://api.seedance.nz/docs/llms.txt",
+      "apiDocumentationLastModified": "Wed, 09 Sep 2026 09:36:52 GMT",
+      "apiDocumentationSha256": "09dbf0c24c17013857411ed9d570298bcc81157f3409e8ba033515f12e901699",
+      "referenceProject": "F:/AI-T8-video-onekey/ComfyUI/custom_nodes/ComfyUI_Seedance",
+      "referenceCommit": "f617c5e7cee5dfbbfbab07b06032b8ef45843284"
+    },
+    "capability": [
+      "三个模型进入现有图像节点 GPT2 TAB 的贞贞的平价AI小屋模型列表，不替换贞贞的AI工坊 GPT Image 2 / GPT Image 2.5 模型、默认渠道或旧画布值。",
+      "统一使用 Bearer 鉴权、POST /v1/image/generations 提交与 GET /v1/image/generations/{id} 查询；本地参考图先经 /v1/files/upload 上传，完成输出立即下载并校验。",
+      "Lowprice 支持文生图和参考图编辑、最多 15 张参考图、n 固定 1、提示词 1-5000 字符、1k/2k/4k、auto 与文档固定比例及 nsfw_check；不发送未记录在该模型文档中的官方参数。",
+      "Flare 与 Sunburst 支持文生图和参考图编辑、最多 16 张参考图、n 为 1-4、1k/2k/4k、固定比例/保留参考图比例/受约束自定义尺寸、六档质量、PNG/JPEG/WebP、压缩、背景与审核参数。",
+      "自定义宽高必须为 16 的倍数、各不超过 3840、宽高比不超过 3:1，总像素为 655360-8294400；透明背景拒绝 JPEG，JPEG/WebP 之外不发送压缩参数。",
+      "恢复只查询原任务，绝不自动重放状态不明的付费提交；API Key、任务 ID、签名 URL 和 Provider 原始响应均不持久化。"
+    ],
+    "verification": [
+      "三个模型各真实付费提交 1 次且 HTTP 200，无自动重放；Lowprice 与 Flare 为文生图，Sunburst 使用 Lowprice 真实输出完成图生图。",
+      "Lowprice 输出为 1254x1254 PNG、1406293 bytes、SHA-256 3580323495cb8c4b6e97eef36089af7f028516f86384fb9b487e4bbca7f69dce；Flare 输出为 1024x1024 PNG、1204598 bytes、SHA-256 f4009147d2b80f7c3798a6a1e86da5702b477fe1ed0e1f4374a049f5374c0387；Sunburst 输出为 1024x1024 PNG、1419043 bytes、SHA-256 4b54738bb61f35f9916fe7c8eb7f29526bbe3e45c056f3e1043771657c8f58be。",
+      "专项与相邻图像/Provider/前端回归 106/106，通过模型目录语义补充后专项 5/5；Electron ABI RunIntent 与恢复回归改用 E 盘隔离临时目录后 27/27。",
+      "TypeScript、Node 语法、4484 个中英文 Key、39 actions / 294 runtime / 83/83 nodes / 0 public gaps 能力同步、公开目录检查及 2952 模块 production build 通过。"
+    ],
+    "artifacts": {
+      "report": "output/zhenzhen-image-g25-live-20260909T113653Z/report.json",
+      "outputCount": 3,
+      "credentialPersisted": false,
+      "taskIdPersisted": false,
+      "signedUrlPersisted": false,
+      "rawProviderResponsePersisted": false
+    },
+    "releaseBoundary": "用户在此前暂停后重新明确授权发布；本能力纳入 v3.1.5 固定源码候选，正式技术门、同源双平台构建和远端完整性验证不可延期。"
+  },
+  "electronReleaseV315": {
+    "status": "authorized-awaiting-technical-gates",
+    "date": "2026-09-09",
+    "releaseIncluded": true,
+    "version": "3.1.5",
+    "tag": "v3.1.5",
+    "latest": "pending",
+    "sourceCommit": null,
+    "publishedAt": null,
+    "url": "https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.5",
+    "scope": [
+      "图像节点 GPT2 TAB 新增 gpt-image-2.5-flare / flare-2k / flare-4k 与 gpt-image-2.5-sunburst / sunburst-2k / sunburst-4k，支持 1-10 张输出、最多 14 张有序参考图、质量/背景/审核和受约束尺寸。",
+      "图像节点 GPT2 TAB 的 gpt-image-2 下新增 zhenzhen-image-g-v2.5-lowprice / flare / sunburst；Lowprice 最多 15 图且 n=1，Flare/Sunburst 最多 16 图且 n=1-4，并严格保留各自文档参数边界。",
+      "视频节点 Hailuo TAB 新增大小写敏感的 MiniMax-H3 V2，支持纯文本、首尾关键帧、9 图、3 视频、3 参考音频、1 驱动音频和四份无凭据工作流。",
+      "图像节点与视频节点新增 Vosr2 入口；vosr2-image-upscale 只接受单图并固定输出 4K，vosr2-video-upscale 只接受单视频并固定输出 2K。",
+      "完整保留 v3.1.4 及更早全部节点、模型、工作流、Provider 协议、默认渠道、默认值和旧画布数据。"
+    ],
+    "verification": [
+      "四个功能域均已使用用户授权 Key 完成真实 Provider 任务、结果下载、媒体解码和脱敏记录；凭据、任务 ID、签名 URL 和原始 Provider 响应未进入公开源码或证据。",
+      "发布前必须通过专项/相邻回归、Electron ABI 恢复、运行权限、TypeScript、Node 语法、双语 Key、39 actions / 294 runtime / 83/83 nodes 能力同步、公开目录、RH、加密、双运行时、native rebuild、app.asar 启动合同、NSIS、provenance、sealed recovery 与远端完整回下载。",
+      "Windows 与真实 macOS arm64 必须来自同一不可变 v3.1.5 Tag，并进入同一非草稿、非预发布 Latest Release；Mac 未配置 Apple Developer ID 时继续明确为 ad-hoc 技术预览。"
+    ],
+    "evidenceBoundary": {
+      "technicalGates": "must-pass-before-release",
+      "affectedUserInstallF8F10AndInstalledUpgrade": "deferred-not-passed",
+      "deferralApproval": "owner-approved-post-release-v3.1.5",
+      "rule": "用户在此前暂停后已重新明确授权直接发布；只有列出的外部证据可以后补且不视为通过，正式技术门、固定源码、同源双平台资产与远端完整下载不可延期。"
+    }
+  },
+  "vosr2Upscale20260909": {
+    "status": "release-candidate-v3.1.5-live-verified",
+    "date": "2026-09-09",
+    "releaseIncluded": true,
+    "channel": "贞贞的平价AI小屋（api.seedance.nz）",
+    "models": {
+      "image": "vosr2-image-upscale",
+      "video": "vosr2-video-upscale"
+    },
+    "source": {
+      "apiDocumentation": "https://api.seedance.nz/docs/llms.txt",
+      "referenceProject": "F:/AI-T8-video-onekey/ComfyUI/custom_nodes/ComfyUI_Seedance"
+    },
+    "capability": [
+      "图像节点新增独立 Vosr2 TAB；必须且只能输入 1 张图片，不显示 Prompt 或尺寸参数，固定输出 4K。",
+      "视频节点新增 Vosr2 选项；必须且只能输入 1 个视频，不显示 Prompt、时长或分辨率参数，固定输出 2K。",
+      "图片严格使用 POST /v1/image/generations 与 GET /v1/image/generations/{id}，上游提交体只有 model 和 images[1]。",
+      "视频严格使用 POST /v1/video/generations 与 GET /v1/video/generations/{id}，上游提交体只有 model 和 metadata.video_url。",
+      "本地素材先经 POST /v1/files/upload 转为公网 URL；输出立即下载到本机，任务恢复只查询原任务，不重放生成提交。",
+      "两个模型复用高级 API 设置中的贞贞的平价AI小屋 Key；凭据、任务 ID、签名 URL 和 Provider 原始响应均不持久化。"
+    ],
+    "verification": [
+      "vosr2-image-upscale 真实提交 1 次并成功；结果为 4096x2304 PNG、2819890 bytes，SHA-256 602611fd46edb658d8f3501accda1cc7f391771feeb9fecc16601bfd1de577f1，并完成解码与目检。",
+      "vosr2-video-upscale 真实提交 1 次并成功；结果为 2560x1472、H.264/yuv420p、1 秒、853022 bytes，SHA-256 fddfe08fcbbb13622ea33bb38ada0f7333aaaf2bbf3113d76decd181303b26e4，并通过 FFprobe 与完整 FFmpeg 视频流解码。",
+      "专项及相邻模型回归 17/17、Electron ABI 重启恢复回归 10/10、运行权限回归 17/17 通过；TypeScript、Node 语法、中英文 Key、39 actions / 291 runtime / 83/83 nodes 能力同步及 2952 模块 production build 通过。",
+      "两个付费生成端点各只提交 1 次；上传和轮询未触发第二次生成。"
+    ],
+    "artifacts": {
+      "image": "output/vosr2-live-20260909T095609Z/vosr2-image-upscale.png",
+      "video": "output/vosr2-live-20260909T095609Z/vosr2-video-upscale.mp4",
+      "report": "output/vosr2-live-20260909T095609Z/report.json",
+      "credentialPersisted": false,
+      "taskIdPersisted": false,
+      "signedUrlPersisted": false,
+      "rawProviderResponsePersisted": false
+    },
+  "releaseBoundary": "用户已重新授权发布；本能力纳入 v3.1.5 固定源码候选，正式技术门、同源双平台构建和远端完整性验证不可延期。"
+  },
+  "gptImage25Workshop20260909": {
+    "status": "release-candidate-v3.1.5-live-verified",
+    "date": "2026-09-09",
+    "releaseIncluded": true,
+    "channel": "贞贞的AI工坊",
+    "tab": "图像节点 / GPT2",
+    "models": [
+      "gpt-image-2.5-flare",
+      "gpt-image-2.5-flare-2k",
+      "gpt-image-2.5-flare-4k",
+      "gpt-image-2.5-sunburst",
+      "gpt-image-2.5-sunburst-2k",
+      "gpt-image-2.5-sunburst-4k"
+    ],
+    "source": {
+      "referenceImplementation": "F:/AI-T8-video-onekey/ComfyUI/custom_nodes/Comfyui-zhenzhen/gpt_image_25_nodes.py",
+      "baseUrl": "https://ai.t8star.org"
+    },
+    "capability": [
+      "无参考图同步 JSON 调用 /v1/images/generations；有参考图同步 multipart 调用 /v1/images/edits；不添加 async=true，也不创建旧 GPT2 白图占位。",
+      "支持 1-10 张输出、最多 14 张按连接/上传顺序发送的参考图、auto/low/medium/high/xhigh/max 质量、auto/opaque 背景与 auto/low 审核。",
+      "支持 8 个预设尺寸和自定义尺寸；宽高必须为 16 的倍数且不超过 3840，比例为 1:3 到 3:1，总像素为 655360-8294400。",
+      "前端和后端均校验提示词、模型、尺寸、输出数和参考图上限；15 张参考图失败关闭，参考图读取不完整时不降级为文生图。",
+      "慢首包使用 15 分钟响应窗口；Electron 正式版保留 Chromium 系统网络，独立开发后端补齐 Undici 长响应头窗口；付费 POST 不自动重放。",
+      "旧 GPT Image 2 模型、默认模型、旧协议和已保存画布不迁移。"
+    ],
+    "verification": [
+      "六个模型各真实提交一次 low / 1024x1024 / n=1 文生图，均返回 HTTP 200；输出逐一下载并解码为 1024x1024 PNG。",
+      "gpt-image-2.5-flare 真实提交一次 14 张不同编号参考图编辑，返回 HTTP 200；结果下载、解码和目检明确呈现 1-14 个输入。",
+      "专项及相邻回归 16/16，TypeScript、Node 语法、4464 个双语 Key、39 actions / 289 runtime / 83/83 nodes 能力同步和 2952 模块 production build 通过。",
+      "第一次诊断提交在 Node 默认约 5 分钟响应头上限处返回 fetch failed，状态不明且未自动重放；定位并修正独立开发传输窗口后，单独的新一轮 7 次请求全部成功。"
+    ],
+    "artifacts": {
+      "report": "output/gpt-image-25-live-20260909T090142Z/report.json",
+      "imageCount": 7,
+      "credentialPersisted": false,
+      "taskIdPersisted": false,
+      "signedUrlPersisted": false,
+      "rawProviderResponsePersisted": false
+    },
+    "releaseBoundary": "用户已重新授权发布；本能力纳入 v3.1.5 固定源码候选，正式技术门、同源双平台构建和远端完整性验证不可延期。"
+  },
+  "minimaxH3V2Video20260906": {
+    "status": "release-candidate-v3.1.5-live-verified",
+    "date": "2026-09-06",
+    "releaseIncluded": true,
+    "channel": "贞贞的平价AI小屋",
+    "model": "MiniMax-H3",
+    "source": {
+      "apiDocumentation": "https://api.seedance.nz/docs/llms.txt",
+      "referenceProject": "F:/AI-T8-video-onekey/ComfyUI/custom_nodes/ComfyUI_Seedance"
+    },
+    "capability": [
+      "现有视频节点 Hailuo TAB 新增独立 MiniMax-H3 选项，不替换默认模型，不迁移旧画布。",
+      "严格使用 POST /v2/video_generation 与 GET /v2/query/video_generation/{task_id}，保持大小写敏感模型 ID，并从 task.content.url 读取完成结果。",
+      "支持必填提示词、4-15 秒；提供单段驱动音频后支持 4-60 秒；分辨率为 480P/768P。",
+      "支持纯文本、首尾关键帧、最多 9 张参考图、3 个参考视频及各自起始秒、3 段参考音频和 1 段驱动音频；素材角色按当前排序显式分配。",
+      "支持 api_default、lock_source、remix_source、reference_only、native 五种音频控制；Seed 只用于本地结果缓存，不发送上游。",
+      "408/5xx 只有在响应携带 X-Task-Id 时恢复查询原任务，禁止自动重放不明确的生成请求；重启恢复保留精确模型判别。",
+      "新增控件均有中英文显示；界面及功能记录不展示费用。"
+    ],
+    "workflows": [
+      "docs/workflows/MiniMax-H3-text-to-video.json",
+      "docs/workflows/MiniMax-H3-keyframes.json",
+      "docs/workflows/MiniMax-H3-multimodal-reference.json",
+      "docs/workflows/MiniMax-H3-drive-audio.json"
+    ],
+    "verification": [
+      "使用用户授权的贞贞渠道 API Key 真实提交一次 480P / 4 秒 / 16:9 文生视频，经历运行态后成功，下载结果通过 MP4 ftyp、FFprobe 与 H.264 解码核验。",
+      "输出为 864x480、约 4.458 秒、1,222,551 bytes，SHA-256 为 eb6ce257a161230b22837cfbb20790af7ea8fd4455fb6b3563c07b0c3d852416。",
+      "专项与相邻回归 103/103，TypeScript、Node 语法、4454 个双语 Key、39 actions / 283 runtime / 83/83 nodes 能力同步及 2952 模块 production build 均通过。",
+      "四份工作流不包含 API Key、任务 ID、签名 URL 或生成结果；真实测试报告也不保存这些敏感值。"
+    ],
+    "artifacts": {
+      "video": "output/minimax-h3-v2-live-20260906/MiniMax-H3-480P-4s.mp4",
+      "report": "output/minimax-h3-v2-live-20260906/report.json",
+      "credentialPersisted": false,
+      "taskIdPersisted": false,
+      "signedUrlPersisted": false
+    },
+    "releaseBoundary": "用户已重新授权发布；本能力纳入 v3.1.5 固定源码候选，正式技术门、同源双平台构建和远端完整性验证不可延期。"
+  },
   "electronReleaseV314": {
     "status": "released-v3.1.4-dual-platform-verified",
     "date": "2026-09-04",
@@ -2598,7 +2789,7 @@
   "versionSequencePolicy": {
     "status": "active",
     "date": "2026-07-30",
-    "currentVersion": "3.1.4",
+    "currentVersion": "3.1.5",
     "rules": [
       "版本号每一段只使用 0-9；v2.6.9 的下一正式版本固定为 v2.7.0。",
       "禁止创建、打包、推送、打 tag、发布或写入自动更新元数据为 v2.6.10。",
@@ -2631,6 +2822,7 @@
       "v3.1.1 的下一正式版本固定为 v3.1.2。",
       "v3.1.2 的下一正式版本固定为 v3.1.3。",
       "v3.1.3 的下一正式版本固定为 v3.1.4。",
+      "v3.1.4 的下一正式版本固定为 v3.1.5。",
       "后续改版本前必须同步核对 package.json、package-lock.json、README、features.json、项目 SKILL.md、Release notes、自动更新元数据和 Git tag。"
     ]
   },

@@ -249,6 +249,7 @@ test('local canvas patch routes pin identity, persist authoritative documents, a
     previewDigest: 'digest-1', confirmed: true,
     actorId: 'local-owner', sessionId: 'local-session', projectId: 'project-local',
     authority: { source: 'local-owner', role: 'owner', capabilities: ['manageProviders'] },
+    allowExactDuplicateAcrossActors: true,
   });
   scopedPatchAssertions(applyCall.patch, 'canvas-a', 'project-local', 'local-owner', 'local-session');
   assert.deepEqual(JSON.parse(fs.readFileSync(canvasFile, 'utf8')), appliedDocument);
@@ -764,6 +765,7 @@ test('local patch HTTP routes complete a real SQLite lifecycle and keep SQLite a
   });
   const currentAutoSavePayload = await currentAutoSaveResponse.json();
   assert.equal(currentAutoSaveResponse.status, 200, JSON.stringify(currentAutoSavePayload));
+  assert.equal(currentAutoSavePayload.data.path, autoSaveFile, JSON.stringify(currentAutoSavePayload));
   assert.equal(currentAutoSavePayload.data.revision, 5);
   assert.equal(currentAutoSavePayload.data.idempotent, false);
   let autoSaveMirror = JSON.parse(fs.readFileSync(autoSaveFile, 'utf8'));

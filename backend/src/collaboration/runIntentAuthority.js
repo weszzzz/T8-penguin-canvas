@@ -54,6 +54,8 @@ const IMAGE_RUNTIME_MODELS = Object.freeze({
     defaultModel: 'gpt-image-2-all',
     models: [
       'gpt-image-2-all', 'gpt-image-2', 'gpt-image-2-2K', 'gpt-image-2-4K', 'gpt-image-2-fal',
+      'gpt-image-2.5-flare', 'gpt-image-2.5-flare-2k', 'gpt-image-2.5-flare-4k',
+      'gpt-image-2.5-sunburst', 'gpt-image-2.5-sunburst-2k', 'gpt-image-2.5-sunburst-4k',
       'zhenzhen-image-g2-t2i', 'zhenzhen-image-g2-i2i', 'zhenzhen-image-g-v2-lowprice',
     ],
   },
@@ -78,6 +80,10 @@ const IMAGE_RUNTIME_MODELS = Object.freeze({
   'seedream-v5-pro': {
     defaultModel: 'seedream-v5-pro',
     models: ['seedream-v5-pro'],
+  },
+  'vosr2-image-upscale': {
+    defaultModel: 'vosr2-image-upscale',
+    models: ['vosr2-image-upscale'],
   },
   midjourney: {
     defaultModel: 'midjourney',
@@ -120,6 +126,7 @@ const VIDEO_RUNTIME_MODELS = Object.freeze({
   'wan-2.7-spicy': ['wan-2.7-spicy-i2v'],
   'happyhorse-1.1': ['happyhorse-1.1-t2v', 'happyhorse-1.1-i2v', 'happyhorse-1.1-r2v'],
   'seedance-2.0': ['seedance-2.0'],
+  'vosr2-video-upscale': ['vosr2-video-upscale'],
 });
 
 const SEEDANCE_NZ_IMAGE_RUNTIME_MODELS = new Set([
@@ -131,6 +138,7 @@ const SEEDANCE_NZ_IMAGE_RUNTIME_MODELS = new Set([
   'zhenzhen-image-nb-2-lite',
   'zhenzhen-image-nb-2',
   'zhenzhen-image-nb-pro',
+  'vosr2-image-upscale',
 ]);
 const SEEDANCE_NZ_VIDEO_RUNTIME_MODELS = new Set([
   'zhenzhen-video-g-omni-flash',
@@ -138,6 +146,7 @@ const SEEDANCE_NZ_VIDEO_RUNTIME_MODELS = new Set([
   'zhenzhen-video-v31-fast',
   'zhenzhen-video-v31-quality',
   'zhenzhen-video-v31-lite',
+  'vosr2-video-upscale',
 ]);
 
 const VIDEO_FAL_MODELS = new Set([

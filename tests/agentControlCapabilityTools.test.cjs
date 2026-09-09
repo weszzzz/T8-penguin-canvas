@@ -44,13 +44,13 @@ function hasInternalBindingKey(value) {
   return visit(value);
 }
 
-test('versioned high-level catalog exposes 31 unique public tools without internal bindings', () => {
+test('versioned high-level catalog exposes 39 unique public tools without internal bindings', () => {
   const catalog = publicVersionedCapabilityToolCatalog();
   assert.equal(catalog.schema, 't8-versioned-creative-tool-catalog-v1');
   assert.equal(catalog.protocol, 't8-versioned-creative-tool-v1');
   assert.equal(catalog.capabilityManifestVersion, surfaces.capabilityManifestVersion);
-  assert.equal(catalog.tools.length, 31);
-  assert.equal(new Set(catalog.tools.map((tool) => tool.name)).size, 31);
+  assert.equal(catalog.tools.length, 39);
+  assert.equal(new Set(catalog.tools.map((tool) => tool.name)).size, 39);
   assert.equal(hasInternalBindingKey(catalog), false);
   for (const tool of catalog.tools) {
     assert.equal(tool.version, surfaces.capabilityManifestVersion);

@@ -18,6 +18,9 @@ import {
   ZHENZHEN_VIDEO_V31_LITE_MODEL,
   ZHENZHEN_VIDEO_V31_QUALITY_MODEL,
   FASHVSR_VIDEO_UPSCALE_MODEL,
+  VOSR2_VIDEO_UPSCALE_MODEL,
+  MINIMAX_H3_V2_MODEL,
+  MINIMAX_H3_V2_DURATIONS,
   WAN30_I2V_MODELS,
   WAN30_R2V_MODELS,
   WAN30_THINKING_MODELS,
@@ -51,6 +54,8 @@ import {
   queryUpscaler,
   submitFashVsr,
   queryFashVsr,
+  submitVosr2Video,
+  queryVosr2Video,
   submitVidu,
   queryVidu,
   submitWan,
@@ -64,7 +69,6 @@ import {
   type VideoSubmitRequest,
   type VideoFalSubmitRequest,
   type HailuoModel,
-  type HailuoDuration,
   type Flux3VideoModel,
   type KlingModel,
   type UpscalerResolution,
@@ -146,6 +150,8 @@ const VIDEO_MAX_POLL = Math.ceil((VIDEO_POLL_TIMEOUT_SECONDS * 1000) / VIDEO_POL
 const VIDEO_FAL_POLL_INTERVAL_MS = 6000;
 const VIDEO_FAL_MAX_POLL = Math.ceil((VIDEO_POLL_TIMEOUT_SECONDS * 1000) / VIDEO_FAL_POLL_INTERVAL_MS);
 type JimengSeedanceMode = 'omni' | 'first' | 'firstlast' | 'multiframe';
+type MinimaxH3V2AudioMode = 'api_default' | 'lock_source' | 'remix_source' | 'reference_only' | 'native';
+type MinimaxH3V2AddDriveAsReference = 'api_default' | 'true' | 'false';
 const JIMENG_SEEDANCE_MODE_OPTIONS: Array<{ value: JimengSeedanceMode; label: string }> = [
   { value: 'omni', label: '全能参考' },
   { value: 'first', label: '首帧图生视频' },
@@ -275,6 +281,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
   const isKling = !isExternalSelected && modelDef.kind === 'kling';
   const isUpscaler = !isExternalSelected && modelDef.kind === 'upscaler';
   const isFashVsr = isUpscaler && apiModel === FASHVSR_VIDEO_UPSCALE_MODEL;
+  const isVosr2 = isUpscaler && apiModel === VOSR2_VIDEO_UPSCALE_MODEL;
   const isVidu = !isExternalSelected && modelDef.kind === 'vidu';
   const isWan = !isExternalSelected && modelDef.kind === 'wan';
   const isWan30 = isWan && apiModel.startsWith('wan-3.0-');
@@ -300,6 +307,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
   const isHailuoH3Max = isHailuo && apiModel.startsWith('hailuo-h3-max-');
   const isHailuoH3MaxTurbo = isHailuoH3Max && apiModel.includes('-max-turbo-');
   const isHailuoH3 = isHailuo && apiModel.startsWith('hailuo-h3-') && !isHailuoH3Max;
+  const isMinimaxH3V2 = isHailuo && apiModel === MINIMAX_H3_V2_MODEL;
   const isMinimaxH3Ow = isHailuo && apiModel.startsWith('minimax-h3-ow-');
   const isMinimaxH3OwFast = isMinimaxH3Ow && apiModel.endsWith('-fast');
   const isMinimaxH3OwAudioDrive = isMinimaxH3Ow && apiModel.includes('-audio-drive-');
@@ -359,10 +367,12 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       : isApimartGrok && !['480p', '720p'].includes(rawResolution.toLowerCase())
         ? '720p'
         : isApimartBudgetVideo ? rawResolution.toLowerCase() : rawResolution;
-  const hailuoDuration: HailuoDuration = isMinimaxH3Ow
-    ? ([5, 10, 15].includes(Number(duration)) ? Number(duration) : 5) as HailuoDuration
+  const hailuoDuration: number = isMinimaxH3V2
+    ? Math.max(4, Math.min(d?.minimaxH3DriveAudioEnabled === true ? 60 : 15, Math.trunc(Number(duration) || 4)))
+    : isMinimaxH3Ow
+    ? ([5, 10, 15].includes(Number(duration)) ? Number(duration) : 5)
     : isHailuoH3 || isHailuoH3Max
-      ? Math.max(5, Math.min(15, Number(duration) || 5)) as HailuoDuration
+      ? Math.max(5, Math.min(15, Number(duration) || 5))
     : resolution === '1080p' ? 6 : Number(duration) === 10 ? 10 : 6;
   const flux3Duration = Math.max(5, Math.min(20, Number(duration) || 5));
   const flux3Resolution: 'hd' | 'fhd' = resolution === 'fhd' ? 'fhd' : 'hd';
@@ -407,6 +417,24 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
   const wan30EnableThinking: boolean = d?.wan30EnableThinking === true;
   const wan30FileUrl: string = typeof d?.wan30FileUrl === 'string' ? d.wan30FileUrl : '';
   const wan30LinkUrl: string = typeof d?.wan30LinkUrl === 'string' ? d.wan30LinkUrl : '';
+  const minimaxH3FirstFrameEnabled = d?.minimaxH3FirstFrameEnabled === true;
+  const minimaxH3LastFrameEnabled = d?.minimaxH3LastFrameEnabled === true;
+  const minimaxH3DriveAudioEnabled = d?.minimaxH3DriveAudioEnabled === true;
+  const minimaxH3AudioMode: MinimaxH3V2AudioMode = [
+    'lock_source', 'remix_source', 'reference_only', 'native',
+  ].includes(d?.minimaxH3AudioMode)
+    ? d.minimaxH3AudioMode
+    : 'api_default';
+  const minimaxH3DenoiseStrength = Number.isFinite(Number(d?.minimaxH3DenoiseStrength))
+    ? Math.max(0, Math.min(1, Number(d.minimaxH3DenoiseStrength)))
+    : 0.35;
+  const minimaxH3AddDriveAsReference: MinimaxH3V2AddDriveAsReference = ['true', 'false'].includes(d?.minimaxH3AddDriveAsReference)
+    ? d.minimaxH3AddDriveAsReference
+    : 'api_default';
+  const minimaxH3VideoStartSeconds = Array.from({ length: 3 }, (_, index) => {
+    const value = Number(Array.isArray(d?.minimaxH3VideoStartSeconds) ? d.minimaxH3VideoStartSeconds[index] : 0);
+    return Number.isFinite(value) ? Math.max(0, Math.min(3600, value)) : 0;
+  });
 
   // FAL 专属参数
   const isFal = isFalVideoModel(apiModel);
@@ -443,6 +471,8 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     ? Array.from({ length: 25 }, (_, index) => index + 6)
     : isGrok15New
     ? []
+    : isMinimaxH3V2
+    ? d?.minimaxH3DriveAudioEnabled === true ? MINIMAX_H3_V2_DURATIONS : MINIMAX_H3_V2_DURATIONS.slice(0, 12)
     : isHailuo && !isHailuoH3 && !isHailuoH3Max && resolution === '1080p'
     ? [6]
     : activeModelOption?.durations || modelDef.durations || [];
@@ -580,7 +610,9 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       : isFlux3
       ? flux3Mode === 'i2v' ? 10 : 0
       : isHailuo
-      ? isMinimaxH3Ow
+      ? isMinimaxH3V2
+        ? 11
+        : isMinimaxH3Ow
         ? hailuoMode === 't2v' ? 0 : isMinimaxH3OwFast && hailuoMode === 'r2v' ? 9 : 1
         : isHailuoH3 || isHailuoH3Max
         ? hailuoMode === 't2v' ? 0 : hailuoMode === 'i2v' ? 2 : 9
@@ -620,6 +652,8 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     ? SEEDANCE25_MULTI_MAX_VIDEOS
     : isFlux3 && flux3Mode === 'v2v'
     ? 1
+    : isMinimaxH3V2
+    ? 3
     : isHailuoH3 && hailuoMode === 'multi'
     ? 3
     : isApimartOmni
@@ -627,7 +661,9 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     : isApimartOmniLowprice && apimartOmniLowpriceMode === 'reference_video'
     ? 1
     : isJimengSeedanceSelected ? jimengSeedanceLimits.videos : 0;
-  const maxMentionAudios = isSeedance25 && seedance25Mode === 'multi'
+  const maxMentionAudios = isMinimaxH3V2
+    ? 4
+    : isSeedance25 && seedance25Mode === 'multi'
     ? SEEDANCE25_MULTI_MAX_AUDIOS
     : isWan30 && wan30Mode === 'r2v'
     ? 5
@@ -672,12 +708,14 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
         ? ['text', 'video']
       : isFlux3 && flux3Mode === 'i2v'
         ? ['text', 'image']
+      : isMinimaxH3V2
+        ? ['text', 'image', 'video', 'audio']
       : isMinimaxH3OwAudioDrive
         ? ['text', 'image', 'audio']
       : isHailuoH3 && hailuoMode === 'multi'
         ? ['text', 'image', 'video', 'audio']
         : ['text', 'image']),
-    [modelDef.kind, isJimengSeedanceSelected, isApimartOmni, isApimartOmniLowprice, apimartOmniLowpriceMode, isUpscaler, isWan30, wan30Mode, isKling, klingMode, isSeedance25, seedance25Mode, isFlux3, flux3Mode, isMinimaxH3OwAudioDrive, isHailuoH3, hailuoMode],
+    [modelDef.kind, isJimengSeedanceSelected, isApimartOmni, isApimartOmniLowprice, apimartOmniLowpriceMode, isUpscaler, isWan30, wan30Mode, isKling, klingMode, isSeedance25, seedance25Mode, isFlux3, flux3Mode, isMinimaxH3V2, isMinimaxH3OwAudioDrive, isHailuoH3, hailuoMode],
   );
 
   // 收集上游 prompt + 参考图/视频/音频 (按用户拖拽顺序), 合并本地拖入素材
@@ -832,11 +870,11 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
             : isFlux3
               ? await queryFlux3(tid)
             : isHailuo
-              ? await queryHailuo(tid)
+              ? await queryHailuo(tid, apiModel as HailuoModel)
             : isKling
               ? await queryKling(tid)
             : isUpscaler
-              ? isFashVsr ? await queryFashVsr(tid) : await queryUpscaler(tid)
+              ? isVosr2 ? await queryVosr2Video(tid) : isFashVsr ? await queryFashVsr(tid) : await queryUpscaler(tid)
             : isVidu
               ? await queryVidu(tid)
             : isHappyHorse
@@ -851,7 +889,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
             model: apiModel,
             taskId: tid,
             recovery: {
-              kind: isWan ? 'wan' : isSeedance25 ? 'seedance' : isFlux3 ? 'flux3' : isHailuo ? 'hailuo' : isKling ? 'kling' : isFashVsr ? 'fashvsr' : isUpscaler ? 'upscaler' : isVidu ? 'vidu' : isHappyHorse ? 'happyhorse' : isApimartBudgetVideo ? 'seedance' : 'video',
+              kind: isWan ? 'wan' : isSeedance25 ? 'seedance' : isFlux3 ? 'flux3' : isHailuo ? 'hailuo' : isKling ? 'kling' : isVosr2 ? 'vosr2' : isFashVsr ? 'fashvsr' : isUpscaler ? 'upscaler' : isVidu ? 'vidu' : isHappyHorse ? 'happyhorse' : isApimartBudgetVideo ? 'seedance' : 'video',
               taskId: tid, model: apiModel, pollIntervalMs: POLL_INT, maxPolls: MAX,
             },
             requestId: r.requestId,
@@ -1085,6 +1123,18 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     const { prompt: upstreamPrompt, imageUrls, videoUrls, audioUrls } = collectUpstream();
     const resolvedLocalPrompt = resolveMediaMentions(localPrompt, promptMentions, mentionMaterials);
     const finalPrompt = (upstreamPrompt || resolvedLocalPrompt || '').trim();
+    let minimaxH3ImageCursor = 0;
+    const minimaxH3FirstFrame = isMinimaxH3V2 && minimaxH3FirstFrameEnabled
+      ? imageUrls[minimaxH3ImageCursor++]
+      : undefined;
+    const minimaxH3LastFrame = isMinimaxH3V2 && minimaxH3LastFrameEnabled
+      ? imageUrls[minimaxH3ImageCursor++]
+      : undefined;
+    const minimaxH3ReferenceImages = isMinimaxH3V2 ? imageUrls.slice(minimaxH3ImageCursor) : [];
+    const minimaxH3DriveAudio = isMinimaxH3V2 && minimaxH3DriveAudioEnabled ? audioUrls[0] : undefined;
+    const minimaxH3ReferenceAudios = isMinimaxH3V2
+      ? audioUrls.slice(minimaxH3DriveAudioEnabled ? 1 : 0)
+      : [];
     if (
       !finalPrompt
       && !(isWan && (!isWan30 || wan30Mode === 'i2v'))
@@ -1290,10 +1340,12 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       return;
     }
     if (isUpscaler && videoUrls.length !== 1) {
-      setError(isFashVsr
+      setError(isVosr2
+        ? translate('nodes:generation.vosr2.videoInputRequired')
+        : isFashVsr
         ? 'FlashVSR 必须连接或拖入且只能保留 1 个 480P、3-15 秒视频'
         : 'Zhenzhen Upscaler 必须连接或拖入且只能保留 1 个 MP4 视频');
-      logBus.error(`生成中止: ${isFashVsr ? 'FlashVSR' : 'Zhenzhen Upscaler'} 输入视频数量必须为 1`, src);
+      logBus.error(`生成中止: ${isVosr2 ? 'Vosr2' : isFashVsr ? 'FlashVSR' : 'Zhenzhen Upscaler'} 输入视频数量必须为 1`, src);
       return;
     }
     if (isViduUpstreamUnavailable) {
@@ -1336,6 +1388,59 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     if (isWan30 && finalPrompt.length > 20000) {
       setError('Wan 3.0 提示词不能超过 20000 字符');
       return;
+    }
+    if (isMinimaxH3V2) {
+      if (minimaxH3FirstFrameEnabled && !minimaxH3FirstFrame) {
+        setError('MiniMax-H3 已启用首帧角色，请连接或拖入排序后的第 1 张图片');
+        return;
+      }
+      if (minimaxH3LastFrameEnabled && !minimaxH3LastFrame) {
+        setError(`MiniMax-H3 已启用尾帧角色，请至少提供 ${minimaxH3FirstFrameEnabled ? 2 : 1} 张图片`);
+        return;
+      }
+      if (minimaxH3ReferenceImages.length > 9) {
+        setError('MiniMax-H3 除首尾关键帧外最多支持 9 张参考图片');
+        return;
+      }
+      if (videoUrls.length > 3) {
+        setError('MiniMax-H3 最多支持 3 个参考视频');
+        return;
+      }
+      if (minimaxH3ReferenceAudios.length > 3) {
+        setError('MiniMax-H3 最多支持 3 个参考音频，驱动音频不占此名额');
+        return;
+      }
+      if (minimaxH3DriveAudioEnabled && !minimaxH3DriveAudio) {
+        setError('MiniMax-H3 已启用驱动音频，请连接或拖入排序后的第 1 段音频');
+        return;
+      }
+      if (hailuoDuration > 15 && !minimaxH3DriveAudio) {
+        setError('MiniMax-H3 超过 15 秒必须启用并提供驱动音频');
+        return;
+      }
+      const hasKeyframe = Boolean(minimaxH3FirstFrame || minimaxH3LastFrame);
+      const hasReference = Boolean(minimaxH3ReferenceImages.length || videoUrls.length || minimaxH3ReferenceAudios.length);
+      const isPureText = !hasKeyframe && !hasReference && !minimaxH3DriveAudio;
+      if (ratio === 'api_default' && isPureText) {
+        setError('MiniMax-H3 纯文生视频必须选择固定比例');
+        return;
+      }
+      if ((ratio === 'adaptive' || ratio === 'auto') && !hasKeyframe) {
+        setError('MiniMax-H3 adaptive/auto 比例必须启用并提供首帧或尾帧关键帧');
+        return;
+      }
+      if (!minimaxH3DriveAudio && ['lock_source', 'remix_source', 'reference_only'].includes(minimaxH3AudioMode)) {
+        setError(`MiniMax-H3 音频模式 ${minimaxH3AudioMode} 必须提供驱动音频`);
+        return;
+      }
+      if (!minimaxH3DriveAudio && minimaxH3AddDriveAsReference !== 'api_default') {
+        setError('MiniMax-H3 设置驱动音频参考行为前必须提供驱动音频');
+        return;
+      }
+      if (minimaxH3AudioMode === 'reference_only' && minimaxH3AddDriveAsReference === 'false') {
+        setError('MiniMax-H3 reference_only 不允许关闭“驱动音频同时作为参考”');
+        return;
+      }
     }
     if (isWan30 && wan30Mode === 'i2v') {
       if (imageUrls.length < 1 || imageUrls.length > 2) {
@@ -1693,6 +1798,56 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       }
 
       if (isHailuo) {
+        if (isMinimaxH3V2) {
+          const minimaxReferenceVideos = videoUrls.slice(0, 3).map((url, index) => ({
+            url,
+            startTimeSeconds: minimaxH3VideoStartSeconds[index],
+          }));
+          const minimaxResolution = resolution === '768P' ? '768P' : '480P';
+          logBus.info(
+            `提交 MiniMax-H3: ${hailuoDuration}s · ${minimaxResolution} · ${ratio} · 关键帧${Number(Boolean(minimaxH3FirstFrame)) + Number(Boolean(minimaxH3LastFrame))}/参考图${minimaxH3ReferenceImages.length}/视频${minimaxReferenceVideos.length}/参考音频${minimaxH3ReferenceAudios.length}/驱动音频${minimaxH3DriveAudio ? 1 : 0}`,
+            src,
+          );
+          const result = await submitHailuo({
+            model: MINIMAX_H3_V2_MODEL,
+            prompt: finalPrompt,
+            duration: hailuoDuration,
+            ratio,
+            resolution: minimaxResolution,
+            firstFrame: minimaxH3FirstFrame,
+            lastFrame: minimaxH3LastFrame,
+            referenceImages: minimaxH3ReferenceImages,
+            referenceVideos: minimaxReferenceVideos,
+            referenceAudios: minimaxH3ReferenceAudios,
+            driveAudio: minimaxH3DriveAudio,
+            audioMode: minimaxH3AudioMode,
+            denoiseStrength: minimaxH3DenoiseStrength,
+            addDriveAsReference: minimaxH3AddDriveAsReference,
+          }, { submissionKey: reporter?.providerSubmissionKey });
+          if (!isCurrentGenerationRun(runId)) return;
+          await reporter?.providerSubmitted({
+            provider: traceProvider,
+            model: traceModel,
+            upstreamTaskId: result.taskId,
+            requestId: result.requestId,
+            transportHttpStatus: result.transportHttpStatus,
+            upstreamHttpStatus: result.upstreamHttpStatus,
+            usage: result.usage,
+            httpStatusSource: 'local-backend',
+          });
+          update({
+            status: 'polling',
+            taskId: result.taskId,
+            lastPrompt: finalPrompt,
+            progress: '0%',
+            provider: 'seedance-nz',
+            apiModel: MINIMAX_H3_V2_MODEL,
+            taskType: result.taskType,
+          });
+          logBus.info('MiniMax-H3 V2 任务已提交，开始轮询', src);
+          await startPolling(result.taskId, runId, reporter);
+          return;
+        }
         const hailuoImages = hailuoMode === 'i2v' || hailuoMode === 'r2v' || hailuoMode === 'audio-drive'
           ? imageUrls.slice(0, isHailuoH3 || isHailuoH3Max ? 2 : isMinimaxH3OwFast && hailuoMode === 'r2v' ? 9 : 1)
           : hailuoMode === 'multi' ? imageUrls.slice(0, 9) : [];
@@ -1778,6 +1933,28 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       }
 
       if (isUpscaler) {
+        if (isVosr2) {
+          logBus.info('提交 Vosr2: 单个视频，固定输出 2K', src);
+          const result = await submitVosr2Video({
+            model: VOSR2_VIDEO_UPSCALE_MODEL,
+            videos: [videoUrls[0]],
+          }, { submissionKey: reporter?.providerSubmissionKey });
+          if (!isCurrentGenerationRun(runId)) return;
+          await reporter?.providerSubmitted({
+            provider: traceProvider,
+            model: traceModel,
+            upstreamTaskId: result.taskId,
+            requestId: result.requestId,
+            transportHttpStatus: result.transportHttpStatus,
+            upstreamHttpStatus: result.upstreamHttpStatus,
+            usage: result.usage,
+            httpStatusSource: 'local-backend',
+          });
+          update({ status: 'polling', taskId: result.taskId, lastPrompt: '', progress: '0%' });
+          logBus.info('Vosr2 任务已提交，开始轮询', src);
+          await startPolling(result.taskId, runId, reporter);
+          return;
+        }
         if (isFashVsr) {
           logBus.info('提交 FlashVSR: 单个 480P、3-15 秒视频', src);
           const result = await submitFashVsr({
@@ -2436,7 +2613,20 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
                      || nextModel === ZHENZHEN_VIDEO_V31_LITE_MODEL
                      ? { ratio: '16:9', duration: 8, resolution: '720p' }
                      : {}),
-                   ...(nextModel.startsWith('hailuo-h3-max-turbo-')
+                   ...(nextModel === MINIMAX_H3_V2_MODEL
+                     ? {
+                         ratio: '16:9',
+                         duration: 4,
+                         resolution: '480P',
+                         minimaxH3FirstFrameEnabled: false,
+                         minimaxH3LastFrameEnabled: false,
+                         minimaxH3DriveAudioEnabled: false,
+                         minimaxH3AudioMode: 'api_default',
+                         minimaxH3DenoiseStrength: 0.35,
+                         minimaxH3AddDriveAsReference: 'api_default',
+                         minimaxH3VideoStartSeconds: [0, 0, 0],
+                       }
+                     : nextModel.startsWith('hailuo-h3-max-turbo-')
                      ? { ratio: '16:9', duration: 5, resolution: '480p' }
                      : nextModel.startsWith('hailuo-h3-max-')
                      ? { ratio: '16:9', duration: 5, resolution: '480P' }
@@ -2855,7 +3045,9 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
 
         {isHailuo && (
           <div className="rounded border border-cyan-300/20 bg-cyan-400/[0.06] px-2 py-1.5 text-[10px] leading-relaxed text-white/55">
-            {isMinimaxH3Ow
+            {isMinimaxH3V2
+              ? 'MiniMax-H3 使用独立 V2 协议：提示词必填；图片可按开关分配首帧、尾帧，其余作为参考图；视频和音频作为多模态参考。'
+              : isMinimaxH3Ow
               ? hailuoMode === 'audio-drive'
                 ? 'MiniMax H3 OW 音频驱动必须且只能使用 1 张图片与 1 段音频，不接受视频；提示词可选。'
                 : hailuoMode === 't2v'
@@ -2881,7 +3073,9 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
                 ? '文生视频必须填写提示词，不发送画布中的参考图；比例会随请求提交。'
                 : '图生视频使用排序后的第 1 张首帧图，提示词可选；比例跟随输入图片，不发送比例参数。'}
             <div className="mt-1 text-white/35">
-              {isMinimaxH3Ow
+              {isMinimaxH3V2
+                ? '贞贞的平价AI小屋 API · 4-15 秒；提供驱动音频后支持 4-60 秒 · 480P / 768P'
+                : isMinimaxH3Ow
                 ? '贞贞的平价AI小屋 API · 5 / 10 / 15 秒 · 480p / 720p'
                 : isHailuoH3Max
                   ? `贞贞的平价AI小屋 API · 5-15 秒 · ${isHailuoH3MaxTurbo ? '480p / 768p' : '480P / 768P'}`
@@ -2910,14 +3104,19 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
 
         {isUpscaler && (
           <div className="rounded border border-emerald-300/20 bg-emerald-400/[0.06] px-2 py-1.5 text-[10px] leading-relaxed text-white/55">
-            {isFashVsr
+            {isVosr2
+              ? translate('nodes:generation.vosr2.videoDescription')
+              : isFashVsr
               ? '连接或拖入恰好 1 个 480P、3-15 秒视频；无需 Prompt，也没有分辨率参数，模型按固定协议执行超分。'
               : '连接或拖入恰好 1 个 MP4 视频，选择目标分辨率后执行高清化；无需 Prompt，时长由输入视频读取。'}
             <div className="mt-1 text-white/35">
-              {isFashVsr
+              {isVosr2
+                ? translate('nodes:generation.vosr2.videoChannel')
+                : isFashVsr
                 ? '贞贞的平价AI小屋 API · FlashVSR_video_upscale · 固定 ¥1/次'
                 : '贞贞的平价AI小屋 API · 目标 720p / 1080p / 2k / 4k · 输入最长约 10 分钟'}
             </div>
+            {isVosr2 && <div className="mt-1 text-white/35">{translate('nodes:generation.vosr2.actualBilling')}</div>}
           </div>
         )}
 
@@ -3167,6 +3366,119 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
 
         {isHailuo && (
           <>
+            {isMinimaxH3V2 && (
+              <details className="rounded border border-cyan-300/20 bg-cyan-400/[0.04] p-2 text-[10px] text-white/65">
+                <summary className="cursor-pointer select-none font-medium text-cyan-100/80">{translate('nodes:video.minimaxH3Controls')}</summary>
+                <div className="mt-2 space-y-2">
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={minimaxH3FirstFrameEnabled}
+                        onChange={(e) => update({ minimaxH3FirstFrameEnabled: e.target.checked })}
+                        className="accent-cyan-400"
+                      />
+                      {translate('nodes:video.minimaxH3FirstFrame')}
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={minimaxH3LastFrameEnabled}
+                        onChange={(e) => update({ minimaxH3LastFrameEnabled: e.target.checked })}
+                        className="accent-cyan-400"
+                      />
+                      {translate('nodes:video.minimaxH3LastFrame')}
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={minimaxH3DriveAudioEnabled}
+                        onChange={(e) => update(e.target.checked
+                          ? { minimaxH3DriveAudioEnabled: true }
+                          : {
+                              minimaxH3DriveAudioEnabled: false,
+                              duration: Math.min(15, hailuoDuration),
+                              minimaxH3AudioMode: 'api_default',
+                              minimaxH3AddDriveAsReference: 'api_default',
+                            })}
+                        className="accent-cyan-400"
+                      />
+                      {translate('nodes:video.minimaxH3DriveAudio')}
+                    </label>
+                  </div>
+                  <div className="text-white/35">
+                    {translate('nodes:video.minimaxH3RoleHint')}
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {minimaxH3VideoStartSeconds.map((value, index) => (
+                      <label key={index} className="block">
+                        <span className="mb-1 block text-white/45">{translate('nodes:video.minimaxH3VideoStart', { index: index + 1 })}</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={3600}
+                          step={0.1}
+                          value={value}
+                          onChange={(e) => {
+                            const next = [...minimaxH3VideoStartSeconds];
+                            next[index] = Math.max(0, Math.min(3600, Number(e.target.value) || 0));
+                            update({ minimaxH3VideoStartSeconds: next });
+                          }}
+                          className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-cyan-300/40"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <label className="block">
+                      <span className="mb-1 block text-white/45">{translate('nodes:video.minimaxH3AudioMode')}</span>
+                      <select
+                        value={minimaxH3AudioMode}
+                        onChange={(e) => update({ minimaxH3AudioMode: e.target.value as MinimaxH3V2AudioMode })}
+                        className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-cyan-300/40"
+                      >
+                        <option value="api_default" className="bg-zinc-900">{translate('nodes:video.minimaxH3ApiDefault')}</option>
+                        <option value="lock_source" className="bg-zinc-900">{translate('nodes:video.minimaxH3LockSource')}</option>
+                        <option value="remix_source" className="bg-zinc-900">{translate('nodes:video.minimaxH3RemixSource')}</option>
+                        <option value="reference_only" className="bg-zinc-900">{translate('nodes:video.minimaxH3ReferenceOnly')}</option>
+                        <option value="native" className="bg-zinc-900">{translate('nodes:video.minimaxH3NativeAudio')}</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-white/45">{translate('nodes:video.minimaxH3DriveAsReference')}</span>
+                      <select
+                        value={minimaxH3AddDriveAsReference}
+                        onChange={(e) => update({ minimaxH3AddDriveAsReference: e.target.value as MinimaxH3V2AddDriveAsReference })}
+                        className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-cyan-300/40"
+                      >
+                        <option value="api_default" className="bg-zinc-900">{translate('nodes:video.minimaxH3ApiDefault')}</option>
+                        <option value="true" className="bg-zinc-900">{translate('nodes:video.minimaxH3Yes')}</option>
+                        <option value="false" className="bg-zinc-900">{translate('nodes:video.minimaxH3No')}</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label className="block">
+                    <span className="mb-1 block text-white/45">
+                      {translate('nodes:video.minimaxH3Denoise', {
+                        value: minimaxH3AudioMode === 'lock_source'
+                          ? translate('nodes:video.minimaxH3LockedValue')
+                          : minimaxH3DenoiseStrength.toFixed(2),
+                      })}
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      disabled={minimaxH3AudioMode === 'lock_source'}
+                      value={minimaxH3AudioMode === 'lock_source' ? 0 : minimaxH3DenoiseStrength}
+                      onChange={(e) => update({ minimaxH3DenoiseStrength: Number(e.target.value) })}
+                      className="w-full accent-cyan-400 disabled:opacity-40"
+                    />
+                  </label>
+                </div>
+              </details>
+            )}
             <div className="grid grid-cols-2 gap-1.5">
               {(hailuoMode !== 'i2v' || isMinimaxH3Ow) && (
                 <div>
@@ -3188,11 +3500,13 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
                   value={String(hailuoDuration)}
                   onChange={(e) => {
                     const requested = Number(e.target.value);
-                    const nextDuration = (isMinimaxH3Ow
+                    const nextDuration = (isMinimaxH3V2
+                      ? Math.max(4, Math.min(minimaxH3DriveAudioEnabled ? 60 : 15, Math.trunc(requested || 4)))
+                      : isMinimaxH3Ow
                       ? ([5, 10, 15].includes(requested) ? requested : 5)
                       : isHailuoH3 || isHailuoH3Max
                         ? Math.max(5, Math.min(15, requested || 5))
-                      : requested === 10 ? 10 : 6) as HailuoDuration;
+                      : requested === 10 ? 10 : 6);
                     update({
                       duration: nextDuration,
                       ...(!isHailuoH3 && !isHailuoH3Max && nextDuration === 10 && resolution === '1080p' ? { resolution: '768p' } : {}),
@@ -3209,12 +3523,18 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
             <div>
               <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.resolution')}</label>
               <select
-                value={isMinimaxH3Ow
+                value={isMinimaxH3V2
+                  ? resolution === '768P' ? '768P' : '480P'
+                  : isMinimaxH3Ow
                   ? resolution === '720p' ? '720p' : '480p'
                   : isHailuoH3MaxTurbo ? resolution === '768p' ? '768p' : '480p'
                   : isHailuoH3Max ? resolution === '768P' ? '768P' : '480P'
                   : isHailuoH3 ? resolution === '768P' ? '768P' : '2K' : resolution === '1080p' ? '1080p' : '768p'}
                 onChange={(e) => {
+                  if (isMinimaxH3V2) {
+                    update({ resolution: e.target.value === '768P' ? '768P' : '480P' });
+                    return;
+                  }
                   if (isHailuoH3Max) {
                     update({
                       resolution: isHailuoH3MaxTurbo

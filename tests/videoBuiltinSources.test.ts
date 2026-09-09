@@ -10,6 +10,7 @@ import {
   ZHENZHEN_VIDEO_V31_FAST_MODEL,
   ZHENZHEN_VIDEO_V31_LITE_MODEL,
   ZHENZHEN_VIDEO_V31_QUALITY_MODEL,
+  VOSR2_VIDEO_UPSCALE_MODEL,
 } from '../src/providers/models.ts';
 import { workflowManifestToFragment } from '../src/utils/workflowResource.ts';
 
@@ -41,6 +42,7 @@ test('video built-in sources keep workshop and budget-house catalogs independent
       'kling-v3.0',
       'zhenzhen-upscaler',
       'fashvsr-video-upscale',
+      'vosr2-video-upscale',
       'seedance-2.5',
     ],
   );
@@ -76,6 +78,7 @@ test('video built-in sources keep workshop and budget-house catalogs independent
     'vidu-q3-turbo-t2v',
     'kling-v3.0-std-t2v',
     'zhenzhen-upscaler',
+    VOSR2_VIDEO_UPSCALE_MODEL,
   ]) {
     assert.equal(budgetOptions.has(model), true, `${model} should belong to the budget house`);
     assert.equal(workshopOptions.has(model), false, `${model} must not leak into the workshop`);
@@ -103,6 +106,7 @@ test('old video canvases infer the correct built-in source from their saved mode
   assert.equal(inferVideoBuiltinSource('minimax-h3-ow-t2v-fast'), 'seedance-nz');
   assert.equal(inferVideoBuiltinSource('flux-3-video-global-v2v'), 'seedance-nz');
   assert.equal(inferVideoBuiltinSource('hailuo-2.3'), 'seedance-nz');
+  assert.equal(inferVideoBuiltinSource(VOSR2_VIDEO_UPSCALE_MODEL), 'seedance-nz');
   assert.equal(inferVideoBuiltinSource('unknown-video-model'), null);
 });
 
@@ -111,8 +115,8 @@ test('video node exposes both sources and filters tabs and submodels before exec
 
   assert.match(node, /videoBuiltinSource/);
   assert.match(node, /value="builtin:seedance-nz"/);
-  assert.match(node, /贞贞的AI工坊（默认）/);
-  assert.match(node, /贞贞的平价AI小屋/);
+  assert.match(node, /translate\('nodes:generation\.workshopDefault'\)/);
+  assert.match(node, /translate\('nodes:generation\.budgetHouse'\)/);
   assert.match(node, /\{builtinVideoModels\.map/);
   assert.match(node, /\{builtinApiModelOptions\.map/);
   assert.match(node, /taskProvider: 'seedance-nz'/);

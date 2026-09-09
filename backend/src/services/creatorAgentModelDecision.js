@@ -535,7 +535,7 @@ function approvalBoundaryForDecisions(decisions = []) {
         model: text(decision?.selected?.model, 240),
       }))
       .filter((selection) => selection.kind && (selection.provider || selection.model))
-      .sort((left, right) => left.kind.localeCompare(right.kind)),
+      .sort((left, right) => digest(left).localeCompare(digest(right))),
     costTier: {
       status: 'unknown',
       message: '当前模型目录没有可验证的统一价格等级；审批不会猜测费用，后续价格等级变化必须重新确认。',

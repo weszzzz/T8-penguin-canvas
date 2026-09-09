@@ -118,7 +118,7 @@ test('capability tool routes enforce catalog auth, per-operation scopes and appr
     headers: readerHeaders,
   });
   assert.equal(catalog.status, 200);
-  assert.equal(catalog.body.data.tools.length, 31);
+  assert.equal(catalog.body.data.tools.length, 39);
   assert.equal(JSON.stringify(catalog.body.data).includes('"handler"'), false);
   assert.equal(JSON.stringify(catalog.body.data).includes('"service"'), false);
   assert.equal(JSON.stringify(catalog.body.data).includes('"method"'), false);

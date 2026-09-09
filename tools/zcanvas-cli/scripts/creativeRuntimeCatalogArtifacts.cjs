@@ -216,13 +216,13 @@ function buildRuntimeCatalog() {
         {
           tabLabel: family.tabLabel,
           capabilities: family.capabilities,
-          parameterKind: family.paramKind,
+          parameterKind: option.paramKind || family.paramKind,
           aspectRatios: family.aspectRatios,
           defaultAspectRatio: family.defaultAspectRatio,
-          sizes: family.sizes,
-          defaultSize: family.defaultSize,
+          sizes: option.sizes || family.sizes,
+          defaultSize: option.sizes?.[0] || family.defaultSize,
           supportsReference: family.supportsReference === true,
-          maxReferenceImages: family.maxReferenceImages,
+          maxReferenceImages: option.maxReferenceImages ?? family.maxReferenceImages,
           description: family.description,
         },
         option.disabled !== true,
@@ -234,12 +234,15 @@ function buildRuntimeCatalog() {
     if (!model) continue;
     const family = seedanceNz.QWEN_IMAGE_30_MODELS?.has(model)
       ? 'qwen-image-3.0'
+      : model === seedanceNz.VOSR2_IMAGE_UPSCALE_MODEL
+        ? 'vosr2-image-upscale'
       : seedanceNz.SEEDREAM_LAYER_DECOMPOSITION_MODELS?.has(model)
         ? 'seedream-layer-decomposition'
         : seedanceNz.WAN27_GLOBAL_IMAGE_MODELS?.has(model)
           ? 'wan-image'
       : seedanceNz.ZHENZHEN_IMAGE_G2_MODELS?.has(model)
       || model === seedanceNz.ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL
+      || seedanceNz.ZHENZHEN_IMAGE_G25_MODELS?.has(model)
       ? 'gpt-image-2'
       : model === seedanceNz.ZHENZHEN_IMAGE_NB_PRO_MODEL
         ? 'nano-banana-pro'
@@ -255,7 +258,7 @@ function buildRuntimeCatalog() {
           || model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_REGION_EDIT_MODEL
           ? 'grok-image-tools'
         : 'seedream-v5-pro';
-    const maxReferenceImages = family === 'seedream-layer-decomposition'
+    const maxReferenceImages = family === 'seedream-layer-decomposition' || family === 'vosr2-image-upscale'
       ? 1
       : family === 'qwen-image-3.0'
         ? (model.endsWith('-i2i') ? 3 : 0)
@@ -265,6 +268,8 @@ function buildRuntimeCatalog() {
       ? 0
       : model.endsWith('-i2i')
         ? 10
+        : seedanceNz.ZHENZHEN_IMAGE_G25_MODELS?.has(model)
+          ? (model === seedanceNz.ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL ? 15 : 16)
         : family === 'nano-banana-2' || family === 'nano-banana-pro'
           ? 14
             : model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_MODEL
@@ -290,6 +295,8 @@ function buildRuntimeCatalog() {
               ? 'Qwen Image'
               : family === 'seedream-layer-decomposition'
                 ? 'Seedream分层'
+              : family === 'vosr2-image-upscale'
+                ? 'Vosr2'
           : family === 'nano-banana-2'
             ? '香蕉2'
             : family === 'nano-banana-pro'
@@ -299,15 +306,23 @@ function buildRuntimeCatalog() {
           ? (model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_SEGMENT_MODEL ? ['segment', 'metadata'] : ['region-edit', 'edit'])
           : family === 'seedream-layer-decomposition'
           ? ['i2i', 'edit']
+          : family === 'vosr2-image-upscale'
+            ? ['i2i']
           : maxReferenceImages === 0 ? ['t2i'] : ['t2i', 'i2i', 'edit'],
         parameterKind: family === 'grok-image-tools'
           ? (model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_SEGMENT_MODEL ? 'grok-segment' : 'grok-region-edit')
+          : seedanceNz.ZHENZHEN_IMAGE_G25_MODELS?.has(model)
+            ? (model === seedanceNz.ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL
+              ? 'image-g-v2.5-lowprice'
+              : 'image-g-v2.5-official')
           : family === 'seedream-v5-pro'
           ? 'seedream-v5'
           : family === 'qwen-image-3.0'
             ? 'qwen-image-3.0'
             : family === 'seedream-layer-decomposition'
               ? 'seedream-layer'
+              : family === 'vosr2-image-upscale'
+                ? 'vosr2-upscale'
               : family === 'wan-image'
                 ? 'wan-image'
                 : 'seedance-nz-image',

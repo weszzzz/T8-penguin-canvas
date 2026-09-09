@@ -75,6 +75,32 @@ const ZHENZHEN_IMAGE_G2_MODELS = new Set([
   ZHENZHEN_IMAGE_G2_I2I_MODEL,
 ]);
 const ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL = 'zhenzhen-image-g-v2-lowprice';
+const ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL = 'zhenzhen-image-g-v2.5-lowprice';
+const ZHENZHEN_IMAGE_G25_FLARE_MODEL = 'zhenzhen-image-g-v2.5-flare';
+const ZHENZHEN_IMAGE_G25_SUNBURST_MODEL = 'zhenzhen-image-g-v2.5-sunburst';
+const ZHENZHEN_IMAGE_G25_OFFICIAL_MODELS = new Set([
+  ZHENZHEN_IMAGE_G25_FLARE_MODEL,
+  ZHENZHEN_IMAGE_G25_SUNBURST_MODEL,
+]);
+const ZHENZHEN_IMAGE_G25_MODELS = new Set([
+  ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL,
+  ...ZHENZHEN_IMAGE_G25_OFFICIAL_MODELS,
+]);
+const ZHENZHEN_IMAGE_G25_RESOLUTIONS = new Set(['1k', '2k', '4k']);
+const ZHENZHEN_IMAGE_G25_LOWPRICE_SIZES = new Set([
+  'auto', '1:1', '1:3', '3:1', '16:9', '9:16', '4:3', '3:4',
+  '3:2', '2:3', '5:4', '4:5', '2:1', '1:2', '21:9', '9:21',
+]);
+const ZHENZHEN_IMAGE_G25_OFFICIAL_SIZES = new Set([
+  'preserve_reference', 'auto', '1:1', '3:2', '2:3', '4:3', '3:4',
+  '5:4', '4:5', '16:9', '9:16', '2:1', '1:2', '21:9', '9:21',
+  '3:1', '1:3', 'custom',
+]);
+const ZHENZHEN_IMAGE_G25_QUALITIES = new Set(['auto', 'low', 'medium', 'high', 'xhigh', 'max']);
+const ZHENZHEN_IMAGE_G25_OUTPUT_FORMATS = new Set(['png', 'jpeg', 'webp']);
+const ZHENZHEN_IMAGE_G25_BACKGROUNDS = new Set(['auto', 'transparent', 'opaque']);
+const ZHENZHEN_IMAGE_G25_MODERATION = new Set(['low', 'auto']);
+const ZHENZHEN_IMAGE_G25_PROMPT_MAX_LENGTH = 5000;
 const ZHENZHEN_IMAGE_GK_V2_MODEL = 'zhenzhen-image-gk-v2';
 const ZHENZHEN_IMAGE_GK_V2_EDIT_MODEL = 'zhenzhen-image-gk-v2-edit';
 const ZHENZHEN_IMAGE_GK_V2_SEGMENT_MODEL = 'zhenzhen-image-gk-v2-segment';
@@ -91,6 +117,7 @@ const ZHENZHEN_IMAGE_NB_MODELS = new Set([
 ]);
 const ZHENZHEN_APIMART_IMAGE_MODELS = new Set([
   ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL,
+  ...ZHENZHEN_IMAGE_G25_MODELS,
   ZHENZHEN_IMAGE_GK_V2_MODEL,
   ZHENZHEN_IMAGE_GK_V2_EDIT_MODEL,
   ZHENZHEN_IMAGE_GK_V2_SEGMENT_MODEL,
@@ -156,6 +183,7 @@ const SEEDREAM_LAYER_RESOLUTIONS = new Set(['auto', '1k', '1.5k', '2k']);
 const SEEDREAM_LAYER_OUTPUT_FORMATS = new Set(['jpeg', 'png']);
 const SEEDREAM_LAYER_PROMPT_MAX_LENGTH = 2000;
 const SEEDREAM_LAYER_SOURCE_MAX_BYTES = 30 * 1024 * 1024;
+const VOSR2_IMAGE_UPSCALE_MODEL = 'vosr2-image-upscale';
 const ZHENZHEN_VIDEO_G_OMNI_FLASH_MODEL = 'zhenzhen-video-g-omni-flash';
 const ZHENZHEN_VIDEO_G_OMNI_FLASH_LOWPRICE_MODEL = 'zhenzhen-video-g-omni-flash-lowprice';
 const ZHENZHEN_VIDEO_G_OMNI_11_FLASH_LOWPRICE_MODEL = 'zhenzhen-video-g-omni-1.1-flash-lowprice';
@@ -200,6 +228,7 @@ const IMAGE_MODELS = new Set([
   ...QWEN_IMAGE_30_MODELS,
   ...WAN27_GLOBAL_IMAGE_MODELS,
   ...SEEDREAM_LAYER_DECOMPOSITION_MODELS,
+  VOSR2_IMAGE_UPSCALE_MODEL,
 ]);
 const IMAGE_RESOLUTIONS = new Set(['1k', '2k']);
 const IMAGE_OUTPUT_FORMATS = new Set(['jpeg', 'png']);
@@ -270,6 +299,7 @@ const ZHENZHEN_UPSCALER_MODEL = 'zhenzhen-upscaler';
 const ZHENZHEN_UPSCALER_RESOLUTIONS = new Set(['720p', '1080p', '2k', '4k']);
 const FASHVSR_VIDEO_UPSCALE_MODEL = 'FlashVSR_video_upscale';
 const LEGACY_FASHVSR_VIDEO_UPSCALE_MODEL = 'FashVSR_video_upscale';
+const VOSR2_VIDEO_UPSCALE_MODEL = 'vosr2-video-upscale';
 const FASHVSR_MIN_SECONDS = 3;
 const FASHVSR_MAX_SECONDS = 15;
 const HAILUO23_T2V_MODELS = new Set([
@@ -315,6 +345,28 @@ const HAILUO_H3_MAX_MODELS = new Set([
   ...HAILUO_H3_MAX_T2V_MODELS,
   ...HAILUO_H3_MAX_I2V_MODELS,
 ]);
+const MINIMAX_H3_V2_MODEL = 'MiniMax-H3';
+const MINIMAX_H3_V2_RESOLUTIONS = new Set(['480P', '768P']);
+const MINIMAX_H3_V2_FIXED_RATIOS = new Set([
+  '1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9',
+]);
+const MINIMAX_H3_V2_RATIOS = new Set([
+  ...MINIMAX_H3_V2_FIXED_RATIOS,
+  'adaptive',
+  'auto',
+  'api_default',
+]);
+const MINIMAX_H3_V2_AUDIO_MODES = new Set([
+  'api_default',
+  'lock_source',
+  'remix_source',
+  'reference_only',
+  'native',
+]);
+const MINIMAX_H3_V2_MAX_REFERENCE_IMAGES = 9;
+const MINIMAX_H3_V2_MAX_REFERENCE_VIDEOS = 3;
+const MINIMAX_H3_V2_MAX_REFERENCE_AUDIOS = 3;
+const MINIMAX_H3_V2_PROMPT_MAX_LENGTH = 10000;
 const HAILUO_H3_T2V_MODELS = new Set([HAILUO_H3_T2V_MODEL, HAILUO_H3_GLOBAL_T2V_MODEL]);
 const HAILUO_H3_I2V_MODELS = new Set([HAILUO_H3_I2V_MODEL, HAILUO_H3_GLOBAL_I2V_MODEL]);
 const HAILUO_H3_MULTI_MODELS = new Set([HAILUO_H3_MULTI_MODEL, HAILUO_H3_GLOBAL_MULTI_MODEL]);
@@ -395,6 +447,7 @@ const HAILUO_MODELS = new Set([
   ...HAILUO_H3_MODELS,
   ...HAILUO_H3_MAX_MODELS,
   ...MINIMAX_H3_OW_MODELS,
+  MINIMAX_H3_V2_MODEL,
 ]);
 const HAILUO_H3_SECONDS = new Set(Array.from({ length: 11 }, (_, index) => String(index + 5)));
 const HAILUO_H3_RESOLUTIONS = new Set(['768P', '2K']);
@@ -2623,6 +2676,26 @@ function normalizeApimartPrompt(value, label) {
   return prompt;
 }
 
+function normalizeZhenzhenImageG25CustomSize(value, model) {
+  const size = String(value || '').trim().toLowerCase().replace(/\s+/g, '').replace(/[×*]/g, 'x');
+  const match = size.match(/^(\d+)x(\d+)$/);
+  if (!match) throw new Error(`${model} 自定义尺寸必须使用 WIDTHxHEIGHT，例如 1536x864`);
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (width <= 0 || height <= 0 || width % 16 !== 0 || height % 16 !== 0) {
+    throw new Error(`${model} 自定义宽高必须是正整数且为 16 的倍数`);
+  }
+  if (width > 3840 || height > 3840) throw new Error(`${model} 自定义宽高不能超过 3840`);
+  if (Math.max(width, height) / Math.min(width, height) > 3) {
+    throw new Error(`${model} 自定义宽高比必须在 1:3 到 3:1 之间`);
+  }
+  const pixels = width * height;
+  if (pixels < 655360 || pixels > 8294400) {
+    throw new Error(`${model} 自定义总像素必须在 655360 到 8294400 之间`);
+  }
+  return size;
+}
+
 async function buildApimartImagePayload(request, apiKey, options = {}) {
   const model = String(request.model || '').trim().toLowerCase();
   if (!ZHENZHEN_APIMART_IMAGE_MODELS.has(model)) {
@@ -2666,6 +2739,76 @@ async function buildApimartImagePayload(request, apiKey, options = {}) {
     };
   }
   const prompt = normalizeApimartPrompt(request.prompt, model);
+  if (ZHENZHEN_IMAGE_G25_MODELS.has(model)) {
+    if (model === ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL && prompt.length > ZHENZHEN_IMAGE_G25_PROMPT_MAX_LENGTH) {
+      throw new Error(`${model} 提示词最多 ${ZHENZHEN_IMAGE_G25_PROMPT_MAX_LENGTH} 字符`);
+    }
+    const refs = normalizeList(request.images || request.refImages);
+    const resolution = String(request.resolution || '1k').trim().toLowerCase();
+    if (!ZHENZHEN_IMAGE_G25_RESOLUTIONS.has(resolution)) {
+      throw new Error(`${model} 分辨率只支持 1k、2k 或 4k`);
+    }
+
+    if (model === ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL) {
+      if (refs.length > 15) throw new Error(`${model} 最多支持 15 张参考图`);
+      const n = normalizePositiveInteger(request.n, 1, 1, 1, `${model} 图片数量 n `);
+      const size = String(request.size || '16:9').trim().toLowerCase();
+      if (!ZHENZHEN_IMAGE_G25_LOWPRICE_SIZES.has(size)) {
+        throw new Error(`${model} 不支持尺寸 ${size || '(空)'}`);
+      }
+      const payload = {
+        model,
+        prompt,
+        n,
+        size,
+        resolution,
+        nsfw_check: normalizeAudioBoolean(request.nsfw_check ?? request.nsfwCheck, false),
+      };
+      if (refs.length) payload.images = await uploadApimartImages(refs, apiKey, options);
+      return { payload, model, taskType: refs.length ? 'i2i' : 't2i' };
+    }
+
+    if (refs.length > 16) throw new Error(`${model} 最多支持 16 张参考图`);
+    const n = normalizePositiveInteger(request.n, 1, 1, 4, `${model} 图片数量 n `);
+    const sizeMode = String(request.size || 'auto').trim().toLowerCase();
+    if (!ZHENZHEN_IMAGE_G25_OFFICIAL_SIZES.has(sizeMode)) {
+      throw new Error(`${model} 不支持尺寸 ${sizeMode || '(空)'}`);
+    }
+    const quality = String(request.quality || 'auto').trim().toLowerCase();
+    if (!ZHENZHEN_IMAGE_G25_QUALITIES.has(quality)) throw new Error(`${model} 不支持质量 ${quality || '(空)'}`);
+    const outputFormat = String(request.output_format || request.outputFormat || 'png').trim().toLowerCase();
+    if (!ZHENZHEN_IMAGE_G25_OUTPUT_FORMATS.has(outputFormat)) {
+      throw new Error(`${model} 输出格式只支持 png、jpeg 或 webp`);
+    }
+    const background = String(request.background || 'auto').trim().toLowerCase();
+    if (!ZHENZHEN_IMAGE_G25_BACKGROUNDS.has(background)) throw new Error(`${model} 不支持背景 ${background || '(空)'}`);
+    if (background === 'transparent' && outputFormat === 'jpeg') {
+      throw new Error(`${model} 透明背景必须使用 png 或 webp`);
+    }
+    const moderation = String(request.moderation || 'low').trim().toLowerCase();
+    if (!ZHENZHEN_IMAGE_G25_MODERATION.has(moderation)) throw new Error(`${model} 不支持审核等级 ${moderation || '(空)'}`);
+    const payload = { model, prompt, n, quality, output_format: outputFormat, background, moderation };
+    if (sizeMode === 'custom') {
+      payload.size = normalizeZhenzhenImageG25CustomSize(
+        request.custom_size || request.customSize || request.exact_size || request.exactSize,
+        model,
+      );
+    } else {
+      payload.resolution = resolution;
+      if (sizeMode !== 'preserve_reference') payload.size = sizeMode;
+    }
+    if (outputFormat === 'jpeg' || outputFormat === 'webp') {
+      payload.output_compression = normalizePositiveInteger(
+        request.output_compression ?? request.outputCompression,
+        90,
+        0,
+        100,
+        `${model} output_compression `,
+      );
+    }
+    if (refs.length) payload.images = await uploadApimartImages(refs, apiKey, options);
+    return { payload, model, taskType: refs.length ? 'i2i' : 't2i' };
+  }
   if (model === ZHENZHEN_IMAGE_GK_V2_MODEL && prompt.length > 20000) {
     throw new Error(`${model} 提示词最多 20000 字符`);
   }
@@ -2979,6 +3122,9 @@ async function buildZhenzhenImageG2Payload(request, apiKey, options = {}) {
 
 async function buildImagePayload(request, apiKey, options = {}) {
   const requestedModel = String(request.model || '').trim().toLowerCase();
+  if (requestedModel === VOSR2_IMAGE_UPSCALE_MODEL) {
+    return buildVosr2ImagePayload(request, apiKey, options);
+  }
   if (SEEDREAM_LAYER_DECOMPOSITION_MODELS.has(requestedModel)) {
     return buildSeedreamLayerDecompositionPayload(request, apiKey, options);
   }
@@ -3148,6 +3294,29 @@ function normalizeWan30PublicUrl(value, fieldName) {
     throw new Error(`Wan 3.0 ${fieldName} 必须是 http(s) URL`);
   }
   return text;
+}
+
+async function buildVosr2ImagePayload(request, apiKey, options = {}) {
+  const model = String(request.model || '').trim().toLowerCase();
+  if (model !== VOSR2_IMAGE_UPSCALE_MODEL) {
+    throw new Error(`未知 Vosr2 图片超分模型：${model || '(空)'}`);
+  }
+  const sources = normalizeList(request.images || request.refImages);
+  if (sources.length !== 1) throw new Error('Vosr2 图片超分必须提供且只能提供 1 张图片');
+  const imageUrl = await uploadMedia(sources[0], 'image', apiKey, {
+    ...options,
+    maxBytes: IMAGE_REFERENCE_MAX_BYTES,
+    allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
+    cacheVariant: 'vosr2-image-upscale-v1',
+  });
+  return {
+    payload: {
+      model: VOSR2_IMAGE_UPSCALE_MODEL,
+      images: [imageUrl],
+    },
+    model: VOSR2_IMAGE_UPSCALE_MODEL,
+    taskType: 'upscale',
+  };
 }
 
 async function buildWan30Payload(request, apiKey, options = {}) {
@@ -3427,6 +3596,147 @@ async function buildMinimaxH3ContextIrPayload(request, apiKey, options = {}) {
 async function buildHailuoPayload(request, apiKey, options = {}) {
   const model = String(request.model || '').trim();
   if (!HAILUO_MODELS.has(model)) throw new Error(`未知 Hailuo 模型：${model || '(空)'}`);
+
+  if (model === MINIMAX_H3_V2_MODEL) {
+    const prompt = String(request.prompt || '').trim();
+    if (!prompt) throw new Error('MiniMax-H3 必须填写提示词');
+    if (prompt.length > MINIMAX_H3_V2_PROMPT_MAX_LENGTH) {
+      throw new Error(`MiniMax-H3 提示词不能超过 ${MINIMAX_H3_V2_PROMPT_MAX_LENGTH} 字符`);
+    }
+
+    const duration = Number(request.duration ?? request.seconds ?? 4);
+    if (!Number.isInteger(duration) || duration < 4 || duration > 60) {
+      throw new Error('MiniMax-H3 时长必须为 4-60 秒的整数');
+    }
+    const resolution = String(request.resolution || '480P').trim().toUpperCase();
+    if (!MINIMAX_H3_V2_RESOLUTIONS.has(resolution)) {
+      throw new Error('MiniMax-H3 分辨率只支持 480P 或 768P');
+    }
+
+    const firstFrameSource = String(request.firstFrame || request.first_frame || '').trim();
+    const lastFrameSource = String(request.lastFrame || request.last_frame || '').trim();
+    const referenceImageSources = normalizeList(request.referenceImages || request.reference_images || request.images);
+    const rawReferenceVideos = Array.isArray(request.referenceVideos || request.reference_videos)
+      ? request.referenceVideos || request.reference_videos
+      : normalizeList(request.videos).map((url) => ({ url }));
+    const referenceVideos = rawReferenceVideos.map((item) => {
+      const url = String(typeof item === 'string' ? item : item?.url || '').trim();
+      const rawStart = typeof item === 'object' && item !== null
+        ? item.startTimeSeconds ?? item.start_time_seconds ?? 0
+        : 0;
+      const startTimeSeconds = Number(rawStart);
+      if (!url) throw new Error('MiniMax-H3 参考视频 URL 不能为空');
+      if (!Number.isFinite(startTimeSeconds) || startTimeSeconds < 0 || startTimeSeconds > 3600) {
+        throw new Error('MiniMax-H3 参考视频起始秒数必须为 0-3600');
+      }
+      return { url, startTimeSeconds };
+    });
+    const referenceAudioSources = normalizeList(request.referenceAudios || request.reference_audios || request.audios);
+    const driveAudioSource = String(request.driveAudio || request.drive_audio || '').trim();
+
+    if (referenceImageSources.length > MINIMAX_H3_V2_MAX_REFERENCE_IMAGES) {
+      throw new Error(`MiniMax-H3 最多支持 ${MINIMAX_H3_V2_MAX_REFERENCE_IMAGES} 张参考图片`);
+    }
+    if (referenceVideos.length > MINIMAX_H3_V2_MAX_REFERENCE_VIDEOS) {
+      throw new Error(`MiniMax-H3 最多支持 ${MINIMAX_H3_V2_MAX_REFERENCE_VIDEOS} 个参考视频`);
+    }
+    if (referenceAudioSources.length > MINIMAX_H3_V2_MAX_REFERENCE_AUDIOS) {
+      throw new Error(`MiniMax-H3 最多支持 ${MINIMAX_H3_V2_MAX_REFERENCE_AUDIOS} 个参考音频`);
+    }
+    if (duration > 15 && !driveAudioSource) {
+      throw new Error('MiniMax-H3 超过 15 秒必须提供驱动音频');
+    }
+
+    const hasKeyframe = Boolean(firstFrameSource || lastFrameSource);
+    const hasReference = Boolean(referenceImageSources.length || referenceVideos.length || referenceAudioSources.length);
+    const isPureText = !hasKeyframe && !hasReference && !driveAudioSource;
+    const ratio = String(request.ratio || '16:9').trim();
+    if (!MINIMAX_H3_V2_RATIOS.has(ratio)) throw new Error(`MiniMax-H3 不支持比例 ${ratio}`);
+    if (ratio === 'api_default' && isPureText) {
+      throw new Error('MiniMax-H3 纯文生视频必须选择固定比例');
+    }
+    if ((ratio === 'adaptive' || ratio === 'auto') && !hasKeyframe) {
+      throw new Error('MiniMax-H3 adaptive/auto 比例必须提供首帧或尾帧关键帧');
+    }
+
+    const audioMode = String(request.audioMode || request.audio_mode || 'api_default').trim();
+    if (!MINIMAX_H3_V2_AUDIO_MODES.has(audioMode)) {
+      throw new Error(`MiniMax-H3 不支持音频模式 ${audioMode}`);
+    }
+    const rawAddDriveAsReference = request.addDriveAsReference ?? request.add_drive_as_reference ?? 'api_default';
+    const addDriveAsReference = typeof rawAddDriveAsReference === 'boolean'
+      ? String(rawAddDriveAsReference)
+      : String(rawAddDriveAsReference).trim().toLowerCase();
+    if (!['api_default', 'true', 'false'].includes(addDriveAsReference)) {
+      throw new Error('MiniMax-H3 add_drive_as_reference 只支持 api_default、true 或 false');
+    }
+    const denoiseStrength = Number(request.denoiseStrength ?? request.denoise_strength ?? 0.35);
+    if (!Number.isFinite(denoiseStrength) || denoiseStrength < 0 || denoiseStrength > 1) {
+      throw new Error('MiniMax-H3 音频降噪强度必须为 0-1');
+    }
+    if (!driveAudioSource && ['lock_source', 'remix_source', 'reference_only'].includes(audioMode)) {
+      throw new Error(`MiniMax-H3 音频模式 ${audioMode} 必须提供驱动音频`);
+    }
+    if (!driveAudioSource && addDriveAsReference !== 'api_default') {
+      throw new Error('MiniMax-H3 设置 add_drive_as_reference 时必须提供驱动音频');
+    }
+    if (audioMode === 'reference_only' && addDriveAsReference === 'false') {
+      throw new Error('MiniMax-H3 reference_only 不允许 add_drive_as_reference=false');
+    }
+
+    const content = [{ type: 'text', text: prompt }];
+    const appendUploaded = async (source, kind, role, uploadOptions, extra = {}) => {
+      const url = await uploadMedia(source, kind, apiKey, { ...options, ...uploadOptions });
+      content.push({ type: `${kind}_url`, [`${kind}_url`]: { url }, role, ...extra });
+    };
+    const imageUploadOptions = {
+      maxBytes: 30 * 1024 * 1024,
+      allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
+      cacheVariant: 'minimax-h3-v2-image-v1',
+    };
+    if (firstFrameSource) await appendUploaded(firstFrameSource, 'image', 'first_frame', imageUploadOptions);
+    if (lastFrameSource) await appendUploaded(lastFrameSource, 'image', 'last_frame', imageUploadOptions);
+    for (const source of referenceImageSources) {
+      await appendUploaded(source, 'image', 'reference_image', imageUploadOptions);
+    }
+    for (const item of referenceVideos) {
+      await appendUploaded(item.url, 'video', 'reference_video', {
+        maxBytes: 512 * 1024 * 1024,
+        allowedMimes: ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/x-matroska'],
+        cacheVariant: 'minimax-h3-v2-video-v1',
+      }, item.startTimeSeconds > 0 ? { start_time_seconds: item.startTimeSeconds } : {});
+    }
+    const audioUploadOptions = {
+      maxBytes: 50 * 1024 * 1024,
+      allowedMimes: ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/flac', 'audio/mp4', 'audio/x-m4a'],
+      cacheVariant: 'minimax-h3-v2-audio-v1',
+    };
+    for (const source of referenceAudioSources) {
+      await appendUploaded(source, 'audio', 'reference_audio', audioUploadOptions);
+    }
+    if (driveAudioSource) {
+      await appendUploaded(driveAudioSource, 'audio', 'drive_audio', {
+        ...audioUploadOptions,
+        cacheVariant: 'minimax-h3-v2-drive-audio-v1',
+      });
+    }
+
+    const payload = { model, content, resolution, duration };
+    if (ratio !== 'api_default') payload.ratio = ratio;
+    if (audioMode !== 'api_default' || addDriveAsReference !== 'api_default') {
+      const effectiveMode = audioMode === 'api_default'
+        ? driveAudioSource ? 'lock_source' : 'native'
+        : audioMode;
+      payload.audio_control = {
+        mode: effectiveMode,
+        denoise_strength: effectiveMode === 'lock_source' ? 0 : denoiseStrength,
+      };
+      if (addDriveAsReference !== 'api_default') {
+        payload.audio_control.add_drive_as_reference = addDriveAsReference === 'true';
+      }
+    }
+    return { payload, model, taskType: 'minimax-h3-v2' };
+  }
 
   if (MINIMAX_H3_OW_MODELS.has(model)) {
     const prompt = String(request.prompt || '').trim();
@@ -4176,18 +4486,50 @@ async function submitHailuoTask(request, apiKey, options = {}) {
   const fetchImpl = getFetchImpl(options);
   const baseUrl = cleanBaseUrl(options.baseUrl);
   const built = await buildHailuoPayload(request, apiKey, options);
-  const response = await fetchProviderResponse(fetchImpl, `${baseUrl}/v1/videos`, {
+  const isMinimaxH3V2 = built.model === MINIMAX_H3_V2_MODEL;
+  const response = await fetchProviderResponse(fetchImpl, `${baseUrl}${isMinimaxH3V2 ? '/v2/video_generation' : '/v1/videos'}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(built.payload),
-  }, options, 'seedance.nz Hailuo 任务提交');
-  const data = await responseJson(response, 'seedance.nz Hailuo 任务提交');
-  if (!response.ok) throw createUpstreamError(data, response);
-  const taskId = requiredTaskId(data?.id || data?.task_id || data?.data?.id, 'seedance.nz Hailuo 任务提交', response);
+  }, options, isMinimaxH3V2 ? 'seedance.nz MiniMax-H3 V2 任务提交' : 'seedance.nz Hailuo 任务提交');
+  const submitLabel = isMinimaxH3V2 ? 'seedance.nz MiniMax-H3 V2 任务提交' : 'seedance.nz Hailuo 任务提交';
+  const data = await responseJson(response, submitLabel);
+  const recoveredTaskId = isMinimaxH3V2 && (response.status === 408 || response.status >= 500)
+    ? headerValue(response.headers, 'X-Task-Id')
+    : '';
+  if (!response.ok && !recoveredTaskId) throw createUpstreamError(data, response);
+  const taskId = requiredTaskId(
+    data?.id || data?.task_id || data?.data?.id || data?.task?.id || data?.task?.task_id || recoveredTaskId,
+    submitLabel,
+    response,
+  );
   return { taskId, model: built.model, taskType: built.taskType, ...safeProviderTrace(response, data, { pollCount: 0 }) };
+}
+
+async function buildVosr2VideoPayload(request, apiKey, options = {}) {
+  const model = String(request.model || '').trim().toLowerCase();
+  if (model !== VOSR2_VIDEO_UPSCALE_MODEL) {
+    throw new Error(`未知 Vosr2 视频超分模型：${model || '(空)'}`);
+  }
+  const sources = normalizeList(request.videos || request.videoUrls || (request.video ? [request.video] : []));
+  if (sources.length !== 1) throw new Error('Vosr2 视频超分必须提供且只能提供 1 个视频');
+  const videoUrl = await uploadMedia(sources[0], 'video', apiKey, {
+    ...options,
+    maxBytes: 50 * 1024 * 1024,
+    allowedMimes: ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'],
+    cacheVariant: 'vosr2-video-upscale-v1',
+  });
+  return {
+    payload: {
+      model: VOSR2_VIDEO_UPSCALE_MODEL,
+      metadata: { video_url: videoUrl },
+    },
+    model: VOSR2_VIDEO_UPSCALE_MODEL,
+    taskType: 'upscale',
+  };
 }
 
 async function submitKlingTask(request, apiKey, options = {}) {
@@ -4537,6 +4879,29 @@ async function querySunoMusicTask(taskId, apiKey, options = {}) {
     taskId: safeTaskId,
     ...safeProviderTrace(response, data),
   };
+}
+
+async function submitVosr2VideoTask(request, apiKey, options = {}) {
+  if (!String(apiKey || '').trim()) throw new Error('请先在 API 设置中填写“贞贞的平价AI小屋 API Key”');
+  const fetchImpl = getFetchImpl(options);
+  const baseUrl = cleanBaseUrl(options.baseUrl);
+  const built = await buildVosr2VideoPayload(request, apiKey, options);
+  const response = await fetchProviderResponse(fetchImpl, `${baseUrl}/v1/video/generations`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(built.payload),
+  }, options, 'seedance.nz Vosr2 视频超分任务提交');
+  const data = await responseJson(response, 'seedance.nz Vosr2 视频超分任务提交');
+  if (!response.ok) throw createUpstreamError(data, response);
+  const taskId = requiredTaskId(
+    data?.id || data?.task_id || data?.data?.id || data?.data?.task_id,
+    'seedance.nz Vosr2 视频超分任务提交',
+    response,
+  );
+  return { taskId, model: built.model, taskType: built.taskType, ...safeProviderTrace(response, data, { pollCount: 0 }) };
 }
 
 function normalizeFlowMusicOperation(value) {
@@ -5400,6 +5765,38 @@ async function queryTask(taskId, apiKey, options = {}) {
   };
 }
 
+async function queryMinimaxH3V2Task(taskId, apiKey, options = {}) {
+  if (!String(apiKey || '').trim()) throw new Error('缺少贞贞的平价AI小屋 API Key');
+  const fetchImpl = getFetchImpl(options);
+  const baseUrl = cleanBaseUrl(options.baseUrl);
+  const safeTaskId = requiredTaskId(taskId, 'seedance.nz MiniMax-H3 V2 任务查询');
+  const response = await fetchProviderResponse(
+    fetchImpl,
+    `${baseUrl}/v2/query/video_generation/${encodeURIComponent(safeTaskId)}`,
+    { headers: { Authorization: `Bearer ${apiKey}` } },
+    options,
+    'seedance.nz MiniMax-H3 V2 任务查询',
+  );
+  const data = await responseJson(response, 'seedance.nz MiniMax-H3 V2 任务查询');
+  if (!response.ok) throw createUpstreamError(data, response);
+  const task = data?.task;
+  if (!task || typeof task !== 'object' || Array.isArray(task)) {
+    throw invalidResponseError('seedance.nz MiniMax-H3 V2 任务查询', response);
+  }
+  const status = normalizeStatus(task.status);
+  const videoUrl = String(task?.content?.url || '').trim();
+  const failureCode = safeUpstreamCode(task.error, responseBoundaries.get(response)?.sensitiveValues || []);
+  return {
+    status,
+    progress: status === 'succeeded' ? 100 : status === 'running' ? 40 : 10,
+    videoUrl: status === 'succeeded' ? videoUrl || null : null,
+    failReason: status === 'failed'
+      ? failureCode ? `MiniMax-H3 任务失败（${failureCode}）` : 'MiniMax-H3 任务失败'
+      : null,
+    ...safeProviderTrace(response, data),
+  };
+}
+
 async function queryFashVsrTask(taskId, apiKey, options = {}) {
   if (!String(apiKey || '').trim()) throw new Error('缺少贞贞的平价AI小屋 API Key');
   const fetchImpl = getFetchImpl(options);
@@ -5430,6 +5827,40 @@ async function queryFashVsrTask(taskId, apiKey, options = {}) {
     progress: safeProgress(body?.progress ?? body?.data?.progress),
     videoUrl: status === 'succeeded' ? videoUrl || null : null,
     failReason: status === 'failed' ? 'FlashVSR 视频超分任务失败' : null,
+    ...safeProviderTrace(response, data),
+  };
+}
+
+async function queryVosr2VideoTask(taskId, apiKey, options = {}) {
+  if (!String(apiKey || '').trim()) throw new Error('缺少贞贞的平价AI小屋 API Key');
+  const fetchImpl = getFetchImpl(options);
+  const baseUrl = cleanBaseUrl(options.baseUrl);
+  const response = await fetchProviderResponse(
+    fetchImpl,
+    `${baseUrl}/v1/video/generations/${encodeURIComponent(taskId)}`,
+    { headers: { Authorization: `Bearer ${apiKey}` } },
+    options,
+    'seedance.nz Vosr2 视频超分任务查询',
+  );
+  const data = await responseJson(response, 'seedance.nz Vosr2 视频超分任务查询');
+  if (!response.ok) throw createUpstreamError(data, response);
+  const body = data?.data && typeof data.data === 'object' ? data.data : data;
+  const status = normalizeStatus(body?.status || body?.data?.status);
+  const videoUrl = String(
+    body?.result_url
+    || body?.resultUrl
+    || body?.video_url
+    || body?.videoUrl
+    || body?.data?.result_url
+    || body?.data?.content?.video_url
+    || body?.content?.video_url
+    || '',
+  ).trim();
+  return {
+    status,
+    progress: safeProgress(body?.progress ?? body?.data?.progress),
+    videoUrl: status === 'succeeded' ? videoUrl || null : null,
+    failReason: status === 'failed' ? 'Vosr2 视频超分任务失败' : null,
     ...safeProviderTrace(response, data),
   };
 }
@@ -5467,6 +5898,14 @@ module.exports = {
   HAILUO_H3_T2V_MODEL,
   HAILUO_H3_T2V_MODELS,
   HAILUO_MODELS,
+  MINIMAX_H3_V2_MODEL,
+  MINIMAX_H3_V2_RESOLUTIONS,
+  MINIMAX_H3_V2_FIXED_RATIOS,
+  MINIMAX_H3_V2_RATIOS,
+  MINIMAX_H3_V2_AUDIO_MODES,
+  MINIMAX_H3_V2_MAX_REFERENCE_IMAGES,
+  MINIMAX_H3_V2_MAX_REFERENCE_VIDEOS,
+  MINIMAX_H3_V2_MAX_REFERENCE_AUDIOS,
   MINMAX_H3_CONTEXT_IR_IMAGE_MODEL,
   MINMAX_H3_CONTEXT_IR_MAX_AUDIOS,
   MINMAX_H3_CONTEXT_IR_MAX_IMAGES,
@@ -5553,6 +5992,18 @@ module.exports = {
   ZHENZHEN_APIMART_IMAGE_MODELS,
   ZHENZHEN_APIMART_VIDEO_MODELS,
   ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL,
+  ZHENZHEN_IMAGE_G25_BACKGROUNDS,
+  ZHENZHEN_IMAGE_G25_FLARE_MODEL,
+  ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL,
+  ZHENZHEN_IMAGE_G25_LOWPRICE_SIZES,
+  ZHENZHEN_IMAGE_G25_MODELS,
+  ZHENZHEN_IMAGE_G25_MODERATION,
+  ZHENZHEN_IMAGE_G25_OFFICIAL_MODELS,
+  ZHENZHEN_IMAGE_G25_OFFICIAL_SIZES,
+  ZHENZHEN_IMAGE_G25_OUTPUT_FORMATS,
+  ZHENZHEN_IMAGE_G25_QUALITIES,
+  ZHENZHEN_IMAGE_G25_RESOLUTIONS,
+  ZHENZHEN_IMAGE_G25_SUNBURST_MODEL,
   ZHENZHEN_IMAGE_GK_V2_MODEL,
   ZHENZHEN_IMAGE_GK_V2_EDIT_MODEL,
   ZHENZHEN_IMAGE_GK_V2_SEGMENT_MODEL,
@@ -5573,6 +6024,8 @@ module.exports = {
   ZHENZHEN_UPSCALER_MODEL,
   ZHENZHEN_UPSCALER_RESOLUTIONS,
   FASHVSR_VIDEO_UPSCALE_MODEL,
+  VOSR2_IMAGE_UPSCALE_MODEL,
+  VOSR2_VIDEO_UPSCALE_MODEL,
   HUNYUAN3D_TEXT_MODEL,
   HUNYUAN3D_IMAGE_MODEL,
   HUNYUAN3D_MODELS,
@@ -5632,6 +6085,8 @@ module.exports = {
   buildKlingPayload,
   buildUpscalerPayload,
   buildFashVsrPayload,
+  buildVosr2ImagePayload,
+  buildVosr2VideoPayload,
   buildViduPayload,
   buildHappyHorsePayload,
   buildWan30Payload,
@@ -5660,7 +6115,9 @@ module.exports = {
   queryFlowMusicTask,
   querySunoMusicTask,
   queryTask,
+  queryMinimaxH3V2Task,
   queryFashVsrTask,
+  queryVosr2VideoTask,
   resetCachesForTests,
   resolveModel,
   seedancePublicDnsLookup,
@@ -5672,6 +6129,7 @@ module.exports = {
   submitKlingTask,
   submitUpscalerTask,
   submitFashVsrTask,
+  submitVosr2VideoTask,
   submitViduTask,
   submitHappyHorseTask,
   submitImageTask,

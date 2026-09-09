@@ -2609,7 +2609,9 @@
               "auto",
               "high",
               "medium",
-              "low"
+              "low",
+              "xhigh",
+              "max"
             ]
           },
           "gptImageModeration": {
@@ -2618,6 +2620,130 @@
               "auto",
               "low"
             ]
+          },
+          "gptImage25Size": {
+            "type": "string",
+            "enum": [
+              "1024x1024",
+              "1536x1024",
+              "1024x1536",
+              "2048x2048",
+              "2048x1152",
+              "1152x2048",
+              "3840x2160",
+              "2160x3840",
+              "custom"
+            ]
+          },
+          "gptImage25CustomWidth": {
+            "type": "integer",
+            "minimum": 16,
+            "maximum": 3840
+          },
+          "gptImage25CustomHeight": {
+            "type": "integer",
+            "minimum": 16,
+            "maximum": 3840
+          },
+          "gptImage25Count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "gptImage25Background": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "opaque"
+            ]
+          },
+          "zhenzhenImageG25Size": {
+            "type": "string",
+            "enum": [
+              "preserve_reference",
+              "auto",
+              "1:1",
+              "1:3",
+              "3:1",
+              "16:9",
+              "9:16",
+              "4:3",
+              "3:4",
+              "3:2",
+              "2:3",
+              "5:4",
+              "4:5",
+              "2:1",
+              "1:2",
+              "21:9",
+              "9:21",
+              "custom"
+            ]
+          },
+          "zhenzhenImageG25CustomWidth": {
+            "type": "integer",
+            "minimum": 16,
+            "maximum": 3840
+          },
+          "zhenzhenImageG25CustomHeight": {
+            "type": "integer",
+            "minimum": 16,
+            "maximum": 3840
+          },
+          "zhenzhenImageG25Resolution": {
+            "type": "string",
+            "enum": [
+              "1k",
+              "2k",
+              "4k"
+            ]
+          },
+          "zhenzhenImageG25Count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "zhenzhenImageG25Quality": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          },
+          "zhenzhenImageG25OutputFormat": {
+            "type": "string",
+            "enum": [
+              "png",
+              "jpeg",
+              "webp"
+            ]
+          },
+          "zhenzhenImageG25OutputCompression": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "zhenzhenImageG25Background": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "transparent",
+              "opaque"
+            ]
+          },
+          "zhenzhenImageG25Moderation": {
+            "type": "string",
+            "enum": [
+              "low",
+              "auto"
+            ]
+          },
+          "zhenzhenImageG25NsfwCheck": {
+            "type": "boolean"
           },
           "referenceImages": {
             "type": "array",
@@ -2636,6 +2762,22 @@
           "sizeLevel": "1K",
           "gptImageQuality": "auto",
           "gptImageModeration": "auto",
+          "gptImage25Size": "1024x1024",
+          "gptImage25CustomWidth": 1024,
+          "gptImage25CustomHeight": 1024,
+          "gptImage25Count": 1,
+          "gptImage25Background": "auto",
+          "zhenzhenImageG25Size": "auto",
+          "zhenzhenImageG25CustomWidth": 1024,
+          "zhenzhenImageG25CustomHeight": 1024,
+          "zhenzhenImageG25Resolution": "1k",
+          "zhenzhenImageG25Count": 1,
+          "zhenzhenImageG25Quality": "auto",
+          "zhenzhenImageG25OutputFormat": "png",
+          "zhenzhenImageG25OutputCompression": 90,
+          "zhenzhenImageG25Background": "auto",
+          "zhenzhenImageG25Moderation": "low",
+          "zhenzhenImageG25NsfwCheck": false,
           "referenceImages": [],
           "imageOnlyOutput": true,
           "reuseResult": false

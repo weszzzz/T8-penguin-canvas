@@ -1,0 +1,121 @@
+{
+  "schema": "t8-workflow-fragment",
+  "version": 1,
+  "title": "MiniMax-H3 驱动音频视频（贞贞的平价AI小屋 · V2）",
+  "nodes": [
+    {
+      "id": "minimax-h3-v2-drive-image",
+      "type": "upload",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "label": "上传参考图",
+        "uploadType": "image",
+        "lockedUploadType": "image"
+      }
+    },
+    {
+      "id": "minimax-h3-v2-drive-audio-input",
+      "type": "upload",
+      "position": {
+        "x": 0,
+        "y": 240
+      },
+      "data": {
+        "label": "上传驱动音频",
+        "uploadType": "audio",
+        "lockedUploadType": "audio"
+      }
+    },
+    {
+      "id": "minimax-h3-v2-drive-audio",
+      "type": "video",
+      "position": {
+        "x": 440,
+        "y": 60
+      },
+      "data": {
+        "label": "MiniMax-H3 驱动音频视频",
+        "mainId": "hailuo-2.3",
+        "model": "MiniMax-H3",
+        "videoBuiltinSource": "seedance-nz",
+        "ratio": "16:9",
+        "duration": 4,
+        "resolution": "480P",
+        "prompt": "保持参考图中的人物身份与场景风格，动作和表情自然跟随驱动音频，镜头稳定连贯",
+        "localPrompt": "保持参考图中的人物身份与场景风格，动作和表情自然跟随驱动音频，镜头稳定连贯",
+        "minimaxH3FirstFrameEnabled": false,
+        "minimaxH3LastFrameEnabled": false,
+        "minimaxH3DriveAudioEnabled": true,
+        "minimaxH3AudioMode": "lock_source",
+        "minimaxH3DenoiseStrength": 0,
+        "minimaxH3AddDriveAsReference": "api_default",
+        "minimaxH3VideoStartSeconds": [
+          0,
+          0,
+          0
+        ],
+        "reuseResult": false
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "minimax-h3-v2-drive-image-to-minimax-h3-v2-drive-audio",
+      "source": "minimax-h3-v2-drive-image",
+      "target": "minimax-h3-v2-drive-audio"
+    },
+    {
+      "id": "minimax-h3-v2-drive-audio-input-to-minimax-h3-v2-drive-audio",
+      "source": "minimax-h3-v2-drive-audio-input",
+      "target": "minimax-h3-v2-drive-audio"
+    }
+  ],
+  "nodeCount": 3,
+  "edgeCount": 2,
+  "nodeTypes": [
+    "upload",
+    "upload",
+    "video"
+  ],
+  "topologyPreview": {
+    "nodes": [
+      {
+        "id": "minimax-h3-v2-drive-image",
+        "type": "upload",
+        "label": "上传参考图",
+        "x": 50,
+        "y": 50
+      },
+      {
+        "id": "minimax-h3-v2-drive-audio-input",
+        "type": "upload",
+        "label": "上传驱动音频",
+        "x": 50,
+        "y": 290
+      },
+      {
+        "id": "minimax-h3-v2-drive-audio",
+        "type": "video",
+        "label": "MiniMax-H3 驱动音频视频",
+        "x": 490,
+        "y": 110
+      }
+    ],
+    "edges": [
+      {
+        "id": "minimax-h3-v2-drive-image-to-minimax-h3-v2-drive-audio",
+        "source": "minimax-h3-v2-drive-image",
+        "target": "minimax-h3-v2-drive-audio"
+      },
+      {
+        "id": "minimax-h3-v2-drive-audio-input-to-minimax-h3-v2-drive-audio",
+        "source": "minimax-h3-v2-drive-audio-input",
+        "target": "minimax-h3-v2-drive-audio"
+      }
+    ]
+  },
+  "savedAt": "2026-09-06T00:00:00.000Z"
+}

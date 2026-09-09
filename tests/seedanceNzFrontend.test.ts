@@ -44,6 +44,7 @@ test('SD2 node exposes built-in provider choices and preserves provider during p
 
 test('audio node exposes the official 31-action Suno platform without replacing legacy Suno', () => {
   const audioNode = read('../src/components/nodes/AudioNode.tsx');
+  const i18n = read('../src/i18n/resources.ts');
   const generation = read('../src/services/generation.ts');
   const proxy = read('../backend/src/routes/proxy.js');
 
@@ -51,8 +52,10 @@ test('audio node exposes the official 31-action Suno platform without replacing 
   assert.equal(new Set(SUNO_NZ_ACTIONS.map((item) => item.value)).size, 31);
   assert.equal(SUNO_NZ_ACTIONS[0].value, 'suno-generation');
   assert.equal(SUNO_NZ_ACTIONS.at(-1)?.value, 'suno-add-stem');
-  assert.match(audioNode, /贞贞的AI工坊（原有）/);
-  assert.match(audioNode, /贞贞的平价AI小屋/);
+  assert.match(audioNode, /translate\('nodes:audio\.workshopLegacy'\)/);
+  assert.match(audioNode, /translate\('nodes:generation\.budgetHouse'\)/);
+  assert.match(i18n, /workshopLegacy: '贞贞的AI工坊（原有）'/);
+  assert.match(i18n, /workshopLegacy: 'Zhenzhen AI Workshop \(legacy\)'/);
   assert.match(audioNode, /SUNO_NZ_ACTIONS\.map/);
   assert.match(audioNode, /submitAudio\(\{/);
   assert.match(audioNode, /submitSunoNz\(\{/);
@@ -341,6 +344,7 @@ test('audio node exposes Seed Audio without replacing Suno and supports image/au
   const node = read('../src/components/nodes/AudioNode.tsx');
   const generation = read('../src/services/generation.ts');
   const apiSettings = read('../src/components/ApiSettings.tsx');
+  const i18n = read('../src/i18n/resources.ts');
   assert.match(node, /audioProviderMode.*seed-audio/);
   assert.match(node, /doubao-seed-audio-1\.0/);
   assert.match(node, /submitSeedAudio/);
@@ -358,13 +362,16 @@ test('audio node exposes Seed Audio without replacing Suno and supports image/au
     outputs: ['audio', 'text', 'video'],
     executable: true,
   });
-  assert.match(apiSettings, /Seedream\/Qwen\/Wan\/Grok 图像，以及 Seed Audio、Qwen3-TTS、MiniMax、Mureka 音频/);
+  assert.match(apiSettings, /descKey: 'keys\.zhenzhenBudget\.description'/);
+  assert.match(i18n, /Seedream\/Qwen\/Wan\/Grok 图像，以及 Seed Audio、Qwen3-TTS、MiniMax、Mureka 音频/);
+  assert.match(i18n, /Seedream\/Qwen\/Wan\/Grok images, and Seed Audio\/Qwen3-TTS\/MiniMax\/Mureka audio/);
 });
 
 test('APIMart image, video and Whisper models are wired to the budget provider without replacing existing tabs', () => {
   const imageNode = read('../src/components/nodes/ImageNode.tsx');
   const videoNode = read('../src/components/nodes/VideoNode.tsx');
   const audioNode = read('../src/components/nodes/AudioNode.tsx');
+  const i18n = read('../src/i18n/resources.ts');
   const models = read('../src/providers/models.ts');
   const generation = read('../src/services/generation.ts');
   const proxy = read('../backend/src/routes/proxy.js');
@@ -388,8 +395,10 @@ test('APIMart image, video and Whisper models are wired to the budget provider w
   assert.match(videoNode, /贞贞的平价AI小屋 · \{apiModel\}/);
   assert.match(videoNode, /querySeedance\(tid, 'seedance-nz'\)/);
   assert.match(audioNode, /audioProviderMode === 'whisper'/);
-  assert.match(audioNode, /whisper-1 · 贞贞的平价AI小屋/);
-  assert.match(audioNode, /开始转写/);
+  assert.match(audioNode, /`whisper-1 · \$\{translate\('nodes:generation\.budgetHouse'\)\}`/);
+  assert.match(audioNode, /translate\('nodes:audio\.startTranscription'\)/);
+  assert.match(i18n, /startTranscription: '开始转写'/);
+  assert.match(i18n, /startTranscription: 'Start transcription'/);
   assert.match(audioNode, /官方接口不支持 webm/);
   assert.match(audioNode, /visibleUpstreamVideos/);
   assert.match(audioNode, /isWhisper \? \['video', 'audio'\]/);

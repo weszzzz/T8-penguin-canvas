@@ -440,6 +440,142 @@ test('seedance.nz APIMart image models follow the documented low-price and Grok 
   );
 });
 
+test('seedance.nz Image G v2.5 models keep the documented Lowprice and Official payloads distinct', async () => {
+  seedanceNz.resetCachesForTests();
+  let uploadIndex = 0;
+  const fetchImpl = async (url: string) => {
+    assert.match(url, /\/v1\/files\/upload$/);
+    uploadIndex += 1;
+    return jsonResponse({ url: `https://cdn.example.com/image-g25-reference-${uploadIndex}.png` });
+  };
+
+  const lowprice = await seedanceNz.buildApimartImagePayload({
+    model: 'zhenzhen-image-g-v2.5-lowprice',
+    prompt: 'A clean product photograph',
+    resolution: '2k',
+    size: '16:9',
+    n: 1,
+    nsfw_check: true,
+    images: [TINY_PNG_A, TINY_PNG_B],
+  }, 'test-key', { fetchImpl, uploadIntervalMs: 0 });
+  assert.deepEqual(lowprice, {
+    model: 'zhenzhen-image-g-v2.5-lowprice',
+    taskType: 'i2i',
+    payload: {
+      model: 'zhenzhen-image-g-v2.5-lowprice',
+      prompt: 'A clean product photograph',
+      n: 1,
+      size: '16:9',
+      resolution: '2k',
+      nsfw_check: true,
+      images: [
+        'https://cdn.example.com/image-g25-reference-1.png',
+        'https://cdn.example.com/image-g25-reference-2.png',
+      ],
+    },
+  });
+  assert.equal('quality' in lowprice.payload, false);
+  assert.equal('metadata' in lowprice.payload, false);
+
+  const flare = await seedanceNz.buildApimartImagePayload({
+    model: 'zhenzhen-image-g-v2.5-flare',
+    prompt: 'A precise editorial illustration',
+    resolution: '4k',
+    size: 'custom',
+    custom_size: '1536x864',
+    quality: 'high',
+    n: 4,
+    output_format: 'webp',
+    output_compression: 82,
+    background: 'transparent',
+    moderation: 'auto',
+    images: [TINY_PNG_A],
+  }, 'test-key', { fetchImpl, uploadIntervalMs: 0 });
+  assert.deepEqual(flare.payload, {
+    model: 'zhenzhen-image-g-v2.5-flare',
+    prompt: 'A precise editorial illustration',
+    n: 4,
+    quality: 'high',
+    output_format: 'webp',
+    output_compression: 82,
+    background: 'transparent',
+    moderation: 'auto',
+    size: '1536x864',
+    images: ['https://cdn.example.com/image-g25-reference-1.png'],
+  });
+  assert.equal('resolution' in flare.payload, false);
+  assert.equal(flare.taskType, 'i2i');
+
+  const sunburst = await seedanceNz.buildApimartImagePayload({
+    model: 'zhenzhen-image-g-v2.5-sunburst',
+    prompt: 'Preserve the source composition',
+    resolution: '1k',
+    size: 'preserve_reference',
+    quality: 'auto',
+    n: 1,
+    output_format: 'png',
+    output_compression: 10,
+    background: 'auto',
+    moderation: 'low',
+  }, 'test-key');
+  assert.deepEqual(sunburst.payload, {
+    model: 'zhenzhen-image-g-v2.5-sunburst',
+    prompt: 'Preserve the source composition',
+    n: 1,
+    quality: 'auto',
+    output_format: 'png',
+    background: 'auto',
+    moderation: 'low',
+    resolution: '1k',
+  });
+  assert.equal('size' in sunburst.payload, false);
+  assert.equal('output_compression' in sunburst.payload, false);
+});
+
+test('seedance.nz Image G v2.5 rejects undocumented counts, reference limits, and format combinations', async () => {
+  await assert.rejects(
+    seedanceNz.buildApimartImagePayload({
+      model: 'zhenzhen-image-g-v2.5-lowprice',
+      prompt: 'One image only',
+      n: 2,
+    }, 'test-key'),
+    /图片数量 n 必须是 1-1 的整数/,
+  );
+  await assert.rejects(
+    seedanceNz.buildApimartImagePayload({
+      model: 'zhenzhen-image-g-v2.5-lowprice',
+      prompt: 'Too many references',
+      images: Array.from({ length: 16 }, () => TINY_PNG_A),
+    }, 'test-key'),
+    /最多支持 15 张参考图/,
+  );
+  await assert.rejects(
+    seedanceNz.buildApimartImagePayload({
+      model: 'zhenzhen-image-g-v2.5-lowprice',
+      prompt: 'x'.repeat(5001),
+    }, 'test-key'),
+    /提示词最多 5000 字符/,
+  );
+  await assert.rejects(
+    seedanceNz.buildApimartImagePayload({
+      model: 'zhenzhen-image-g-v2.5-flare',
+      prompt: 'Invalid custom pixels',
+      size: 'custom',
+      custom_size: '1025x1024',
+    }, 'test-key'),
+    /16 的倍数/,
+  );
+  await assert.rejects(
+    seedanceNz.buildApimartImagePayload({
+      model: 'zhenzhen-image-g-v2.5-sunburst',
+      prompt: 'Invalid transparency',
+      output_format: 'jpeg',
+      background: 'transparent',
+    }, 'test-key'),
+    /透明背景必须使用 png 或 webp/,
+  );
+});
+
 test('seedance.nz Nano Banana models enforce their documented resolution, ratio, count, and reference contracts', async () => {
   seedanceNz.resetCachesForTests();
   let uploadIndex = 0;

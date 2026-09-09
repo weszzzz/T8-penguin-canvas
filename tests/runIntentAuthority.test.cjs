@@ -7,6 +7,10 @@ const path = require('node:path');
 const BetterSqlite3 = require('better-sqlite3');
 const { ProjectDatabase } = require('../backend/src/services/projectDatabase');
 const {
+  createLazyRuntime,
+  sendProjectRuntimeUnavailable,
+} = require('../backend/src/services/projectRuntime');
+const {
   PROJECT_DATABASE_MIGRATION_29_DOWN_SQL,
 } = require('../backend/src/services/projectDatabaseMigration29');
 const {
@@ -138,6 +142,11 @@ function managementFetch(url, init = {}) {
 async function createRunServer(database, gateway) {
   const restores = [
     installModuleMock('../backend/src/services/projectDatabase', { getProjectDatabase: () => database }),
+    installModuleMock('../backend/src/services/projectRuntime', {
+      createLazyRuntime,
+      getProjectStorageRuntime: () => ({ database }),
+      sendProjectRuntimeUnavailable,
+    }),
     installModuleMock('../backend/src/services/assetPreviewPipeline', { getAssetPreviewPipeline: () => ({}) }),
     installModuleMock('../backend/src/services/assetIndexer', { getBackgroundAssetIndexer: () => ({
       recordRunOutputAssets: async () => ({ nodeRun: {}, assets: [] }),
@@ -869,6 +878,20 @@ test('runtime authority normalizes stale raw model fields instead of trusting ap
     nodeIds: ['budget-image-node'],
   }]);
 
+  const vosr2ImageAuthority = deriveRunIntentAuthority({
+    nodes: [node('vosr2-image-node', 'image', {
+      model: 'vosr2-image-upscale',
+      apiModel: 'forged-safe-model',
+      imageBuiltinSource: 'seedance-nz',
+    })],
+    edges: [],
+  }, ['vosr2-image-node']);
+  assert.deepEqual(vosr2ImageAuthority.declarations, [{
+    provider: 'seedance-nz',
+    model: 'vosr2-image-upscale',
+    nodeIds: ['vosr2-image-node'],
+  }]);
+
   const videoAuthority = deriveRunIntentAuthority({
     nodes: [node('video-node', 'video', {
       mainId: 'wan-2.7-spicy',
@@ -898,6 +921,20 @@ test('runtime authority normalizes stale raw model fields instead of trusting ap
     provider: 'seedance-nz',
     model: 'zhenzhen-video-v31-lite',
     nodeIds: ['budget-video-node'],
+  }]);
+
+  const vosr2VideoAuthority = deriveRunIntentAuthority({
+    nodes: [node('vosr2-video-node', 'video', {
+      mainId: 'vosr2-video-upscale',
+      model: 'forged-safe-model',
+      videoBuiltinSource: 'seedance-nz',
+    })],
+    edges: [],
+  }, ['vosr2-video-node']);
+  assert.deepEqual(vosr2VideoAuthority.declarations, [{
+    provider: 'seedance-nz',
+    model: 'vosr2-video-upscale',
+    nodeIds: ['vosr2-video-node'],
   }]);
 
   const seedanceAuthority = deriveRunIntentAuthority({

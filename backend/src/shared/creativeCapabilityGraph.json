@@ -18,19 +18,19 @@
   },
   "sourceDigests": {
     "creativeCapabilityManifest": "569f2c8be144e05120ca629b2826383a06c4d6565ab3896c2dc61807bb9f7c27",
-    "canvasNodeSchema": "56cc84a3e73879b4da1a518d433f40e6bd1077fec2f659c5efc168c396958631",
-    "canvasNodeSchemaFile": "e734d7ce986e11bf382716bad259e18018620283e8024af28b55b6b99c9eef94",
+    "canvasNodeSchema": "7f3a5b89672debff165568245f3a341de78d738722e8ac2d4b9e55e1925d4292",
+    "canvasNodeSchemaFile": "a5d1cb072894c751b49a7ba05e24518ce19212fff1b52661a146f888644739b7",
     "i18nNodeCatalog": "0479653284399372bba58f69d528e45ed9de267f9a1d7107347401ab75f60676",
-    "i18nRendererResources": "d1c04ddd8f7a025963979c31ddbcabbb479061f329b590347c98c1457c7b8994",
+    "i18nRendererResources": "88ce0b639569be25e3073372139839d015f4709081adf4f402b2458432ffd3bd",
     "i18nElectronCatalog": "409cf6403ce3d7bd3bfc96e996e43008b57b248a53bf9fb0f38b9bcf2fbea2d7",
-    "runtimeCatalogSources": "12edb10560d3871617fec742494fbcfdd1f3fe0d840099c57cedfb031217816a",
-    "runtimeCatalogArtifact": "8f2abdaee0fa357fba938f8d951e1a789541015497b4b379145dc46662ff4ca0",
+    "runtimeCatalogSources": "5fdfda3226a6fc1a0c47ffe6bcad969038c0eab5e901a25315a883e5211424c2",
+    "runtimeCatalogArtifact": "d56b5dd561e5988b1d4ec08927c634017e148d9b0151e8252a7ae023aadc4585",
     "handlerBindings": "3cd8cde3c05d1642d72ce8cbfae2874d1bdf986592ae431ef7d66b043da257b5",
     "capabilityGraphCompiler": "a3716d239b91e1c4775f5996b3865ba3ab8fd652263138feef0a56de40851c24",
     "coverageReceiptCompiler": "68c02167cb5317107edd346223a5e5999168e447bacbb977ff8e9678e6753fe7",
     "canonicalTextDigestCompiler": "b0afcf28a257fbbd8f391edc117348f8f2ede1b4a039ae91bce25a8d563ac0cf"
   },
-  "aggregateDigest": "1618b5f9b7bcd01d8b61c8435f57f0205145a4d98606cc0c12a2fb2f462a5e5c",
+  "aggregateDigest": "483db58ca012094d8f6d74e083a24c800ff5d4b65b32c78fed9750f2c1eda627",
   "principles": {
     "oneSentenceStart": true,
     "directCanvasMutation": false,
@@ -54,18 +54,18 @@
     "accountedNodes": 83,
     "unexplainedNodes": 0,
     "fullyOperableNodes": 20,
-    "runtimeEntries": 282,
+    "runtimeEntries": 294,
     "runtimeByKind": {
       "llm": 34,
-      "image": 45,
-      "video": 128,
+      "image": 55,
+      "video": 130,
       "audio": 17,
       "actions": 58
     },
     "runtimeByProvider": {
       "grok-oauth": 2,
-      "seedance-nz": 217,
-      "zhenzhen": 56,
+      "seedance-nz": 223,
+      "zhenzhen": 62,
       "fal": 7
     },
     "operations": 196,
@@ -7401,7 +7401,7 @@
   ],
   "runtime": {
     "schema": "t8-creative-runtime-catalog-v1",
-    "sourceDigest": "12edb10560d3871617fec742494fbcfdd1f3fe0d840099c57cedfb031217816a",
+    "sourceDigest": "5fdfda3226a6fc1a0c47ffe6bcad969038c0eab5e901a25315a883e5211424c2",
     "platforms": [
       {
         "id": "zhenzhen",
@@ -9198,6 +9198,26 @@
         }
       },
       {
+        "id": "image:seedance-nz:vosr2-image-upscale",
+        "kind": "image",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "vosr2-image-upscale",
+        "label": "vosr2-image-upscale",
+        "family": "vosr2-image-upscale",
+        "available": true,
+        "catalogSection": "image",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
         "id": "image:seedance-nz:wan-2.7-global-i2i",
         "kind": "image",
         "provider": "seedance-nz",
@@ -9264,6 +9284,66 @@
         "platformLabel": "贞贞的平价AI小屋",
         "model": "zhenzhen-image-g-v2-lowprice",
         "label": "zhenzhen-image-g-v2-lowprice",
+        "family": "gpt-image-2",
+        "available": true,
+        "catalogSection": "image",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "image:seedance-nz:zhenzhen-image-g-v2.5-flare",
+        "kind": "image",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "zhenzhen-image-g-v2.5-flare",
+        "label": "zhenzhen-image-g-v2.5-flare",
+        "family": "gpt-image-2",
+        "available": true,
+        "catalogSection": "image",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "image:seedance-nz:zhenzhen-image-g-v2.5-lowprice",
+        "kind": "image",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "zhenzhen-image-g-v2.5-lowprice",
+        "label": "zhenzhen-image-g-v2.5-lowprice",
+        "family": "gpt-image-2",
+        "available": true,
+        "catalogSection": "image",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "image:seedance-nz:zhenzhen-image-g-v2.5-sunburst",
+        "kind": "image",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "zhenzhen-image-g-v2.5-sunburst",
+        "label": "zhenzhen-image-g-v2.5-sunburst",
         "family": "gpt-image-2",
         "available": true,
         "catalogSection": "image",
@@ -9624,6 +9704,126 @@
         "platformLabel": "贞贞的AI工坊",
         "model": "gpt-image-2-all",
         "label": "gpt-image-2-all",
+        "family": "gpt-image-2",
+        "available": true,
+        "catalogSection": "image",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "image:zhenzhen:gpt-image-2.5-flare",
+        "kind": "image",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "gpt-image-2.5-flare",
+        "label": "gpt-image-2.5-flare",
+        "family": "gpt-image-2",
+        "available": true,
+        "catalogSection": "image",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "image:zhenzhen:gpt-image-2.5-flare-2k",
+        "kind": "image",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "gpt-image-2.5-flare-2k",
+        "label": "gpt-image-2.5-flare-2k",
+        "family": "gpt-image-2",
+        "available": true,
+        "catalogSection": "image",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "image:zhenzhen:gpt-image-2.5-flare-4k",
+        "kind": "image",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "gpt-image-2.5-flare-4k",
+        "label": "gpt-image-2.5-flare-4k",
+        "family": "gpt-image-2",
+        "available": true,
+        "catalogSection": "image",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "image:zhenzhen:gpt-image-2.5-sunburst",
+        "kind": "image",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "gpt-image-2.5-sunburst",
+        "label": "gpt-image-2.5-sunburst",
+        "family": "gpt-image-2",
+        "available": true,
+        "catalogSection": "image",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "image:zhenzhen:gpt-image-2.5-sunburst-2k",
+        "kind": "image",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "gpt-image-2.5-sunburst-2k",
+        "label": "gpt-image-2.5-sunburst-2k",
+        "family": "gpt-image-2",
+        "available": true,
+        "catalogSection": "image",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "image:zhenzhen:gpt-image-2.5-sunburst-4k",
+        "kind": "image",
+        "provider": "zhenzhen",
+        "platformLabel": "贞贞的AI工坊",
+        "model": "gpt-image-2.5-sunburst-4k",
+        "label": "gpt-image-2.5-sunburst-4k",
         "family": "gpt-image-2",
         "available": true,
         "catalogSection": "image",
@@ -11564,6 +11764,26 @@
         }
       },
       {
+        "id": "video:seedance-nz:MiniMax-H3",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "MiniMax-H3",
+        "label": "MiniMax-H3（V2 多模态视频）",
+        "family": "hailuo-2.3",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
         "id": "video:seedance-nz:minimax-h3-ow-fl2va-audio-drive-fast",
         "kind": "video",
         "provider": "seedance-nz",
@@ -12151,6 +12371,26 @@
         "model": "vidu-q3-turbo-t2v",
         "label": "vidu-q3-turbo-t2v（文生 Turbo）",
         "family": "vidu-q3",
+        "available": true,
+        "catalogSection": "video",
+        "compatibility": {
+          "known": true,
+          "installed": true,
+          "credentialReady": null,
+          "regionReady": true,
+          "executable": false,
+          "available": true,
+          "requiresRuntimeCheck": true
+        }
+      },
+      {
+        "id": "video:seedance-nz:vosr2-video-upscale",
+        "kind": "video",
+        "provider": "seedance-nz",
+        "platformLabel": "贞贞的平价AI小屋",
+        "model": "vosr2-video-upscale",
+        "label": "vosr2-video-upscale",
+        "family": "vosr2-video-upscale",
         "available": true,
         "catalogSection": "video",
         "compatibility": {
@@ -13420,10 +13660,14 @@
       "image:seedance-nz:seedream-v5-pro-i2i",
       "image:seedance-nz:seedream-v5-pro-layer-decomposition",
       "image:seedance-nz:seedream-v5-pro-t2i",
+      "image:seedance-nz:vosr2-image-upscale",
       "image:seedance-nz:wan-2.7-global-i2i",
       "image:seedance-nz:wan-2.7-global-i2i-pro",
       "image:seedance-nz:wan-2.7-global-t2i",
       "image:seedance-nz:zhenzhen-image-g-v2-lowprice",
+      "image:seedance-nz:zhenzhen-image-g-v2.5-flare",
+      "image:seedance-nz:zhenzhen-image-g-v2.5-lowprice",
+      "image:seedance-nz:zhenzhen-image-g-v2.5-sunburst",
       "image:seedance-nz:zhenzhen-image-g2-i2i",
       "image:seedance-nz:zhenzhen-image-g2-t2i",
       "image:seedance-nz:zhenzhen-image-gk-v15",
@@ -13442,6 +13686,12 @@
       "image:zhenzhen:gpt-image-2-2K",
       "image:zhenzhen:gpt-image-2-4K",
       "image:zhenzhen:gpt-image-2-all",
+      "image:zhenzhen:gpt-image-2.5-flare",
+      "image:zhenzhen:gpt-image-2.5-flare-2k",
+      "image:zhenzhen:gpt-image-2.5-flare-4k",
+      "image:zhenzhen:gpt-image-2.5-sunburst",
+      "image:zhenzhen:gpt-image-2.5-sunburst-2k",
+      "image:zhenzhen:gpt-image-2.5-sunburst-4k",
       "image:zhenzhen:grok-4.2-image",
       "image:zhenzhen:midjourney",
       "image:zhenzhen:nano-banana-pro",
@@ -13538,6 +13788,7 @@
       "video:seedance-nz:kling-v3.0-std-t2v",
       "video:seedance-nz:midjourney-video",
       "video:seedance-nz:mini",
+      "video:seedance-nz:MiniMax-H3",
       "video:seedance-nz:minimax-h3-ow-fl2va-audio-drive-fast",
       "video:seedance-nz:minimax-h3-ow-i2v",
       "video:seedance-nz:minimax-h3-ow-i2v-fast",
@@ -13568,6 +13819,7 @@
       "video:seedance-nz:vidu-q3-turbo-i2v",
       "video:seedance-nz:vidu-q3-turbo-start-end",
       "video:seedance-nz:vidu-q3-turbo-t2v",
+      "video:seedance-nz:vosr2-video-upscale",
       "video:seedance-nz:wan-2.7-spicy-i2v",
       "video:seedance-nz:wan-3.0-global-i2v",
       "video:seedance-nz:wan-3.0-global-prime-i2v",
@@ -13622,8 +13874,8 @@
     "schema": "t8-creative-capability-coverage-receipt-v1",
     "sourceDigests": {
       "capabilityManifest": "569f2c8be144e05120ca629b2826383a06c4d6565ab3896c2dc61807bb9f7c27",
-      "nodeSchema": "56cc84a3e73879b4da1a518d433f40e6bd1077fec2f659c5efc168c396958631",
-      "runtimeCatalog": "12edb10560d3871617fec742494fbcfdd1f3fe0d840099c57cedfb031217816a",
+      "nodeSchema": "7f3a5b89672debff165568245f3a341de78d738722e8ac2d4b9e55e1925d4292",
+      "runtimeCatalog": "5fdfda3226a6fc1a0c47ffe6bcad969038c0eab5e901a25315a883e5211424c2",
       "handlerBindings": "3cd8cde3c05d1642d72ce8cbfae2874d1bdf986592ae431ef7d66b043da257b5",
       "receiptCompiler": "68c02167cb5317107edd346223a5e5999168e447bacbb977ff8e9678e6753fe7"
     },
@@ -13635,8 +13887,8 @@
       },
       "runtime": {
         "llm": 34,
-        "image": 45,
-        "video": 128,
+        "image": 55,
+        "video": 130,
         "audio": 17,
         "actions": 58
       },
@@ -13652,6 +13904,6 @@
       "missingCompatibilityEdges": []
     },
     "complete": true,
-    "digest": "0c34fa9149a031644acdb203c1f2db3cd43fbeb7d5d34191b5866ee68a7263f5"
+    "digest": "f855841e7f2fb58298ea3e9219b1e9ba10be9e517aacc1d3f684641ab82f2d86"
   }
 }

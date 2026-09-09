@@ -1065,12 +1065,15 @@ class CreatorActionExecutor {
 
   async poll(action, taskId, apiKey, settings) {
     const baseUrl = bounded(settings.zhenzhenSd2BaseUrl, 2_000) || undefined;
+    const modelId = String(action?.modelSnapshot?.modelId || '').trim();
     const deadline = Date.now() + this.timeoutMs;
     let pollCount = 0;
     while (Date.now() < deadline) {
       const result = action.type === 'image'
         ? await this.provider.queryImageTask(taskId, apiKey, { baseUrl })
-        : await this.provider.queryTask(taskId, apiKey, { baseUrl });
+        : modelId === 'MiniMax-H3'
+          ? await this.provider.queryMinimaxH3V2Task(taskId, apiKey, { baseUrl })
+          : await this.provider.queryTask(taskId, apiKey, { baseUrl });
       pollCount += 1;
       if (result.status === 'failed') throw new CreatorActionExecutorError('CREATOR_PROVIDER_TASK_FAILED', bounded(result.failReason, 500) || '生成任务失败');
       if (result.status === 'succeeded') {

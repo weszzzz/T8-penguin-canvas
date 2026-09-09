@@ -26,15 +26,35 @@ import {
   DEFAULT_MJ_VERSION,
   DEFAULT_MJ_RATIO,
   DEFAULT_MJ_SPEED,
+  GPT_IMAGE_25_BACKGROUNDS,
+  GPT_IMAGE_25_MAX_IMAGES,
+  GPT_IMAGE_25_MODELS,
+  GPT_IMAGE_25_PROMPT_MAX_LENGTH,
+  GPT_IMAGE_25_QUALITIES,
+  GPT_IMAGE_25_SIZES,
   gptImage2ZhenzhenVariantSize,
+  isGptImage25Model,
   isZhenzhenApimartImageModel,
   isZhenzhenBudgetImageModel,
+  isZhenzhenImageG25Model,
+  isZhenzhenImageG25OfficialModel,
   isZhenzhenImageG2Model,
   ZHENZHEN_BUDGET_GPT2_MODEL_OPTIONS,
   ZHENZHEN_BUDGET_GROK_MODEL_OPTIONS,
   ZHENZHEN_BUDGET_BANANA_2_MODEL_OPTIONS,
   ZHENZHEN_BUDGET_BANANA_PRO_MODEL_OPTIONS,
   ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL,
+  ZHENZHEN_IMAGE_G25_BACKGROUNDS,
+  ZHENZHEN_IMAGE_G25_LOWPRICE_MAX_IMAGES,
+  ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL,
+  ZHENZHEN_IMAGE_G25_LOWPRICE_SIZES,
+  ZHENZHEN_IMAGE_G25_MODERATION,
+  ZHENZHEN_IMAGE_G25_OFFICIAL_MAX_IMAGES,
+  ZHENZHEN_IMAGE_G25_OFFICIAL_SIZES,
+  ZHENZHEN_IMAGE_G25_OUTPUT_FORMATS,
+  ZHENZHEN_IMAGE_G25_PROMPT_MAX_LENGTH,
+  ZHENZHEN_IMAGE_G25_QUALITIES,
+  ZHENZHEN_IMAGE_G25_RESOLUTIONS,
   ZHENZHEN_IMAGE_G2_I2I_MODEL,
   ZHENZHEN_IMAGE_G2_RATIOS,
   ZHENZHEN_IMAGE_G2_T2I_MODEL,
@@ -58,7 +78,9 @@ import {
   isQwenImage30I2IModel,
   WAN27_GLOBAL_IMAGE_MODELS,
   WAN27_GLOBAL_T2I_MODEL,
+  VOSR2_IMAGE_UPSCALE_MODEL,
   isWan27GlobalI2IModel,
+  validateGptImage25Size,
 } from '../../providers/models';
 import {
   submitImageAsync,
@@ -438,6 +460,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   const isQwenImageTab = modelDef.paramKind === 'qwen-image-3.0';
   const isSeedreamLayerTab = modelDef.paramKind === 'seedream-layer';
   const isWanImageTab = modelDef.paramKind === 'wan-image';
+  const isVosr2ImageTab = modelDef.paramKind === 'vosr2-upscale';
   const isZhenzhenBudgetImageSelected = !isExternalSelected
     && isBudgetImageTab
     && (d?.imageBuiltinSource === 'seedance-nz' || isZhenzhenBudgetImageModel(savedApiModel));
@@ -448,7 +471,8 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
     || isZhenzhenBudgetMjSelected
     || isQwenImageTab
     || isSeedreamLayerTab
-    || isWanImageTab;
+    || isWanImageTab
+    || isVosr2ImageTab;
   const budgetDefaultApiModel = modelDef.id === 'grok-image'
     ? ZHENZHEN_IMAGE_GK_V15_MODEL
     : modelDef.id === 'nano-banana-2'
@@ -472,6 +496,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   const isZhenzhenImageG2I2I = apiModel === ZHENZHEN_IMAGE_G2_I2I_MODEL;
   const isZhenzhenApimartImage = isZhenzhenBudgetImageSelected && isZhenzhenApimartImageModel(apiModel);
   const isZhenzhenLowpriceImage = apiModel === ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL;
+  const isZhenzhenImageG25 = isZhenzhenBudgetImageSelected && isZhenzhenImageG25Model(apiModel);
+  const isZhenzhenImageG25Lowprice = apiModel === ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL;
+  const isZhenzhenImageG25Official = isZhenzhenImageG25OfficialModel(apiModel);
   const isZhenzhenGrokImageV2 = apiModel === ZHENZHEN_IMAGE_GK_V2_MODEL;
   const isZhenzhenGrokImageV2Edit = apiModel === ZHENZHEN_IMAGE_GK_V2_EDIT_MODEL;
   const isZhenzhenGrokImage = apiModel === ZHENZHEN_IMAGE_GK_V15_MODEL;
@@ -538,14 +565,73 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   const isFal = isFalModel(apiModel);
   const falDef = isFal ? FAL_REGISTRY[apiModel] : undefined;
   const falKind = falDef?.paramKind; // 'gpt-fal' | 'nbpro-fal'
+  const isGptImage25 = !isExternalSelected
+    && !isZhenzhenBudgetImageSelected
+    && isGptImage25Model(apiModel);
   const isStandardGptImage2 = !isExternalSelected
     && modelDef.paramKind === 'gpt-size'
     && !isFal
     && !isZhenzhenBudgetImageSelected;
-  const gptImageQuality: 'auto' | 'high' | 'medium' | 'low' = ['auto', 'high', 'medium', 'low'].includes(d?.gptImageQuality)
-    ? d.gptImageQuality
+  const gptImageQuality: typeof GPT_IMAGE_25_QUALITIES[number] = (
+    isGptImage25 ? GPT_IMAGE_25_QUALITIES : ['auto', 'high', 'medium', 'low'] as const
+  ).includes(d?.gptImageQuality)
+    ? d.gptImageQuality as typeof GPT_IMAGE_25_QUALITIES[number]
     : 'auto';
   const gptImageModeration: 'auto' | 'low' = d?.gptImageModeration === 'low' ? 'low' : 'auto';
+  const gptImage25Size = (GPT_IMAGE_25_SIZES as readonly string[]).includes(d?.gptImage25Size)
+    ? String(d.gptImage25Size)
+    : '1024x1024';
+  const gptImage25CustomWidth = Math.min(3840, Math.max(16, Math.trunc(Number(d?.gptImage25CustomWidth) || 1024)));
+  const gptImage25CustomHeight = Math.min(3840, Math.max(16, Math.trunc(Number(d?.gptImage25CustomHeight) || 1024)));
+  const gptImage25ResolvedSize = gptImage25Size === 'custom'
+    ? `${gptImage25CustomWidth}x${gptImage25CustomHeight}`
+    : gptImage25Size;
+  const gptImage25Count = Math.min(10, Math.max(1, Math.trunc(Number(d?.gptImage25Count) || 1)));
+  const gptImage25Background: typeof GPT_IMAGE_25_BACKGROUNDS[number] = d?.gptImage25Background === 'opaque'
+    ? 'opaque'
+    : 'auto';
+  const zhenzhenImageG25AllowedSizes = isZhenzhenImageG25Lowprice
+    ? ZHENZHEN_IMAGE_G25_LOWPRICE_SIZES
+    : ZHENZHEN_IMAGE_G25_OFFICIAL_SIZES;
+  const zhenzhenImageG25DefaultSize = isZhenzhenImageG25Lowprice ? '16:9' : 'auto';
+  const zhenzhenImageG25Size = (zhenzhenImageG25AllowedSizes as readonly string[]).includes(d?.zhenzhenImageG25Size)
+    ? String(d.zhenzhenImageG25Size)
+    : zhenzhenImageG25DefaultSize;
+  const zhenzhenImageG25CustomWidth = Math.min(3840, Math.max(16, Math.trunc(Number(d?.zhenzhenImageG25CustomWidth) || 1024)));
+  const zhenzhenImageG25CustomHeight = Math.min(3840, Math.max(16, Math.trunc(Number(d?.zhenzhenImageG25CustomHeight) || 1024)));
+  const zhenzhenImageG25CustomSize = `${zhenzhenImageG25CustomWidth}x${zhenzhenImageG25CustomHeight}`;
+  const zhenzhenImageG25Resolution: typeof ZHENZHEN_IMAGE_G25_RESOLUTIONS[number] = (
+    ZHENZHEN_IMAGE_G25_RESOLUTIONS as readonly string[]
+  ).includes(d?.zhenzhenImageG25Resolution)
+    ? d.zhenzhenImageG25Resolution
+    : '1k';
+  const zhenzhenImageG25Count = isZhenzhenImageG25Official
+    ? Math.min(4, Math.max(1, Math.trunc(Number(d?.zhenzhenImageG25Count) || 1)))
+    : 1;
+  const zhenzhenImageG25Quality: typeof ZHENZHEN_IMAGE_G25_QUALITIES[number] = (
+    ZHENZHEN_IMAGE_G25_QUALITIES as readonly string[]
+  ).includes(d?.zhenzhenImageG25Quality)
+    ? d.zhenzhenImageG25Quality
+    : 'auto';
+  const zhenzhenImageG25OutputFormat: typeof ZHENZHEN_IMAGE_G25_OUTPUT_FORMATS[number] = (
+    ZHENZHEN_IMAGE_G25_OUTPUT_FORMATS as readonly string[]
+  ).includes(d?.zhenzhenImageG25OutputFormat)
+    ? d.zhenzhenImageG25OutputFormat
+    : 'png';
+  const zhenzhenImageG25OutputCompression = Math.min(100, Math.max(0, Math.trunc(
+    Number.isFinite(Number(d?.zhenzhenImageG25OutputCompression))
+      ? Number(d.zhenzhenImageG25OutputCompression)
+      : 90,
+  )));
+  const zhenzhenImageG25Background: typeof ZHENZHEN_IMAGE_G25_BACKGROUNDS[number] = (
+    ZHENZHEN_IMAGE_G25_BACKGROUNDS as readonly string[]
+  ).includes(d?.zhenzhenImageG25Background)
+    ? d.zhenzhenImageG25Background
+    : 'auto';
+  const zhenzhenImageG25Moderation: typeof ZHENZHEN_IMAGE_G25_MODERATION[number] = d?.zhenzhenImageG25Moderation === 'auto'
+    ? 'auto'
+    : 'low';
+  const zhenzhenImageG25NsfwCheck = d?.zhenzhenImageG25NsfwCheck === true;
   // FAL 参数(默认对齐主项目初始值)
   // gpt-fal: mode/size/quality/n/format/sync/customW/customH
   const falMode: 'edit' | 'gen' = d?.falMode || 'edit';
@@ -624,7 +710,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
     ? isJimengCliImageSelected
       ? 10
       : Math.max(8, modelDef.maxReferenceImages || 0)
-    : isSeedreamLayerTab
+    : isSeedreamLayerTab || isVosr2ImageTab
       ? 1
     : isQwenImageTab
       ? isQwenImageI2I ? 3 : 0
@@ -632,6 +718,12 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
       ? isWanImageI2I ? 9 : 0
     : isZhenzhenImageG2I2I
       ? 10
+    : isGptImage25
+      ? GPT_IMAGE_25_MAX_IMAGES
+    : isZhenzhenImageG25Lowprice
+      ? ZHENZHEN_IMAGE_G25_LOWPRICE_MAX_IMAGES
+    : isZhenzhenImageG25Official
+      ? ZHENZHEN_IMAGE_G25_OFFICIAL_MAX_IMAGES
     : isZhenzhenLowpriceImage
       ? 16
       : isZhenzhenNb
@@ -720,6 +812,16 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   // 切换模型时,如果当前比例/尺寸不在新模型选项里则重置
   const switchModel = (mId: string) => {
     const newDef = IMAGE_MODELS.find((m) => m.id === mId) || IMAGE_MODELS[0];
+    if (newDef.paramKind === 'vosr2-upscale') {
+      update({
+        model: newDef.id,
+        apiModel: newDef.apiModel,
+        imageBuiltinSource: 'seedance-nz',
+        aspectRatio: '',
+        sizeLevel: '',
+      });
+      return;
+    }
     if (newDef.paramKind === 'seedream-layer') {
       update({
         model: newDef.id,
@@ -833,6 +935,21 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
       });
       return;
     }
+    if ((GPT_IMAGE_25_MODELS as readonly string[]).includes(nextApiModel)) {
+      update({
+        model: 'gpt-image-2',
+        apiModel: nextApiModel,
+        imageBuiltinSource: 'zhenzhen',
+        gptImage25Size: (GPT_IMAGE_25_SIZES as readonly string[]).includes(d?.gptImage25Size)
+          ? d.gptImage25Size
+          : '1024x1024',
+        gptImage25CustomWidth,
+        gptImage25CustomHeight,
+        gptImage25Count,
+        gptImage25Background,
+      });
+      return;
+    }
     const nextSize = gptImage2ZhenzhenVariantSize(nextApiModel);
     if (isZhenzhenBudgetImageModel(nextApiModel)) {
       const nextModel = nextApiModel === ZHENZHEN_IMAGE_GK_V2_MODEL
@@ -860,7 +977,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         model: nextModel,
         apiModel: nextApiModel,
         imageBuiltinSource: 'seedance-nz',
-        sizeLevel: nextApiModel === ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL
+        sizeLevel: nextApiModel === ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL || isZhenzhenImageG25Model(nextApiModel)
           ? (['1K', '2K', '4K'].includes(sizeLevel) ? sizeLevel : '1K')
           : nextApiModel === ZHENZHEN_IMAGE_NB_2_MODEL
             ? (['0.5K', '1K', '2K', '4K'].includes(sizeLevel) ? sizeLevel : '1K')
@@ -873,6 +990,23 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         apimartImageCount: nextApiModel === ZHENZHEN_IMAGE_NB_2_LITE_MODEL
           ? Math.min(4, Math.max(1, Number(d?.apimartImageCount) || 1))
           : 1,
+        ...(isZhenzhenImageG25Model(nextApiModel) ? {
+          zhenzhenImageG25Size: nextApiModel === ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL
+            ? ((ZHENZHEN_IMAGE_G25_LOWPRICE_SIZES as readonly string[]).includes(d?.zhenzhenImageG25Size)
+              ? d.zhenzhenImageG25Size
+              : '16:9')
+            : ((ZHENZHEN_IMAGE_G25_OFFICIAL_SIZES as readonly string[]).includes(d?.zhenzhenImageG25Size)
+              ? d.zhenzhenImageG25Size
+              : 'auto'),
+          zhenzhenImageG25Resolution,
+          zhenzhenImageG25Count: nextApiModel === ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL ? 1 : zhenzhenImageG25Count,
+          zhenzhenImageG25Quality,
+          zhenzhenImageG25OutputFormat,
+          zhenzhenImageG25OutputCompression,
+          zhenzhenImageG25Background,
+          zhenzhenImageG25Moderation,
+          zhenzhenImageG25NsfwCheck,
+        } : {}),
       });
       return;
     }
@@ -980,7 +1114,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
       : { finalPrompt: basePrompt, active: [], inactive: [], text: '', language: 'zh' as const };
     const finalPrompt = compiledPrompt.finalPrompt;
     const src = `image:${id.slice(0, 6)}`;
-    const promptRequired = !isSeedreamLayerTab && (
+    const promptRequired = !isSeedreamLayerTab && !isVosr2ImageTab && (
       !isZhenzhenBudgetMjSelected
       || midjourneyNzRequiresPrompt(mjNzOperation, mjNzVideoSource)
     );
@@ -988,6 +1122,52 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
       setError('未连接 text 节点也未填写 prompt');
       logBus.error('生成中止: 缺少 prompt', src);
       return;
+    }
+    if (isGptImage25) {
+      if (finalPrompt.length > GPT_IMAGE_25_PROMPT_MAX_LENGTH) {
+        setError(translate('nodes:generation.gptImage25.promptTooLong'));
+        logBus.error(`生成中止: GPT Image 2.5 提示词长度 ${finalPrompt.length} 超过 ${GPT_IMAGE_25_PROMPT_MAX_LENGTH}`, src);
+        return;
+      }
+      if (orderedImages.length > GPT_IMAGE_25_MAX_IMAGES) {
+        setError(translate('nodes:generation.gptImage25.tooManyReferences', { count: GPT_IMAGE_25_MAX_IMAGES }));
+        logBus.error(`生成中止: GPT Image 2.5 参考图数量 ${orderedImages.length} 超过 ${GPT_IMAGE_25_MAX_IMAGES}`, src);
+        return;
+      }
+      const sizeError = validateGptImage25Size(gptImage25ResolvedSize);
+      if (sizeError) {
+        setError(translate('nodes:generation.gptImage25.invalidSize'));
+        logBus.error(`生成中止: GPT Image 2.5 尺寸 ${gptImage25ResolvedSize} 无效（${sizeError}）`, src);
+        return;
+      }
+    }
+    if (isZhenzhenImageG25) {
+      if (isZhenzhenImageG25Lowprice && finalPrompt.length > ZHENZHEN_IMAGE_G25_PROMPT_MAX_LENGTH) {
+        setError(`Image G v2.5 提示词最多 ${ZHENZHEN_IMAGE_G25_PROMPT_MAX_LENGTH} 字符`);
+        logBus.error(`生成中止: Image G v2.5 提示词长度 ${finalPrompt.length} 超过 ${ZHENZHEN_IMAGE_G25_PROMPT_MAX_LENGTH}`, src);
+        return;
+      }
+      const imageLimit = isZhenzhenImageG25Lowprice
+        ? ZHENZHEN_IMAGE_G25_LOWPRICE_MAX_IMAGES
+        : ZHENZHEN_IMAGE_G25_OFFICIAL_MAX_IMAGES;
+      if (orderedImages.length > imageLimit) {
+        setError(`${apiModel} 最多支持 ${imageLimit} 张参考图`);
+        logBus.error(`生成中止: ${apiModel} 参考图数量 ${orderedImages.length} 超过 ${imageLimit}`, src);
+        return;
+      }
+      if (isZhenzhenImageG25Official && zhenzhenImageG25Size === 'custom') {
+        const sizeError = validateGptImage25Size(zhenzhenImageG25CustomSize);
+        if (sizeError) {
+          setError(`Image G v2.5 自定义尺寸无效：${sizeError}`);
+          logBus.error(`生成中止: Image G v2.5 自定义尺寸 ${zhenzhenImageG25CustomSize} 无效（${sizeError}）`, src);
+          return;
+        }
+      }
+      if (isZhenzhenImageG25Official && zhenzhenImageG25Background === 'transparent' && zhenzhenImageG25OutputFormat === 'jpeg') {
+        setError('Image G v2.5 透明背景必须使用 PNG 或 WebP');
+        logBus.error('生成中止: Image G v2.5 透明背景不能使用 JPEG', src);
+        return;
+      }
     }
     if (compiledPrompt.inactive.length > 0) {
       logBus.info(
@@ -1058,6 +1238,11 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
     if (isSeedreamLayerTab && finalPrompt.length > 2000) {
       setError('Seedream 分层提示词最多 2000 字符');
       logBus.error(`生成中止: Seedream 分层提示词长度 ${finalPrompt.length}`, src);
+      return;
+    }
+    if (isVosr2ImageTab && orderedImages.length !== 1) {
+      setError(translate('nodes:generation.vosr2.imageInputRequired'));
+      logBus.error(`生成中止: Vosr2 图片输入数量 ${orderedImages.length}，要求恰好 1 张`, src);
       return;
     }
     if (isQwenImageTab && qwenSizingMode === 'custom_size' && !/^\d+\*\d+$/.test(qwenCustomSize)) {
@@ -1715,9 +1900,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
 
       // seedance.nz uses a dedicated asynchronous image protocol for Seedream,
       // Zhenzhen Image G-2 and APIMart image models.
-      if (isSeedreamNz || isZhenzhenBudgetImageSelected || isQwenImageTab || isSeedreamLayerTab || isWanImageTab) {
+      if (isSeedreamNz || isZhenzhenBudgetImageSelected || isQwenImageTab || isSeedreamLayerTab || isWanImageTab || isVosr2ImageTab) {
         if (!zhenzhenSd2ApiKey) throw new Error(`请先在 API 设置中填写“${seedanceNzProviderLabel} API Key”`);
-        const providerRefs = isSeedreamLayerTab
+        const providerRefs = isSeedreamLayerTab || isVosr2ImageTab
           ? allRefs.slice(0, 1)
           : isWanImageTab
           ? (isWanImageI2I ? allRefs.slice(0, 9) : [])
@@ -1734,7 +1919,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             : isZhenzhenGrokImageEdit
               ? allRefs.slice(0, 1)
               : allRefs;
-        const expectedModel = isSeedreamLayerTab
+        const expectedModel = isVosr2ImageTab
+          ? VOSR2_IMAGE_UPSCALE_MODEL
+          : isSeedreamLayerTab
           ? apiModel
           : isWanImageTab
           ? apiModel
@@ -1745,7 +1932,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           : seedreamNzModelFamily === 'overseas'
             ? (providerRefs.length ? 'dola-seedream-5.0-pro-i2i' : 'dola-seedream-5.0-pro-t2i')
             : (providerRefs.length ? 'seedream-v5-pro-i2i' : 'seedream-v5-pro-t2i');
-        const imageFamilyLabel = isSeedreamLayerTab
+        const imageFamilyLabel = isVosr2ImageTab
+          ? 'Vosr2 图片超分'
+          : isSeedreamLayerTab
           ? 'Seedream 分层'
           : isWanImageTab
           ? 'Wan Image 2.7 Global'
@@ -1753,12 +1942,16 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           ? 'Qwen Image 3.0'
           : isZhenzhenImageG2
           ? 'Zhenzhen Image G-2'
+          : isZhenzhenImageG25
+            ? 'Zhenzhen Image G v2.5'
           : isZhenzhenNb
             ? 'Zhenzhen Image Nano Banana'
           : isZhenzhenApimartImage
             ? 'APIMart Image'
             : 'Seedream';
-        const sizeLabel = isSeedreamLayerTab
+        const sizeLabel = isVosr2ImageTab
+          ? '固定输出 4K'
+          : isSeedreamLayerTab
           ? `${seedreamLayerResolution} · ${seedreamOutputFormat} · 全部图层`
           : isWanImageTab
           ? isWanImageI2I
@@ -1772,6 +1965,8 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               : `${qwenCustomSize} · n=${qwenImageCount}`
           : isZhenzhenImageG2
           ? '1k'
+          : isZhenzhenImageG25
+            ? `${zhenzhenImageG25Size === 'custom' ? zhenzhenImageG25CustomSize : zhenzhenImageG25Size} · ${zhenzhenImageG25Resolution} · n=${zhenzhenImageG25Count}`
           : isZhenzhenLowpriceImage
             ? `${effectiveSizeLevel.toLowerCase()} · ${effectiveAspectRatio}`
             : isZhenzhenNb
@@ -1785,7 +1980,10 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           `${seedanceNzProviderLabel} ${imageFamilyLabel} 提交: model=${expectedModel} 参考图=${providerRefs.length} 尺寸=${sizeLabel}`,
           src,
         );
-        const submit = await submitSeedreamNz({
+        const submit = await submitSeedreamNz(isVosr2ImageTab ? {
+          model: VOSR2_IMAGE_UPSCALE_MODEL,
+          images: providerRefs,
+        } : {
           prompt: finalPrompt,
           images: providerRefs,
           model: isSeedreamLayerTab
@@ -1812,6 +2010,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               | 'zhenzhen-image-g2-t2i'
               | 'zhenzhen-image-g2-i2i'
               | 'zhenzhen-image-g-v2-lowprice'
+              | 'zhenzhen-image-g-v2.5-lowprice'
+              | 'zhenzhen-image-g-v2.5-flare'
+              | 'zhenzhen-image-g-v2.5-sunburst'
               | 'zhenzhen-image-gk-v2'
               | 'zhenzhen-image-gk-v2-edit'
               | 'zhenzhen-image-gk-v15'
@@ -1829,6 +2030,8 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             ? qwenSizingMode === 'ratio' ? qwenResolution : undefined
             : isZhenzhenImageG2
             ? '1k'
+            : isZhenzhenImageG25
+              ? zhenzhenImageG25Size === 'custom' ? undefined : zhenzhenImageG25Resolution
             : isZhenzhenLowpriceImage
               ? effectiveSizeLevel.toLowerCase() as '1k' | '2k' | '4k'
               : isZhenzhenNb
@@ -1845,17 +2048,32 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             : undefined,
           size: isQwenImageTab
             ? qwenSizingMode === 'custom_size' ? qwenCustomSize : undefined
+            : isZhenzhenImageG25
+            ? zhenzhenImageG25Size
             : isZhenzhenApimartImage
             ? effectiveAspectRatio
             : !isZhenzhenImageG2 && seedreamNzResolution === 'custom' ? seedreamNzResolvedSize : undefined,
           n: isQwenImageTab
             ? qwenImageCount
+            : isZhenzhenImageG25
+              ? zhenzhenImageG25Count
             : isZhenzhenGrokImageV2 || isZhenzhenGrokImageV2Edit
               ? grokV2ImageCount
               : isZhenzhenNb ? zhenzhenNbImageCount : isZhenzhenApimartImage ? 1 : undefined,
           output_format: isSeedreamLayerTab
             ? seedreamOutputFormat
-            : isZhenzhenBudgetImageSelected || isQwenImageTab ? undefined : seedreamOutputFormat,
+            : isZhenzhenImageG25Official
+              ? zhenzhenImageG25OutputFormat
+              : isZhenzhenBudgetImageSelected || isQwenImageTab ? undefined : seedreamOutputFormat,
+          quality: isZhenzhenImageG25Official ? zhenzhenImageG25Quality : undefined,
+          output_compression: isZhenzhenImageG25Official && zhenzhenImageG25OutputFormat !== 'png'
+            ? zhenzhenImageG25OutputCompression
+            : undefined,
+          background: isZhenzhenImageG25Official ? zhenzhenImageG25Background : undefined,
+          moderation: isZhenzhenImageG25Official ? zhenzhenImageG25Moderation : undefined,
+          custom_size: isZhenzhenImageG25Official && zhenzhenImageG25Size === 'custom'
+            ? zhenzhenImageG25CustomSize
+            : undefined,
           negative_prompt: isQwenImageTab ? qwenNegativePrompt.trim() || undefined : undefined,
           prompt_extend: isQwenImageTab ? qwenPromptExtend : undefined,
           sizing_mode: isQwenImageTab ? qwenSizingMode : undefined,
@@ -1864,7 +2082,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           height: isWanImageTab && !isWanImageI2I ? wanImageHeight : undefined,
           thinking_mode: isWanImageTab && !isWanImageI2I ? wanImageThinkingMode : undefined,
           aspect_ratio: isZhenzhenGrokImageV2Edit ? effectiveAspectRatio : undefined,
-          nsfw_check: isZhenzhenGrokImageV2Edit ? grokV2EditNsfwCheck : undefined,
+          nsfw_check: isZhenzhenImageG25Lowprice
+            ? zhenzhenImageG25NsfwCheck
+            : isZhenzhenGrokImageV2Edit ? grokV2EditNsfwCheck : undefined,
         }, { submissionKey: reporter?.providerSubmissionKey });
         if (!isCurrentGenerationRun(runId)) return;
         const taskId = submit.taskId;
@@ -1928,7 +2148,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               imageUrl: url,
               imageUrls: query.urls,
               lastPrompt: finalPrompt,
-              usedI2I: isSeedreamLayerTab
+              usedI2I: isSeedreamLayerTab || isVosr2ImageTab
                 ? true
                 : isWanImageTab ? isWanImageI2I
                 : isQwenImageTab ? isQwenImageI2I : isZhenzhenImageG2 ? isZhenzhenImageG2I2I : providerRefs.length > 0,
@@ -1962,23 +2182,24 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
 
       // ============ 原有标准路径(GPT2 standard / nano-banana / nano-banana-pro 未动) ============
       logBus.info(
-        `提交任务: model=${apiModel} 比例=${effectiveAspectRatio} 尺寸=${effectiveSizeLevel} 参考图=${allRefs.length} prompt="${finalPrompt.slice(0, 60)}${finalPrompt.length > 60 ? '…' : ''}"`,
+        `提交任务: model=${apiModel} 比例=${isGptImage25 ? '-' : effectiveAspectRatio} 尺寸=${isGptImage25 ? gptImage25ResolvedSize : effectiveSizeLevel} 参考图=${allRefs.length} prompt="${finalPrompt.slice(0, 60)}${finalPrompt.length > 60 ? '…' : ''}"`,
         src,
       );
       const submit = await submitImageAsync({
         model: modelDef.id,
         apiModel: apiModel,
-        paramKind: modelDef.paramKind,
+        paramKind: isGptImage25 ? 'gpt-image-2.5' : modelDef.paramKind,
         prompt: finalPrompt,
-        aspect_ratio: isSeedream ? undefined : effectiveAspectRatio,
-        image_size: isSeedream ? undefined : effectiveSizeLevel,
-        size: isSeedream ? seedreamResolvedSize : undefined,
+        aspect_ratio: (isSeedream || isGptImage25) ? undefined : effectiveAspectRatio,
+        image_size: (isSeedream || isGptImage25) ? undefined : effectiveSizeLevel,
+        size: isGptImage25 ? gptImage25ResolvedSize : isSeedream ? seedreamResolvedSize : undefined,
         response_format: isSeedream ? 'url' : undefined,
         output_format: isSeedream ? seedreamOutputFormat : undefined,
         images: allRefs,
-        n: 1,
+        n: isGptImage25 ? gptImage25Count : 1,
         quality: isStandardGptImage2 ? gptImageQuality : undefined,
         moderation: isStandardGptImage2 ? gptImageModeration : undefined,
+        background: isGptImage25 ? gptImage25Background : undefined,
         providerParams,
       }, { submissionKey: reporter?.providerSubmissionKey });
       if (!isCurrentGenerationRun(runId)) return;
@@ -2256,8 +2477,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                           || isZhenzhenBudgetImageModel(savedApiModel)
                           || isQwenImageTab
                           || isSeedreamLayerTab
-                          || isWanImageTab;
-                        const leavingDedicatedBudgetTab = isQwenImageTab || isSeedreamLayerTab || isWanImageTab;
+                          || isWanImageTab
+                          || isVosr2ImageTab;
+                        const leavingDedicatedBudgetTab = isQwenImageTab || isSeedreamLayerTab || isWanImageTab || isVosr2ImageTab;
                         const fallbackModel = IMAGE_MODELS[0];
                         update({
                           providerSource: 'zhenzhen',
@@ -2774,6 +2996,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                 || m.id === 'qwen-image-3.0'
                 || m.id === 'wan-image'
                 || m.id === 'seedream-layer-decomposition'
+                || m.id === VOSR2_IMAGE_UPSCALE_MODEL
                 || m.id === 'midjourney')
               .map((m) => {
               const isActive = m.id === model;
@@ -2860,6 +3083,10 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                 ? isZhenzhenImageG2I2I
                   ? '图生图模式：必须提供 1–10 张参考图；固定 1K。'
                   : '文生图模式：只使用 Prompt，已连接的参考图不会发送；固定 1K。'
+                : isZhenzhenImageG25Lowprice
+                  ? translate('nodes:generation.zhenzhenImageG25.lowpriceDescription')
+                : isZhenzhenImageG25Official
+                  ? translate('nodes:generation.zhenzhenImageG25.officialDescription')
                 : isZhenzhenLowpriceImage
                   ? 'GPT Image 2 平价模型：支持 1K/2K/4K，可选 1–16 张参考图。'
                   : isZhenzhenNb2Lite
@@ -2877,6 +3104,189 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                     : 'Grok Image 1.5 文生图：只使用 Prompt，不发送参考图。'}
             </div>
             {!zhenzhenSd2ApiKey && <div className="text-amber-300">{translate('nodes:generation.missingBudgetKey')}</div>}
+          </div>
+        )}
+
+        {isZhenzhenImageG25 && !isExternalSelected && (
+          <div className="space-y-2 rounded border border-cyan-400/25 bg-cyan-500/5 p-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.zhenzhenImageG25.sizeMode')}</label>
+                <select
+                  value={zhenzhenImageG25Size}
+                  onChange={(e) => update({ zhenzhenImageG25Size: e.target.value })}
+                  style={{ background: '#18181b', color: '#ffffff' }}
+                  className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+                >
+                  {zhenzhenImageG25AllowedSizes.map((size) => (
+                    <option key={size} value={size} style={{ background: '#18181b', color: '#ffffff' }}>
+                      {size === 'preserve_reference'
+                        ? translate('nodes:generation.zhenzhenImageG25.preserveReference')
+                        : size === 'custom' ? translate('nodes:generation.zhenzhenImageG25.custom') : size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.resolution')}</label>
+                <select
+                  value={zhenzhenImageG25Resolution}
+                  onChange={(e) => update({ zhenzhenImageG25Resolution: e.target.value })}
+                  disabled={isZhenzhenImageG25Official && zhenzhenImageG25Size === 'custom'}
+                  style={{ background: '#18181b', color: '#ffffff' }}
+                  className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60 disabled:opacity-40"
+                >
+                  {ZHENZHEN_IMAGE_G25_RESOLUTIONS.map((resolution) => (
+                    <option key={resolution} value={resolution} style={{ background: '#18181b', color: '#ffffff' }}>{resolution.toUpperCase()}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {isZhenzhenImageG25Official && zhenzhenImageG25Size === 'custom' && (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.zhenzhenImageG25.customWidth')}</label>
+                  <input
+                    type="number"
+                    min={16}
+                    max={3840}
+                    step={16}
+                    value={zhenzhenImageG25CustomWidth}
+                    onChange={(e) => update({ zhenzhenImageG25CustomWidth: Number(e.target.value) })}
+                    style={{ background: '#18181b', color: '#ffffff' }}
+                    className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.zhenzhenImageG25.customHeight')}</label>
+                  <input
+                    type="number"
+                    min={16}
+                    max={3840}
+                    step={16}
+                    value={zhenzhenImageG25CustomHeight}
+                    onChange={(e) => update({ zhenzhenImageG25CustomHeight: Number(e.target.value) })}
+                    style={{ background: '#18181b', color: '#ffffff' }}
+                    className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+                  />
+                </div>
+              </div>
+            )}
+
+            {isZhenzhenImageG25Lowprice ? (
+              <label className="flex items-center gap-2 rounded border border-white/10 px-2 py-1 text-[10px] text-white/65">
+                <input
+                  type="checkbox"
+                  checked={zhenzhenImageG25NsfwCheck}
+                  onChange={(e) => update({ zhenzhenImageG25NsfwCheck: e.target.checked })}
+                  className="accent-cyan-400"
+                />
+                {translate('nodes:generation.zhenzhenImageG25.nsfwCheck')}
+              </label>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.zhenzhenImageG25.quality')}</label>
+                    <select
+                      value={zhenzhenImageG25Quality}
+                      onChange={(e) => update({ zhenzhenImageG25Quality: e.target.value })}
+                      style={{ background: '#18181b', color: '#ffffff' }}
+                      className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+                    >
+                      {ZHENZHEN_IMAGE_G25_QUALITIES.map((quality) => (
+                        <option key={quality} value={quality} style={{ background: '#18181b', color: '#ffffff' }}>{quality}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.outputCount')}</label>
+                    <select
+                      value={zhenzhenImageG25Count}
+                      onChange={(e) => update({ zhenzhenImageG25Count: Number(e.target.value) })}
+                      style={{ background: '#18181b', color: '#ffffff' }}
+                      className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+                    >
+                      {[1, 2, 3, 4].map((count) => (
+                        <option key={count} value={count} style={{ background: '#18181b', color: '#ffffff' }}>{count}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.outputFormat')}</label>
+                    <select
+                      value={zhenzhenImageG25OutputFormat}
+                      onChange={(e) => {
+                        const outputFormat = e.target.value;
+                        update({
+                          zhenzhenImageG25OutputFormat: outputFormat,
+                          ...(outputFormat === 'jpeg' && zhenzhenImageG25Background === 'transparent'
+                            ? { zhenzhenImageG25Background: 'auto' }
+                            : {}),
+                        });
+                      }}
+                      style={{ background: '#18181b', color: '#ffffff' }}
+                      className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+                    >
+                      {ZHENZHEN_IMAGE_G25_OUTPUT_FORMATS.map((format) => (
+                        <option key={format} value={format} style={{ background: '#18181b', color: '#ffffff' }}>{format.toUpperCase()}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.zhenzhenImageG25.background')}</label>
+                    <select
+                      value={zhenzhenImageG25Background}
+                      onChange={(e) => update({ zhenzhenImageG25Background: e.target.value })}
+                      style={{ background: '#18181b', color: '#ffffff' }}
+                      className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+                    >
+                      {ZHENZHEN_IMAGE_G25_BACKGROUNDS.filter((background) => (
+                        background !== 'transparent' || zhenzhenImageG25OutputFormat !== 'jpeg'
+                      )).map((background) => (
+                        <option key={background} value={background} style={{ background: '#18181b', color: '#ffffff' }}>{background}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.zhenzhenImageG25.moderation')}</label>
+                    <select
+                      value={zhenzhenImageG25Moderation}
+                      onChange={(e) => update({ zhenzhenImageG25Moderation: e.target.value })}
+                      style={{ background: '#18181b', color: '#ffffff' }}
+                      className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+                    >
+                      {ZHENZHEN_IMAGE_G25_MODERATION.map((moderation) => (
+                        <option key={moderation} value={moderation} style={{ background: '#18181b', color: '#ffffff' }}>{moderation}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {zhenzhenImageG25OutputFormat !== 'png' && (
+                    <div>
+                      <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.zhenzhenImageG25.compression')}</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={zhenzhenImageG25OutputCompression}
+                        onChange={(e) => update({ zhenzhenImageG25OutputCompression: Number(e.target.value) })}
+                        style={{ background: '#18181b', color: '#ffffff' }}
+                        className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-cyan-400/60"
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            <div className="text-[10px] leading-4 text-cyan-100/65">
+              {translate('nodes:generation.zhenzhenImageG25.constraints')}
+            </div>
           </div>
         )}
 
@@ -2947,6 +3357,22 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           </div>
         )}
 
+        {isVosr2ImageTab && !isExternalSelected && (
+          <div className="rounded border border-cyan-400/25 bg-cyan-500/5 px-2 py-1.5 text-[10px] leading-4 text-cyan-100/80">
+            <div>{translate('nodes:generation.vosr2.imageChannel')}</div>
+            <div>{translate('nodes:generation.vosr2.imageDescription')}</div>
+            <div>{translate('nodes:generation.vosr2.actualBilling')}</div>
+            {!zhenzhenSd2ApiKey && <div className="text-amber-300">{translate('nodes:generation.missingBudgetKey')}</div>}
+          </div>
+        )}
+
+        {isGptImage25 && (
+          <div className="rounded border border-amber-400/25 bg-amber-500/5 px-2 py-1.5 text-[10px] leading-4 text-amber-100/80">
+            <div>{translate('nodes:generation.gptImage25.channel')}</div>
+            <div>{translate('nodes:generation.gptImage25.description')}</div>
+          </div>
+        )}
+
         {isZhenzhenGrokImageV2Edit && !isExternalSelected && (
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -2993,8 +3419,89 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           }}
         />
 
+        {isGptImage25 && (
+          <div className="space-y-2 rounded border border-amber-400/25 bg-amber-500/5 p-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.size')}</label>
+                <select
+                  value={gptImage25Size}
+                  onChange={(e) => update({ gptImage25Size: e.target.value })}
+                  style={{ background: '#18181b', color: '#ffffff' }}
+                  className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-amber-400/60"
+                >
+                  {GPT_IMAGE_25_SIZES.map((size) => (
+                    <option key={size} value={size} style={{ background: '#18181b', color: '#ffffff' }}>
+                      {size === 'custom' ? translate('nodes:generation.gptImage25.custom') : size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.outputCount')}</label>
+                <select
+                  value={gptImage25Count}
+                  onChange={(e) => update({ gptImage25Count: Number(e.target.value) })}
+                  style={{ background: '#18181b', color: '#ffffff' }}
+                  className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-amber-400/60"
+                >
+                  {Array.from({ length: 10 }, (_, index) => index + 1).map((count) => (
+                    <option key={count} value={count} style={{ background: '#18181b', color: '#ffffff' }}>{count}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {gptImage25Size === 'custom' && (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.gptImage25.customWidth')}</label>
+                  <input
+                    type="number"
+                    min={16}
+                    max={3840}
+                    step={16}
+                    value={gptImage25CustomWidth}
+                    onChange={(e) => update({ gptImage25CustomWidth: Number(e.target.value) })}
+                    style={{ background: '#18181b', color: '#ffffff' }}
+                    className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-amber-400/60"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.gptImage25.customHeight')}</label>
+                  <input
+                    type="number"
+                    min={16}
+                    max={3840}
+                    step={16}
+                    value={gptImage25CustomHeight}
+                    onChange={(e) => update({ gptImage25CustomHeight: Number(e.target.value) })}
+                    style={{ background: '#18181b', color: '#ffffff' }}
+                    className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-amber-400/60"
+                  />
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.gptImage25.background')}</label>
+              <select
+                value={gptImage25Background}
+                onChange={(e) => update({ gptImage25Background: e.target.value })}
+                style={{ background: '#18181b', color: '#ffffff' }}
+                className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-amber-400/60"
+              >
+                {GPT_IMAGE_25_BACKGROUNDS.map((background) => (
+                  <option key={background} value={background} style={{ background: '#18181b', color: '#ffffff' }}>{background}</option>
+                ))}
+              </select>
+            </div>
+            <div className="text-[10px] leading-4 text-white/45">
+              {translate('nodes:generation.gptImage25.constraints')}
+            </div>
+          </div>
+        )}
+
         {/* 比例 + 尺寸;Seedream 使用像素尺寸 + 输出格式,Grok Image 只需要比例 */}
-        {(!isFal && !isMj && !isComfyExternal && !isQwenImageTab && !isSeedreamLayerTab && !isWanImageTab) && (
+        {(!isFal && !isMj && !isComfyExternal && !isQwenImageTab && !isSeedreamLayerTab && !isWanImageTab && !isGptImage25 && !isZhenzhenImageG25) && (
           <div className={`grid gap-2 ${isSeedream || (!isGrokImage && effectiveSizes.length) ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {effectiveAspectRatios.length > 0 && <div>
               <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.aspectRatio')}</label>
@@ -3269,10 +3776,14 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                 style={{ background: '#18181b', color: '#ffffff' }}
                 className="w-full rounded border border-white/10 px-2 py-1 text-xs outline-none focus:border-white/30"
               >
-                <option value="auto" style={{ background: '#18181b', color: '#ffffff' }}>Auto</option>
-                <option value="high" style={{ background: '#18181b', color: '#ffffff' }}>High</option>
-                <option value="medium" style={{ background: '#18181b', color: '#ffffff' }}>Medium</option>
-                <option value="low" style={{ background: '#18181b', color: '#ffffff' }}>Low</option>
+                {(isGptImage25
+                  ? GPT_IMAGE_25_QUALITIES
+                  : ['auto', 'high', 'medium', 'low'] as const
+                ).map((quality) => (
+                  <option key={quality} value={quality} style={{ background: '#18181b', color: '#ffffff' }}>
+                    {quality === 'xhigh' ? 'XHigh' : quality.charAt(0).toUpperCase() + quality.slice(1)}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -3743,7 +4254,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         {/* 上游素材聚合预览区 (新机制) - 本地上传 + 上游接入统一呈现, 可拖动排序 */}
         {(!isComfyExternal && (isExternalSelected || modelDef.supportsReference)) && (
           <MaterialPreviewSection
-            texts={orderedTexts}
+            texts={isVosr2ImageTab ? [] : orderedTexts}
             images={orderedImages}
             order={materialOrder}
             onReorder={setMaterialOrder}
@@ -3791,7 +4302,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         />
 
         {/* 本地 prompt(优先取上游) */}
-        {!isComfyExternal && <div>
+        {!isComfyExternal && !isVosr2ImageTab && <div>
           <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.localPrompt')}</label>
           <MentionPromptInput
             title={translate('nodes:image.promptTitle')}

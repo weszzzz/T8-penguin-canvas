@@ -15,6 +15,8 @@ import {
   ZHENZHEN_IMAGE_G2_T2I_MODEL,
   ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL,
   ZHENZHEN_IMAGE_GK_V15_MODEL,
+  ZHENZHEN_IMAGE_GK_V2_EDIT_MODEL,
+  ZHENZHEN_IMAGE_GK_V2_MODEL,
   ZHENZHEN_IMAGE_NB_2_LITE_MODEL,
   ZHENZHEN_IMAGE_NB_2_MODEL,
   ZHENZHEN_IMAGE_NB_PRO_MODEL,
@@ -132,7 +134,7 @@ test('Zhenzhen Image G-2 models live under the separate budget platform and keep
   assert.match(imageNodeSource, /value="builtin:seedance-nz"[\s\S]*贞贞的平价AI小屋/);
   assert.match(imageNodeSource, /builtinApiModelOptions\.map\(\(opt\) =>/);
   assert.match(imageNodeSource, /model: isSeedreamLayerTab[\s\S]*: isQwenImageTab[\s\S]*: isZhenzhenBudgetImageSelected/);
-  assert.match(imageNodeSource, /resolution: isSeedreamLayerTab[\s\S]*: isQwenImageTab[\s\S]*: isZhenzhenImageG2/);
+  assert.match(imageNodeSource, /resolution:[\s\S]*: isSeedreamLayerTab[\s\S]*: isQwenImageTab[\s\S]*: isZhenzhenImageG2/);
   assert.match(imageNodeSource, /图生图模式：必须提供 1–10 张参考图/);
   assert.match(imageNodeSource, /文生图模式：只使用 Prompt，已连接的参考图不会发送/);
   assert.match(proxySource, /seedanceNz\.submitImageTask/);
@@ -146,11 +148,19 @@ test('APIMart images are isolated in their matching budget-house tabs', () => {
       ZHENZHEN_IMAGE_G2_T2I_MODEL,
       ZHENZHEN_IMAGE_G2_I2I_MODEL,
       ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL,
+      'zhenzhen-image-g-v2.5-lowprice',
+      'zhenzhen-image-g-v2.5-flare',
+      'zhenzhen-image-g-v2.5-sunburst',
     ],
   );
   assert.deepEqual(
     ZHENZHEN_BUDGET_GROK_MODEL_OPTIONS.map((option) => option.value),
-    [ZHENZHEN_IMAGE_GK_V15_MODEL, ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL],
+    [
+      ZHENZHEN_IMAGE_GK_V2_MODEL,
+      ZHENZHEN_IMAGE_GK_V2_EDIT_MODEL,
+      ZHENZHEN_IMAGE_GK_V15_MODEL,
+      ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL,
+    ],
   );
   assert.deepEqual(
     ZHENZHEN_BUDGET_BANANA_2_MODEL_OPTIONS.map((option) => option.value),

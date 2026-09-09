@@ -254,13 +254,23 @@ test('creator route plans with zero side effects and applies one approved workfl
   assert.equal(readOnlyPlan.body.data.impact.writesNow, 0);
   assert.equal(readOnlyPlan.body.data.impact.providerCallsNow, 0);
   assert.equal(readOnlyPlan.body.data.modelDecisionReceipt.schema, 't8-model-decision-receipt-v1');
-  assert.equal(readOnlyPlan.body.data.modelDecisionReceipt.mode, 'fixed');
+  assert.equal(readOnlyPlan.body.data.modelDecisionReceipt.mode, 'mixed');
+  assert.equal(
+    readOnlyPlan.body.data.modelDecisionReceipt.decisions.find((decision) => decision.kind === 'llm')?.mode,
+    'smart',
+  );
+  assert.equal(
+    readOnlyPlan.body.data.modelDecisionReceipt.decisions.find((decision) => decision.kind === 'image')?.mode,
+    'fixed',
+  );
   assert.equal(readOnlyPlan.body.data.modelDecisionReceipt.providerCalls, 0);
   assert.equal(readOnlyPlan.body.data.modelDecisionReceipt.canvasWrites, 0);
-  assert.equal(readOnlyPlan.body.data.modelDecisionReceipt.decisions[0].selected.provider, 'seedance-nz');
-  assert.equal(readOnlyPlan.body.data.modelDecisionReceipt.decisions[0].selected.model, seedanceImageModel.model);
-  assert.equal(readOnlyPlan.body.data.modelDecisionReceipt.decisions[0].inputCompatibility.status, 'unverified');
-  assert.ok(readOnlyPlan.body.data.modelDecisionReceipt.decisions[0].reasons.length >= 2);
+  const fixedImageDecision = readOnlyPlan.body.data.modelDecisionReceipt.decisions
+    .find((decision) => decision.kind === 'image');
+  assert.equal(fixedImageDecision.selected.provider, 'seedance-nz');
+  assert.equal(fixedImageDecision.selected.model, seedanceImageModel.model);
+  assert.equal(fixedImageDecision.inputCompatibility.status, 'unverified');
+  assert.ok(fixedImageDecision.reasons.length >= 2);
   assert.equal(readOnlyPlan.body.data.modelDecisionReceipt.approvalBoundary.costTier.status, 'unknown');
   assert.equal(readOnlyPlan.body.data.modelDecisionReceipt.approvalBoundary.privacyBoundary.status, 'unknown');
   assert.equal(JSON.stringify(readOnlyPlan.body).includes(modelCatalogSecret), false);

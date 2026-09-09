@@ -78,7 +78,7 @@ test('canvas exposes Figma send, placement shelf, and external file drag protoco
   assert.doesNotMatch(canvas, /if \(items\.length === 0\) return null/);
   assert.match(canvas, /placementShelfItemsFromCanvasNodes/);
   assert.match(canvas, /placementShelfClearedCanvasIdsRef\.current\.has\(requestedCanvasId\)\s*\?\s*\[\]\s*:\s*placementShelfItemsFromCanvasNodes\(fixedNs, '画布'\)/);
-  assert.match(canvas, /暂无素材/);
+  assert.match(canvas, /t\('controls\.shelfEmpty'\)/);
   assert.doesNotMatch(canvas, /fixed bottom-4 left-4/);
   assert.match(canvas, /t8-control-stack/);
   assert.match(canvas, /RadialMenuSettingsModal/);

@@ -242,7 +242,7 @@ test('different Git common directories fail closed before an integration can be 
   assert.equal(report.ok, false);
 });
 
-test('source and target role misplacement is surfaced as a fail-closed audit problem', () => {
+test('source role misplacement fails closed while the canonical core remains a valid target', () => {
   const root = path.join(os.tmpdir(), 't8-worktree-role-misplacement-fixture');
   const commonDir = path.join(root, '.git');
   const head = '2'.repeat(40);
@@ -262,9 +262,9 @@ test('source and target role misplacement is surfaced as a fail-closed audit pro
     graph: { mergeBase: head, aheadBehind: { source: 0, target: 0 }, sourceChanges: [], targetChanges: [] },
   });
   assert.equal(report.checks.sourceRole, false);
-  assert.equal(report.checks.targetRole, false);
+  assert.equal(report.checks.targetRole, true);
   assert.ok(report.problems.some((problem) => problem.code === 'source_role_mismatch'));
-  assert.ok(report.problems.some((problem) => problem.code === 'target_role_mismatch'));
+  assert.equal(report.problems.some((problem) => problem.code === 'target_role_mismatch'), false);
   assert.equal(report.ok, false);
 });
 
