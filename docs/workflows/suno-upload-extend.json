@@ -1,0 +1,91 @@
+{
+  "schema": "t8-workflow-fragment",
+  "version": 1,
+  "title": "Suno V6 · suno-upload-extend",
+  "nodes": [
+    {
+      "id": "suno-upload-extend-action",
+      "type": "audio",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "data": {
+        "label": "上传音频续写（先导入 1 段长于续写起点的音频）",
+        "audioProviderMode": "suno",
+        "sunoPlatform": "seedance-nz",
+        "apiModel": "suno-upload-extend",
+        "reuseResult": false,
+        "sunoNzOperation": "suno-upload-extend",
+        "sunoNzVersion": "v6-mini",
+        "sunoNzCustomModelId": "",
+        "continueAt": 2,
+        "prompt": "延续原曲的和声与节奏，进入温暖、克制的钢琴尾奏",
+        "tags": "cinematic piano, restrained electronic rhythm",
+        "title": "尾奏",
+        "sunoNzNegativeTags": "harsh vocals, distortion",
+        "sunoNzStyleWeight": 0.5,
+        "sunoNzWeirdness": 0.5,
+        "sunoNzAudioWeight": 0.5,
+        "sunoNzAutoLyrics": false,
+        "sunoNzVocalGender": "",
+        "sunoNzPersonaId": "",
+        "sunoNzTargetDurationSeconds": 10,
+        "sunoNzVariety": "normal",
+        "sunoNzMaxMode": false,
+        "sunoNzAudioFormat": "mp3",
+        "localRefAudio": ""
+      }
+    },
+    {
+      "id": "suno-upload-extend-output",
+      "type": "output",
+      "position": {
+        "x": 860,
+        "y": 40
+      },
+      "data": {
+        "label": "上传音频续写（先导入 1 段长于续写起点的音频） · 结果",
+        "outputType": "audio"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "suno-upload-extend-edge",
+      "source": "suno-upload-extend-action",
+      "target": "suno-upload-extend-output"
+    }
+  ],
+  "nodeCount": 2,
+  "edgeCount": 1,
+  "nodeTypes": [
+    "audio",
+    "output"
+  ],
+  "topologyPreview": {
+    "nodes": [
+      {
+        "id": "suno-upload-extend-action",
+        "type": "audio",
+        "label": "上传音频续写（先导入 1 段长于续写起点的音频）",
+        "x": 8,
+        "y": 50
+      },
+      {
+        "id": "suno-upload-extend-output",
+        "type": "output",
+        "label": "上传音频续写（先导入 1 段长于续写起点的音频） · 结果",
+        "x": 92,
+        "y": 50
+      }
+    ],
+    "edges": [
+      {
+        "source": "suno-upload-extend-action",
+        "target": "suno-upload-extend-output"
+      }
+    ]
+  },
+  "savedAt": "2026-09-12T00:00:00.000Z"
+}

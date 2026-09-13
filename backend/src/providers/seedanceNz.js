@@ -13,6 +13,7 @@ const {
   mimeFromPath,
   normalizeT8LocalMediaRef,
   resolveMediaRef,
+  assertResolvedMediaBuffer,
 } = require('./mediaResolver');
 const { providerTrace } = require('./providerTrace');
 const {
@@ -22,6 +23,10 @@ const {
 const { providerIdempotencyHeaders } = require('../services/providerSubmissionContext');
 const { resolveBundledFfprobe } = require('./llmMedia');
 const { withFfmpegProcessSlot } = require('../utils/ffmpegProcessQueue');
+const {
+  MIN_PROVIDER_MEDIA_TIMEOUT_MS,
+  normalizeProviderMediaTimeoutMs,
+} = require('./providerTimeoutPolicy');
 
 const PROVIDER_ID = 'seedance-nz';
 const BASE_URL = config.ZHENZHEN_SD2_BASE_URL;
@@ -578,11 +583,13 @@ const SEEDANCE_NZ_AUDIO_MODELS = new Set([
   ...MUREKA_BGM_MODELS,
 ]);
 const SUNO_VERSIONS = Object.freeze(['v3.5', 'v4', 'v4.5', 'v4.5+', 'v4.5-all', 'v5', 'v5.5']);
+const SUNO_V6_VERSIONS = Object.freeze(['v6', 'v6-wild', 'v6-mini']);
 const SUNO_INSPO_VERSIONS = Object.freeze(['v4', 'v4.5', 'v4.5+', 'v4.5-all', 'v5', 'v5.5']);
 const SUNO_REPLACE_VERSIONS = Object.freeze(['v4', 'v4.5+', 'v5', 'v5.5']);
 const SUNO_REMASTER_VERSIONS = Object.freeze(['v4.5+', 'v5', 'v5.5']);
 const SUNO_V5_VERSIONS = Object.freeze(['v5', 'v5.5']);
 const SUNO_MAX_REFERENCE_AUDIOS = 4;
+const SUNO_MAX_MODEL_REFERENCE_AUDIOS = 24;
 const MIDJOURNEY_SPEEDS = new Set(['relax', 'fast', 'turbo']);
 const MIDJOURNEY_VERSIONS = new Set(['5', '5.1', '5.2', '6', '6.1', '7', '8.1', '8.2']);
 const MIDJOURNEY_DIMENSIONS = new Set(['SQUARE', 'PORTRAIT', 'LANDSCAPE']);
@@ -789,6 +796,9 @@ const sunoActionSpec = (
 });
 const SUNO_ACTION_SPECS = Object.freeze({
   'suno-generation': sunoActionSpec('', ['version', 'prompt'], ['version', 'prompt', 'custom', 'instrumental', 'title', 'style', 'vocal_gender'], 'audio', 'none', SUNO_VERSIONS),
+  'suno-create-model': sunoActionSpec('create-model', ['name', 'audio_urls'], ['name', 'audio_urls'], 'model', 'model_audios'),
+  'suno-upload-cover': sunoActionSpec('upload-cover', ['audio_url'], ['audio_url', 'version', 'custom_model_id', 'custom', 'instrumental', 'gpt_description', 'prompt', 'tags', 'title', 'negative_tags', 'style_weight', 'weirdness', 'audio_weight', 'auto_lyrics', 'vocal_gender', 'persona_id', 'duration_s', 'variety', 'max_mode', 'audio_format'], 'audio', 'url', SUNO_V6_VERSIONS, 'v6'),
+  'suno-upload-extend': sunoActionSpec('upload-extend', ['audio_url', 'continue_at'], ['audio_url', 'continue_at', 'version', 'custom_model_id', 'prompt', 'tags', 'title', 'negative_tags', 'style_weight', 'weirdness', 'audio_weight', 'auto_lyrics', 'vocal_gender', 'persona_id', 'duration_s', 'variety', 'max_mode', 'audio_format'], 'audio', 'url', SUNO_V6_VERSIONS, 'v6'),
   'suno-lyrics': sunoActionSpec('lyrics', ['prompt'], ['prompt'], 'text'),
   'suno-upload': sunoActionSpec('upload', ['audioFilePath'], ['audioFilePath'], 'audio', 'url'),
   'suno-extend': sunoActionSpec('extend', ['task_id', 'continue_at'], ['task_id', 'audio_index', 'continue_at', 'version'], 'audio', 'task_audio', SUNO_VERSIONS, 'v5.5'),
@@ -824,10 +834,10 @@ const IMAGE_REFERENCE_MAX_BYTES = 10 * 1024 * 1024;
 const DEFAULT_UPLOAD_INTERVAL_MS = 6100;
 const DEFAULT_UPLOAD_CACHE_TTL_MS = 20 * 60 * 60 * 1000;
 const DEFAULT_PROVIDER_RESPONSE_MAX_BYTES = 2 * 1024 * 1024;
-const DEFAULT_PROVIDER_DEADLINE_MS = 30 * 1000;
-const DEFAULT_PROVIDER_IDLE_TIMEOUT_MS = 10 * 1000;
-const DEFAULT_PROVIDER_UPLOAD_DEADLINE_MS = 120 * 1000;
-const DEFAULT_PROVIDER_UPLOAD_IDLE_TIMEOUT_MS = 30 * 1000;
+const DEFAULT_PROVIDER_DEADLINE_MS = MIN_PROVIDER_MEDIA_TIMEOUT_MS;
+const DEFAULT_PROVIDER_IDLE_TIMEOUT_MS = MIN_PROVIDER_MEDIA_TIMEOUT_MS;
+const DEFAULT_PROVIDER_UPLOAD_DEADLINE_MS = MIN_PROVIDER_MEDIA_TIMEOUT_MS;
+const DEFAULT_PROVIDER_UPLOAD_IDLE_TIMEOUT_MS = MIN_PROVIDER_MEDIA_TIMEOUT_MS;
 const SAFE_DIAGNOSTIC_TOKEN = /^[A-Za-z0-9][A-Za-z0-9._:@/+\-]{0,159}$/;
 const SENSITIVE_DIAGNOSTIC_TOKEN = /(?:api[-_]?key|authorization|cookie|token|secret|password|credential)/i;
 
@@ -1008,37 +1018,35 @@ function boundedPositiveInteger(value, fallback, max = Number.MAX_SAFE_INTEGER) 
 }
 
 function providerBoundaryOptions(options = {}) {
+  const allowShortForTests = options.allowShortProviderTimeoutsForTests === true;
   return {
     maxResponseBytes: boundedPositiveInteger(
       options.providerMaxResponseBytes ?? options.maxResponseBytes,
       DEFAULT_PROVIDER_RESPONSE_MAX_BYTES,
       64 * 1024 * 1024,
     ),
-    deadlineMs: boundedPositiveInteger(
+    deadlineMs: normalizeProviderMediaTimeoutMs(
       options.providerDeadlineMs ?? options.deadlineMs,
-      DEFAULT_PROVIDER_DEADLINE_MS,
-      10 * 60 * 1000,
+      { fallback: DEFAULT_PROVIDER_DEADLINE_MS, maximum: 60 * 60 * 1000, allowShortForTests },
     ),
-    idleTimeoutMs: boundedPositiveInteger(
+    idleTimeoutMs: normalizeProviderMediaTimeoutMs(
       options.providerIdleTimeoutMs ?? options.idleTimeoutMs,
-      DEFAULT_PROVIDER_IDLE_TIMEOUT_MS,
-      10 * 60 * 1000,
+      { fallback: DEFAULT_PROVIDER_IDLE_TIMEOUT_MS, maximum: 60 * 60 * 1000, allowShortForTests },
     ),
   };
 }
 
 function providerUploadBoundaryOptions(options = {}) {
+  const allowShortForTests = options.allowShortProviderTimeoutsForTests === true;
   return {
     ...options,
-    providerDeadlineMs: boundedPositiveInteger(
+    providerDeadlineMs: normalizeProviderMediaTimeoutMs(
       options.providerUploadDeadlineMs ?? options.providerDeadlineMs ?? options.deadlineMs,
-      DEFAULT_PROVIDER_UPLOAD_DEADLINE_MS,
-      10 * 60 * 1000,
+      { fallback: DEFAULT_PROVIDER_UPLOAD_DEADLINE_MS, maximum: 60 * 60 * 1000, allowShortForTests },
     ),
-    providerIdleTimeoutMs: boundedPositiveInteger(
+    providerIdleTimeoutMs: normalizeProviderMediaTimeoutMs(
       options.providerUploadIdleTimeoutMs ?? options.providerIdleTimeoutMs ?? options.idleTimeoutMs,
-      DEFAULT_PROVIDER_UPLOAD_IDLE_TIMEOUT_MS,
-      10 * 60 * 1000,
+      { fallback: DEFAULT_PROVIDER_UPLOAD_IDLE_TIMEOUT_MS, maximum: 60 * 60 * 1000, allowShortForTests },
     ),
   };
 }
@@ -1715,6 +1723,7 @@ async function mediaBuffer(source, kind, maxBytes, options = {}) {
     let buffer;
     try {
       buffer = readBoundedLocalFile(resolved.path, kind, max);
+      assertResolvedMediaBuffer(buffer, resolved);
     } catch (error) {
       if (error?.code === 'SEEDANCE_MEDIA_TOO_LARGE') throw error;
       throw localMediaUnavailableError(kind);
@@ -1765,7 +1774,15 @@ async function uploadMedia(source, kind, apiKey, options = {}) {
   const cacheEnabled = Number(ttlMs) > 0;
   const cacheKey = `${hashKey(apiKey)}:${kind}:${Number(options.maxBytes) || 0}:${String(options.cacheVariant || '')}:${hashKey(text)}`;
   const cached = cacheEnabled ? uploadCache.get(cacheKey) : null;
-  if (cached && Date.now() - cached.createdAt < ttlMs) return cached.promise;
+  if (cached && Date.now() - cached.createdAt < ttlMs) {
+    // A cached Provider URL cannot bypass a saved local version guard or
+    // silently resurrect a locally removed reference.
+    if (text.startsWith('/api/project-assets/') && /[?&](?:projectId|entityUid|contentHash)=/.test(text)) {
+      try { await resolveMediaRef(text, { target: 'local-path' }); }
+      catch { uploadCache.delete(cacheKey); throw localMediaUnavailableError(kind); }
+    }
+    return cached.promise;
+  }
 
   const promise = withUploadQueue(apiKey, intervalMs, async () => {
     let file = await mediaBuffer(text, kind, options.maxBytes, options);
@@ -4667,10 +4684,37 @@ function sunoRequiredValuePresent(value) {
   return String(value ?? '').trim().length > 0;
 }
 
-function finiteSunoNumber(value, field, { min = 0, integer = false } = {}) {
+function finiteSunoNumber(value, field, { min = 0, max = Number.POSITIVE_INFINITY, integer = false } = {}) {
   const number = Number(value);
-  if (!Number.isFinite(number) || number < min) throw new Error(`Suno 参数 ${field} 必须是大于等于 ${min} 的数字`);
+  if (!Number.isFinite(number) || number < min || number > max) {
+    const range = Number.isFinite(max) ? `${min}-${max}` : `大于等于 ${min}`;
+    throw new Error(`Suno 参数 ${field} 必须是${range}的数字`);
+  }
   return integer ? Math.trunc(number) : number;
+}
+
+function sunoTextLength(value) {
+  return [...String(value || '')].length;
+}
+
+async function probeSunoAudioDuration(buffer, file, options = {}) {
+  if (typeof options.sunoAudioDurationProbe === 'function') {
+    const injected = Number(await options.sunoAudioDurationProbe(buffer, file));
+    if (!Number.isFinite(injected) || injected <= 0) throw new Error('无法读取 Suno 参考音频时长');
+    return injected;
+  }
+  try {
+    return await probeSeedance25ReferenceDuration(buffer, file, 'audio', options);
+  } catch {
+    throw new Error('无法读取 Suno 参考音频时长，请检查音频文件是否完整');
+  }
+}
+
+async function validateSunoUploadExtendSource(buffer, file, continueAt, options = {}) {
+  const duration = await probeSunoAudioDuration(buffer, file, options);
+  if (continueAt >= duration) {
+    throw new Error('suno-upload-extend 的 continue_at 必须小于源音频实际时长');
+  }
 }
 
 async function buildSunoMusicPayload(request, apiKey, options = {}) {
@@ -4678,8 +4722,18 @@ async function buildSunoMusicPayload(request, apiKey, options = {}) {
   const spec = SUNO_ACTION_SPECS[operation];
   const payload = { model: 'suno' };
   const input = request && typeof request === 'object' ? request : {};
+  const customModelId = spec.allowedFields.includes('custom_model_id')
+    ? String(input.custom_model_id || '').trim()
+    : '';
+  const personaId = spec.allowedFields.includes('persona_id')
+    ? String(input.persona_id || '').trim()
+    : '';
+  if (customModelId && personaId) {
+    throw new Error('Suno 参数 custom_model_id 与 persona_id 不能同时使用');
+  }
+  if (customModelId) payload.custom_model_id = customModelId;
 
-  if (spec.allowedVersions.length > 0) {
+  if (spec.allowedVersions.length > 0 && !customModelId) {
     const version = String(input.version || spec.defaultVersion || '').trim();
     if (!spec.allowedVersions.includes(version)) {
       throw new Error(`${operation} 的 version 仅支持：${spec.allowedVersions.join('、')}`);
@@ -4688,9 +4742,13 @@ async function buildSunoMusicPayload(request, apiKey, options = {}) {
   }
 
   for (const field of spec.allowedFields) {
-    if (field === 'version' || field === 'audioFilePath' || field === 'audio_url' || field === 'audio_urls' || field === 'task_ids') continue;
-    if (field === 'custom' || field === 'instrumental') {
+    if (['version', 'custom_model_id', 'audioFilePath', 'audio_url', 'audio_urls', 'task_ids'].includes(field)) continue;
+    if (field === 'custom' || field === 'instrumental' || field === 'auto_lyrics') {
       if (input[field] !== undefined) payload[field] = input[field] === true;
+      continue;
+    }
+    if (field === 'max_mode') {
+      if (input.max_mode === true) payload.max_mode = true;
       continue;
     }
     if (field === 'audio_index') {
@@ -4699,7 +4757,18 @@ async function buildSunoMusicPayload(request, apiKey, options = {}) {
     }
     if (['continue_at', 'start_s', 'end_s', 'duration_s', 'speed'].includes(field)) {
       if (input[field] !== undefined && input[field] !== '') {
-        payload[field] = finiteSunoNumber(input[field], field, { min: field === 'speed' ? 0.01 : 0 });
+        const optionsForField = field === 'speed'
+          ? { min: 0.01 }
+          : field === 'continue_at' && operation === 'suno-upload-extend'
+            ? { min: 1 }
+            : { min: 0 };
+        payload[field] = finiteSunoNumber(input[field], field, optionsForField);
+      }
+      continue;
+    }
+    if (['style_weight', 'weirdness', 'audio_weight'].includes(field)) {
+      if (input[field] !== undefined && input[field] !== '') {
+        payload[field] = finiteSunoNumber(input[field], field, { min: 0, max: 1 });
       }
       continue;
     }
@@ -4707,6 +4776,53 @@ async function buildSunoMusicPayload(request, apiKey, options = {}) {
       const text = String(input[field]).trim();
       if (text) payload[field] = text;
     }
+  }
+
+  if (operation === 'suno-upload-cover') {
+    payload.custom = input.custom === true;
+    payload.instrumental = input.instrumental === true;
+    if (payload.custom) {
+      delete payload.gpt_description;
+      if (!payload.instrumental && !String(payload.prompt || '').trim()) {
+        throw new Error('suno-upload-cover 在 custom=true 且 instrumental=false 时必须填写 prompt');
+      }
+      payload.duration_s = finiteSunoNumber(input.duration_s ?? 10, 'duration_s', { min: 10, max: 360, integer: true });
+    } else {
+      if (!String(payload.gpt_description || '').trim()) {
+        throw new Error('suno-upload-cover 在 custom=false 时必须填写 gpt_description');
+      }
+      for (const field of ['prompt', 'tags', 'title', 'negative_tags', 'style_weight', 'weirdness', 'audio_weight', 'auto_lyrics', 'persona_id', 'duration_s', 'max_mode']) {
+        delete payload[field];
+      }
+    }
+  }
+
+  if (operation === 'suno-upload-extend') {
+    if (payload.continue_at === undefined) {
+      throw new Error('suno-upload-extend 缺少必填参数：continue_at');
+    }
+    payload.duration_s = finiteSunoNumber(input.duration_s ?? 10, 'duration_s', { min: 10, max: 360, integer: true });
+  }
+
+  if (['suno-upload-cover', 'suno-upload-extend'].includes(operation)) {
+    for (const [field, limit] of Object.entries({ gpt_description: 3000, prompt: 5000, tags: 1000, title: 80 })) {
+      if (payload[field] !== undefined && sunoTextLength(payload[field]) > limit) {
+        throw new Error(`Suno 参数 ${field} 最多 ${limit} 个字符`);
+      }
+    }
+    if (payload.vocal_gender && !['Male', 'Female'].includes(payload.vocal_gender)) {
+      throw new Error('Suno 参数 vocal_gender 只支持 Male 或 Female');
+    }
+    if (payload.variety && !['off', 'normal', 'high', 'extra', 'max'].includes(payload.variety)) {
+      throw new Error('Suno 参数 variety 只支持 off、normal、high、extra 或 max');
+    }
+    if (payload.audio_format && !['mp3', 'm4a', 'wav'].includes(payload.audio_format)) {
+      throw new Error('Suno 参数 audio_format 只支持 mp3、m4a 或 wav');
+    }
+  }
+
+  if (operation === 'suno-create-model' && !String(payload.name || '').trim()) {
+    throw new Error('suno-create-model 缺少必填参数：name');
   }
 
   if (spec.referenceType === 'mashup') {
@@ -4727,6 +4843,29 @@ async function buildSunoMusicPayload(request, apiKey, options = {}) {
       payload.audio_urls = [];
       for (const source of sources) payload.audio_urls.push(await uploadMedia(source, 'audio', apiKey, options));
     }
+  } else if (operation === 'suno-create-model') {
+    const sources = normalizeList(input.audio_urls || input.audioUrls);
+    if (sources.length < 6 || sources.length > SUNO_MAX_MODEL_REFERENCE_AUDIOS) {
+      throw new Error('suno-create-model 必须提供 6-24 段有序参考音频');
+    }
+    payload.audio_urls = [];
+    for (const source of sources) payload.audio_urls.push(await uploadMedia(source, 'audio', apiKey, options));
+  } else if (operation === 'suno-upload-cover' || operation === 'suno-upload-extend') {
+    const sources = [
+      input.audio_url,
+      input.audioFilePath,
+      ...normalizeList(input.audio_urls),
+      ...normalizeList(input.audioUrls),
+    ].map((value) => String(value || '').trim()).filter(Boolean);
+    if (sources.length !== 1) throw new Error(`${operation} 必须且只能提供 1 段参考音频`);
+    const uploadOptions = operation === 'suno-upload-extend'
+      ? {
+          ...options,
+          cacheVariant: `suno-upload-extend-source-v1:${payload.continue_at}`,
+          validateBuffer: (buffer, file) => validateSunoUploadExtendSource(buffer, file, payload.continue_at, options),
+        }
+      : options;
+    payload.audio_url = await uploadMedia(sources[0], 'audio', apiKey, uploadOptions);
   }
 
   for (const field of spec.requiredFields) {
@@ -4792,7 +4931,7 @@ function extractSunoText(value, depth = 0) {
   }
 
   if (typeof value !== 'object') return '';
-  for (const key of ['text', 'lyrics', 'tags', 'aligned_lyrics', 'bpm', 'persona_id', 'voice_id', 'audio_id', 'content', 'message']) {
+  for (const key of ['model_id', 'text', 'lyrics', 'tags', 'aligned_lyrics', 'bpm', 'persona_id', 'voice_id', 'audio_id', 'content', 'message']) {
     if (value[key] === undefined) continue;
     const text = extractSunoText(value[key], depth + 1);
     if (text) return text;
@@ -6064,6 +6203,7 @@ module.exports = {
   FLOWMUSIC_ACTION_SPECS,
   SEEDANCE_NZ_AUDIO_MODELS,
   SUNO_ACTION_SPECS,
+  SUNO_V6_VERSIONS,
   SUNO_VERSIONS,
   WHISPER_MODEL,
   WHISPER_RESPONSE_FORMATS,

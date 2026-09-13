@@ -1,6 +1,10 @@
 # T8-penguin-canvas 工作约束
 
-在修改代码、架构、配置、测试、UI、部署、GitHub 或技术文档前，完整阅读本文件、`SKILL.md`、`features.json`、`roadmap.md`、`package.json`、相关源码/测试，以及当前交接记录。项目没有 `meta.json`。
+在修改代码、架构、配置、测试、UI、部署、GitHub 或技术文档前，以及上下文压缩后，先完整阅读本文件、根 `SKILL.md`、`docs/project-context-current.md`，再读取 `package.json` 的相关配置和本任务源码/测试。项目没有 `meta.json`。
+
+`features.json` 和 `roadmap.md` 保持兼容完整内容，默认按任务查询，不整份加载：使用 `node scripts/read-project-context.cjs find <关键词>`、`feature <顶层键> [子字段.路径]`、`manual <章节行>`、`roadmap <关键词>`、`roadmap-section <章节行>`。分页未完时继续读完相关规则；旧手册完整保存在 `local-private/context-archive/20260912/SKILL.md`，历史授权和危险回滚示例不得覆盖当前保护规则。
+
+记录遵守 `SKILL.md` 开头的精简预算：只更新当前状态与证据链接，详细过程进入专题；禁止在 SKILL/features/roadmap 多处复制长段流水账。当前任务与状态以 `docs/project-context-current.md` 及其指向的专题为准。
 
 ## 用户默认偏好
 
@@ -32,7 +36,7 @@
 ## 产品版本号规则
 
 - 本项目使用用户指定的十进制展示序列：每一段只使用 `0-9`。`v2.6.9` 的下一正式版本必须是 `v2.7.0`，禁止创建、打包、推送、打 tag 或发布 `v2.6.10`。
-- 当前正式版本为 `v2.7.3`；v2.7.3 Tag 固定指向安装包对应源码 `3aeb1c4ad69bf8ab7f436a88473f4b27ef2e1f8e`，不得移动。该版本已完成唯一一次正式 Electron/NSIS 构建、GitHub Latest Release、自动更新资产与远端完整回下载校验；后续仅追加发布事实的 `main` 提交不得移动 Tag。改版本前必须同时核对 `package.json`、`package-lock.json`、README、`features.json`、项目 `SKILL.md`、release notes、自动更新元数据与 Git tag，不能只修改单个文件。
+- 历史正式版本 `v2.7.3` 的 Tag 固定指向安装包对应源码 `3aeb1c4ad69bf8ab7f436a88473f4b27ef2e1f8e`，不得移动。该版本已完成唯一一次正式 Electron/NSIS 构建、GitHub Latest Release、自动更新资产与远端完整回下载校验；后续仅追加发布事实的 `main` 提交不得移动 Tag。当前版本见 `package.json` 和当前上下文。改版本前必须同时核对 `package.json`、`package-lock.json`、README、`features.json`、项目 `SKILL.md`、release notes、自动更新元数据与 Git tag，不能只修改单个文件。
 
 ## 已完成的无损集成
 

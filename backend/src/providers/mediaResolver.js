@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('node:crypto');
 const config = require('../config');
+const { hasMediaIdentity, matchesMediaIdentity, parseProjectAssetMediaUrl } = require('../services/assetMediaIdentity');
+const { openVerifiedAssetMedia } = require('../services/assetAvailability');
 
 const DEFAULT_BASE_URL = `http://127.0.0.1:${config.PORT}`;
 
@@ -187,15 +190,19 @@ function resolveResourceLibraryMediaPath(value, options = {}) {
 }
 
 function resolveProjectAssetMediaPath(value, options = {}) {
-  const text = String(value || '').trim().split(/[?#]/)[0];
-  const match = /^\/api\/project-assets\/([^/?#]+)\/media$/.exec(text);
-  if (!match) return null;
+  const text = String(value || '').trim();
+  const query = Object.fromEntries(new URLSearchParams(text.split('?')[1] || ''));
+  const guarded = hasMediaIdentity(query);
+  const reference = parseProjectAssetMediaUrl(guarded ? text : text.split(/[?#]/)[0]);
+  if (!reference) return null;
   try {
     const { getProjectDatabase } = require('../services/projectDatabase');
     const { getAssetBlobStore } = require('../services/assetBlobStore');
     const database = options.projectDatabase || getProjectDatabase(config);
-    const asset = database.getAsset(decodeUrlPathPart(match[1]));
+    const asset = database.getAsset(reference.assetId);
     if (!asset?.managedPath || !['linked', 'managed'].includes(asset.storageMode)) return null;
+    if (reference.identity && (!matchesMediaIdentity(asset, reference.identity) || asset.availability !== 'available'
+      || ['missing', 'source-changed', 'corrupt'].includes(String(asset.metadata?.health || '').toLowerCase()))) return null;
 
     const filename = path.resolve(asset.managedPath);
     const lexicalStat = fs.lstatSync(filename);
@@ -222,6 +229,7 @@ function resolveProjectAssetMediaPath(value, options = {}) {
       path: realFilename,
       mime: String(asset.mimeType || '').trim() || mimeFromPath(realFilename),
       name: String(asset.filename || path.basename(realFilename)).trim(),
+      ...(reference.identity ? { frozenAsset: asset, frozenIdentity: reference.identity } : {}),
     };
   } catch {
     return null;
@@ -229,9 +237,10 @@ function resolveProjectAssetMediaPath(value, options = {}) {
 }
 
 function resolveT8LocalMediaPath(value, options = {}) {
-  const text = normalizeT8LocalMediaRef(value, options).split(/[?#]/)[0];
+  const normalized = normalizeT8LocalMediaRef(value, options);
+  const text = normalized.split(/[?#]/)[0];
   const resourcePath = resolveResourceLibraryMediaPath(text, options);
-  const projectAssetPath = resolveProjectAssetMediaPath(text, options);
+  const projectAssetPath = resolveProjectAssetMediaPath(normalized, options);
   if (resourcePath?.path || projectAssetPath?.path) return resourcePath?.path || projectAssetPath.path;
   const rules = [
     ['/files/input/', config.INPUT_DIR],
@@ -274,8 +283,16 @@ function resolveDirectLocalPath(value) {
   return '';
 }
 
-function dataUrlFromFile(filePath) {
+function assertResolvedMediaBuffer(buffer, resolved) {
+  if (resolved?.expectedContentHash && crypto.createHash('sha256').update(buffer).digest('hex') !== resolved.expectedContentHash) {
+    throw new Error('固定版本素材内容已变化，请重新选择历史素材');
+  }
+  return buffer;
+}
+
+function dataUrlFromFile(filePath, expectedContentHash) {
   const buf = fs.readFileSync(filePath);
+  assertResolvedMediaBuffer(buf, { expectedContentHash });
   const mime = mimeFromPath(filePath);
   const base64 = buf.toString('base64');
   return {
@@ -306,6 +323,19 @@ async function resolveMediaRef(value, options = {}) {
 
   const resourcePath = resolveResourceLibraryMediaPath(text, options);
   const projectAssetPath = resolveProjectAssetMediaPath(text, options);
+  const guardedProjectAsset = text.startsWith('/api/project-assets/')
+    && hasMediaIdentity(Object.fromEntries(new URLSearchParams(text.split('?')[1] || '')));
+  if (guardedProjectAsset && !projectAssetPath?.frozenIdentity) throw new Error('固定版本素材已变化或不可用');
+  if (projectAssetPath?.frozenIdentity) {
+    const verified = await openVerifiedAssetMedia(projectAssetPath.frozenAsset, { filename: projectAssetPath.path });
+    if (!verified) throw new Error('固定版本素材文件缺失或内容已变化');
+    await verified.handle.close();
+    const database = options.projectDatabase || require('../services/projectDatabase').getProjectDatabase(config);
+    const current = database.getAsset(projectAssetPath.frozenAsset.id);
+    if (!matchesMediaIdentity(current, projectAssetPath.frozenIdentity) || current.availability !== 'available') {
+      throw new Error('固定版本素材已变化或不可用');
+    }
+  }
   const t8Path = resourcePath?.path || projectAssetPath?.path || resolveT8LocalMediaPath(text, options);
   const localPath = t8Path || resolveDirectLocalPath(text);
 
@@ -317,6 +347,7 @@ async function resolveMediaRef(value, options = {}) {
         path: localPath,
         mime: resourcePath?.mime || projectAssetPath?.mime || mimeFromPath(localPath),
         name: resourcePath?.name || projectAssetPath?.name || path.basename(localPath),
+        ...(projectAssetPath?.frozenIdentity ? { expectedContentHash: projectAssetPath.frozenIdentity.contentHash } : {}),
       };
     }
     throw new Error(`无法解析本地媒体路径：${text.slice(0, 160)}`);
@@ -324,7 +355,7 @@ async function resolveMediaRef(value, options = {}) {
 
   if (target === 'data-url' || target === 'base64') {
     if (localPath && fs.existsSync(localPath)) {
-      const resolved = dataUrlFromFile(localPath);
+      const resolved = dataUrlFromFile(localPath, projectAssetPath?.frozenIdentity?.contentHash);
       return target === 'base64'
         ? { ...resolved, kind: 'base64', dataUrl: undefined }
         : { ...resolved, source: text };
@@ -362,6 +393,7 @@ async function resolveMediaRef(value, options = {}) {
 }
 
 module.exports = {
+  assertResolvedMediaBuffer,
   isDataUrl,
   isT8LocalMediaPath,
   mediaRefToAbsoluteUrl,

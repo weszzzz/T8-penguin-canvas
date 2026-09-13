@@ -161,8 +161,10 @@ test('Electron does not open the renderer before the packaged backend is ready',
   assert.match(main, /await shutdownBackendForElectron\('STARTUP_FAILURE'\)/);
   assert.match(main, /app\.on\('before-quit', \(event\) => \{/);
   assert.match(main, /event\.preventDefault\(\)/);
+  assert.match(main, /if \(mainWindowCloseGate && !\(await mainWindowCloseGate\.request\(\)\)\)/);
   assert.match(main, /shutdownBackendForElectron\('ELECTRON_QUIT'\)/);
-  assert.match(main, /electronQuitReady = true;\s+app\.quit\(\);/);
+  assert.match(main, /finally \{ electronQuitReady = true; \}/);
+  assert.match(main, /if \(electronQuitReady\) app\.quit\(\);/);
   assert.match(main, /if \(electronQuitRequested \|\| pendingMainWindow\.isDestroyed\(\)\) return;/);
   assert.match(main, /app\.whenReady\(\)\.then\(async \(\) => \{\s+if \(!ELECTRON_SINGLE_INSTANCE_OWNER \|\| electronQuitRequested\) return;\s+initializeElectronLocale\([\s\S]*?\);\s+createLogWindow\(\);/);
   assert.ok(main.indexOf('if (!backendReady)') < main.indexOf('createMainWindow();', main.indexOf('app.whenReady()')));

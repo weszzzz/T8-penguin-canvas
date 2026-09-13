@@ -31,6 +31,7 @@ import {
 import * as api from '../../services/api';
 import { useRunTrigger } from '../../hooks/useRunTrigger';
 import { createCanvasNodeRunRequestId, requestCanvasNodeRun } from '../../utils/canvasRunRequest';
+import { minimumProviderMediaPollCount } from '../../utils/providerTimeoutPolicy';
 import type { RunNodeLifecycleReporter } from '../../types/project';
 import { useMaterialDropTarget } from '../../hooks/useMaterialDropTarget';
 import { useThemeStore } from '../../stores/theme';
@@ -411,7 +412,10 @@ const DirectorStoryboardNode = ({ id, data, selected }: NodeProps) => {
     [d?.providerParams],
   );
   const pollInt = Math.max(2, Math.min(60, Number(d.pollInt || 10)));
-  const maxPoll = Math.max(10, Math.min(3600, Number(d.maxPoll || 360)));
+  const maxPoll = minimumProviderMediaPollCount(
+    pollInt * 1000,
+    Math.max(10, Math.min(3600, Number(d.maxPoll || 360))),
+  );
   const latestVideoUrl = typeof d.videoUrl === 'string' ? d.videoUrl : '';
   const completedVideoUrls: string[] = Array.isArray(d.videoUrls) ? d.videoUrls : [];
 

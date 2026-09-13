@@ -36,6 +36,107 @@ const responseEnvelope = (overrides = {}) => ({
   ...overrides,
 });
 
+function skillTurnFixture() {
+  const { buildSkillPackage, skillContextResources } = require('../backend/src/services/creatorSkillPackages');
+  const { createSkillBinding } = require('../backend/src/services/creatorSkillRuntime');
+  const pack = buildSkillPackage([
+    { path: 'SKILL.md', bytes: Buffer.from('---\nname: prompt-guide\ndescription: Keep product facts.\n---\nSOURCE_ONLY_SENTINEL 请保留商品文字。参考 [guide](references/guide.md)。') },
+    { path: 'references/guide.md', bytes: Buffer.from('REFERENCE_ONLY_SENTINEL 不编造商品功能。') },
+  ]);
+  const context = skillContextResources(pack);
+  const selection = { id: `private:${pack.packageDigest.slice(0, 32)}`, packageDigest: pack.packageDigest, taskId: 'text-test-task' };
+  const binding = createSkillBinding({ executionAllowed: true, context, pack,
+    skill: { id: selection.id, title: '商品提示词', version: '1', origin: 'private', adapterId: 'text-v1', compatibility: 'text-only' },
+  }, selection, { projectId: 'test-project', canvasId: 'test-canvas' });
+  return { skillBinding: binding, skillContext: context };
+}
+
+test('Creator skill source stays user-level and complete text bypasses only the short chat limit', async () => {
+  const body = '完整商品摄影提示词，保留主体文字和颜色。\n'.repeat(220);
+  const runtime = createCreatorLlmRuntimeV2({ settingsProvider, generateChat: async (_provider, request) => {
+    const system = request.messages.filter(item => item.role === 'system').map(item => item.content).join('\n');
+    assert.equal(system.includes('SOURCE_ONLY_SENTINEL'), false);
+    assert.equal(system.includes('REFERENCE_ONLY_SENTINEL'), false);
+    assert.match(system, /低权限创作资料/);
+    const source = request.messages.find(item => typeof item.content === 'string' && item.content.includes('SOURCE_ONLY_SENTINEL'));
+    assert.equal(source.role, 'user');
+    assert.match(source.content, /REFERENCE_ONLY_SENTINEL/);
+    return { ok: true, text: JSON.stringify(responseEnvelope({
+      replyMarkdown: '完整提示词已整理好，可以继续调整。',
+      suggestions: suggestionSet(['精简文案', '调整色调', '保留这版']),
+      skillOutput: { schema: 't8-creator-skill-output-v1', title: '商品摄影提示词', body, status: 'all-completed' },
+    })) };
+  } });
+  const response = await runtime.respond({ prompt: '请整理商品摄影提示词', ...skillTurnFixture() });
+  assert.equal(response.skillOutput.body, body.trim());
+  assert.equal(response.skillOutput.status, 'text-produced');
+  assert.equal(response.proposedAction, null);
+  assert.equal(response.evidence.providerCalls, 1);
+});
+
+test('Creator skill repair retains the same full source instead of silently returning to ordinary chat', async () => {
+  let calls = 0;
+  const runtime = createCreatorLlmRuntimeV2({ settingsProvider, generateChat: async (_provider, request) => {
+    calls += 1;
+    assert.equal(request.messages.some(item => item.role === 'user' && typeof item.content === 'string' && item.content.includes('SOURCE_ONLY_SENTINEL')), true);
+    return { ok: true, text: JSON.stringify(responseEnvelope({
+      schema: calls === 1 ? 'wrong-schema' : CREATOR_LLM_RESPONSE_SCHEMA,
+      suggestions: suggestionSet(['精简文案', '调整色调', '保留这版']),
+      skillOutput: { schema: 't8-creator-skill-output-v1', title: '商品摄影提示词', body: '完整提示词，保留商品文字。' },
+    })) };
+  } });
+  const response = await runtime.respond({ prompt: '请整理商品摄影提示词', ...skillTurnFixture() });
+  assert.equal(calls, 2);
+  assert.equal(response.skillOutput.body, '完整提示词，保留商品文字。');
+});
+
+test('Creator skill context mismatch fails before calling the provider', async () => {
+  let calls = 0;
+  const runtime = createCreatorLlmRuntimeV2({ settingsProvider, generateChat: async () => { calls += 1; } });
+  await assert.rejects(() => runtime.respond({ prompt: '整理提示词', ...skillTurnFixture(), skillContext: null }), error => error.code === 'CREATOR_SKILL_BINDING_INVALID');
+  assert.equal(calls, 0);
+});
+
+test('Creator skill text adapter rejects model-proposed media instead of executing package instructions', async () => {
+  const runtime = createCreatorLlmRuntimeV2({ settingsProvider, generateChat: async () => ({ ok: true, text: JSON.stringify(responseEnvelope({
+    proposedAction: { type: 'image', prompt: '商品摄影', parameters: { ratio: '1:1', count: 1 }, inputAssetIds: [] },
+  })) }) });
+  await assert.rejects(() => runtime.respond({ prompt: '生成商品摄影图片', ...skillTurnFixture() }), error => error.code === 'CREATOR_SKILL_ACTION_UNSUPPORTED');
+});
+
+test('a bundled reference-image skill uses the preflight-compatible model in one actual runtime call', async () => {
+  const { bundledCreatorSkillOptions } = require('../backend/src/services/creatorSkillBundled');
+  const { skillContextResources } = require('../backend/src/services/creatorSkillPackages');
+  const { createSkillBinding } = require('../backend/src/services/creatorSkillRuntime');
+  const { buildSkillReadiness, preferencesForSkill, assertSkillModelSelection } = require('../backend/src/services/creatorSkillReadiness');
+  const options = bundledCreatorSkillOptions();
+  const definition = options.catalog.manifest.skills.find(item => item.kind === 'image');
+  const pack = options.packageProvider(definition.id, definition.packageDigest);
+  const loaded = { executionAllowed: true, pack, context: skillContextResources(pack), skill: {
+    id: `official:${definition.id}`, title: definition.title, version: definition.version, origin: 'official',
+    adapterId: definition.adapterId, compatibility: 'image-adapter', definition,
+  } };
+  const attachments = [{ assetId: 'product-ref', kind: 'image', contentHash: 'a'.repeat(64), contentRevision: 1, mediaUrl: 'https://fixture.invalid/product.png' }];
+  const selection = { id: loaded.skill.id, packageDigest: pack.packageDigest, taskId: 'builtin-runtime-task' };
+  const skillBinding = createSkillBinding(loaded, selection, { projectId: 'test-project', canvasId: 'test-canvas' }, attachments);
+  const skillReadiness = buildSkillReadiness(loaded, { providerId: 'auto' }, settingsProvider(), attachments);
+  let calls = 0;
+  const runtime = createCreatorLlmRuntimeV2({ settingsProvider, generateChat: async (_provider, request) => {
+    calls += 1;
+    assert.ok(JSON.stringify(request.messages).includes('zhenzhen-image-gk-v2-edit'));
+    return { ok: true, text: JSON.stringify(responseEnvelope({ proposedAction: {
+      type: 'image', prompt: '保留参考商品主体形状与文字，制作简洁的商品广告创意图', parameters: { ratio: '1:1', count: 1 }, inputAssetIds: ['product-ref'],
+    } })) };
+  } });
+  const result = await runtime.respond({ prompt: '根据这张商品图生成一张广告创意图', attachments,
+    preferences: preferencesForSkill({ providerId: 'auto' }, skillReadiness), skillBinding,
+    skillContext: loaded.context, skillReadiness });
+  assert.equal(calls, 1, 'capability selection must not add an LLM round or repair a known-incompatible default');
+  assert.equal(result.proposedAction.modelSnapshot.modelId, 'zhenzhen-image-gk-v2-edit');
+  assert.deepEqual(result.proposedAction.inputAssetIds, ['product-ref']);
+  assertSkillModelSelection(skillReadiness, result.proposedAction);
+});
+
 test('Creator LLM v2 uses one real provider call and binds a versioned image action', async () => {
   let calls = 0;
   let capturedProvider = null;

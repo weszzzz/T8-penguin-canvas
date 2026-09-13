@@ -16,7 +16,8 @@ test('image generation exposes a stop control and invalidates stale async work',
   assert.match(imageNode, /const handleStop = \(\) => \{/);
   assert.match(imageNode, /generationRunRef\.current \+= 1/);
   assert.match(imageNode, /isCurrentGenerationRun\(runId\)/);
-  assert.match(imageNode, /<Square size=\{11\} \/> 停止/);
+  assert.match(imageNode, /<Square size=\{11\} \/> \{translate\('nodes:generation\.stopWithStatus'/);
+  assert.match(read('src/i18n/resources.ts'), /stopWithStatus: '停止/);
   const controlsStart = imageNode.indexOf('{/* 生成按钮(包含异步进度) */}');
   const controlsEnd = imageNode.indexOf('{error &&', controlsStart);
   assert.ok(controlsStart >= 0 && controlsEnd > controlsStart);
@@ -30,10 +31,10 @@ test('image generation exposes a stop control and invalidates stale async work',
 test('video generation stop invalidates old polling before a new task can update state', () => {
   assert.match(videoNode, /generationRunRef = useRef\(0\)/);
   assert.match(videoNode, /const runId = nextGenerationRun\(\)/);
-  assert.match(videoNode, /const startPolling = \(tid: string, runId: number, reporter\?: RunNodeLifecycleReporter\): Promise<void> =>/);
-  assert.match(videoNode, /const startFalPolling = \(runId: number, reporter\?: RunNodeLifecycleReporter\): Promise<void> =>/);
-  assert.match(videoNode, /await startPolling\(r\.taskId, runId, reporter\)/);
-  assert.match(videoNode, /await startFalPolling\(runId, reporter\)/);
+  assert.match(videoNode, /const startPolling = \(tid: string, runId: number, reporter\?: RunNodeLifecycleReporter, completedPrompt = ''\): Promise<string\[\]> =>/);
+  assert.match(videoNode, /const startFalPolling = \(runId: number, reporter\?: RunNodeLifecycleReporter, completedPrompt = ''\): Promise<string\[\]> =>/);
+  assert.match(videoNode, /return await startPolling\(r\.taskId, runId, reporter, finalPrompt\)/);
+  assert.match(videoNode, /return await startFalPolling\(runId, reporter, finalPrompt\)/);
   assert.match(videoNode, /generationRunRef\.current \+= 1/);
   assert.match(videoNode, /taskId: null/);
 });
@@ -42,7 +43,7 @@ test('SD2.0 generation stop invalidates old polling before a new task can update
   assert.match(seedanceNode, /generationRunRef = useRef\(0\)/);
   assert.match(seedanceNode, /const runId = nextGenerationRun\(\)/);
   assert.match(seedanceNode, /const startPolling = \([\s\S]*tid: string,[\s\S]*runId: number,[\s\S]*\): Promise<void> =>/);
-  assert.match(seedanceNode, /await startPolling\(r\.taskId, runId, submittedProvider, reporter\)/);
+  assert.match(seedanceNode, /await startPolling\(r\.taskId, runId, submittedProvider, reporter, finalPrompt\)/);
   assert.match(seedanceNode, /generationRunRef\.current \+= 1/);
   assert.match(seedanceNode, /taskId: null/);
 });

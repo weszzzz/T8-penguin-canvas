@@ -17,7 +17,8 @@ test('toolbar exposes output material persistence as a default-off canvas settin
 
   assert.match(toolbar, /outputMaterialPersistenceEnabled:\s*boolean/);
   assert.match(toolbar, /onToggleOutputMaterialPersistence:\s*\(\)\s*=>\s*void/);
-  assert.match(toolbar, /输出素材持久化/);
+  assert.match(toolbar, /t\('toolbar\.persistenceOffDetail'\)/);
+  assert.match(toolbar, /t\('toolbar\.persistenceOnDetail'\)/);
   assert.match(toolbar, /aria-pressed=\{outputMaterialPersistenceEnabled\}/);
 
   assert.match(canvas, /readOutputMaterialPersistenceSetting/);

@@ -11,7 +11,9 @@ import {
 import { useUpdateNodeData } from './useUpdateNodeData';
 import { useHasAutoOutput } from './useHasAutoOutput';
 import { useRunTrigger } from '../../hooks/useRunTrigger';
+import { HISTORY_SEEDANCE_INPUT_SCHEMA } from '../../utils/historyResolvedSeedanceInput';
 import { requestCanvasNodeRun } from '../../utils/canvasRunRequest';
+import { assertFreshGenerationCompleted, beginVideoRegeneration, completeVideoRegeneration } from '../../utils/generationResultRetention';
 import { hasReusableGenerationResult, shouldReuseGenerationResult } from '../../utils/reuseGenerationResult';
 import type { RunNodeLifecycleReporter } from '../../types/project';
 import { logBus } from '../../stores/logs';
@@ -20,6 +22,7 @@ import { useUpstreamMaterials, type Material } from './useUpstreamMaterials';
 import { useOrderedMaterials } from './useOrderedMaterials';
 import MaterialPreviewSection from './MaterialPreviewSection';
 import ReuseResultToggle from './ReuseResultToggle';
+import PreviousGenerationNotice from './PreviousGenerationNotice';
 import MentionPromptInput from './MentionPromptInput';
 import LoopingVideo from '../LoopingVideo';
 import SmartImage from '../SmartImage';
@@ -339,6 +342,7 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
     runId: number,
     taskProvider?: Exclude<SeedanceTaskProvider, 'auto'>,
     reporter?: RunNodeLifecycleReporter,
+    generationPrompt = '',
   ): Promise<void> => {
     stopPoll();
     return new Promise<void>((resolve, reject) => {
@@ -365,8 +369,10 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
           return;
         }
         pollInFlight = true;
+        let receivedTerminal = false;
         try {
           const r = await querySeedance(tid, taskProvider);
+          receivedTerminal = (r.status === 'succeeded' && Boolean(r.videoUrl)) || r.status === 'failed';
           if (!isCurrentGenerationRun(runId)) {
             rejectStoppedGeneration(reject);
             return;
@@ -387,6 +393,10 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
             status: r.status,
             progress: r.progress || `${pct}%`,
           });
+          if (!isCurrentGenerationRun(runId)) {
+            rejectStoppedGeneration(reject);
+            return;
+          }
           if (r.progress && r.progress !== lastProgress) {
             lastProgress = r.progress;
             logBus.debug(`[${elapsed}/${MAX}] status=${r.status} progress=${r.progress}`, src);
@@ -402,21 +412,9 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
               );
             }
           } else if (r.status === 'succeeded' && r.videoUrl) {
+            receivedTerminal = true;
             pollRejectRef.current = null;
             stopPoll();
-            update({
-              status: 'success',
-              videoUrl: r.videoUrl,
-              progress: '100%',
-              taskProvider: r.taskProvider || taskProvider,
-              resolvedModel: r.model || d?.resolvedModel,
-              taskType: r.taskType || d?.taskType,
-              requestId: r.requestId,
-              transportHttpStatus: r.transportHttpStatus,
-              upstreamHttpStatus: r.upstreamHttpStatus,
-              usage: r.usage,
-              pollCount: elapsed,
-            });
             await reporter?.providerResponse({
               provider: r.taskProvider || taskProvider || effectiveTaskProvider,
               model: r.model || builtinModel,
@@ -429,10 +427,27 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
               status: 'succeeded',
               httpStatusSource: 'local-backend',
             });
+            if (!isCurrentGenerationRun(runId)) {
+              rejectStoppedGeneration(reject);
+              return;
+            }
+            update({
+              ...completeVideoRegeneration([r.videoUrl], generationPrompt),
+              progress: '100%',
+              taskProvider: r.taskProvider || taskProvider,
+              resolvedModel: r.model || d?.resolvedModel,
+              taskType: r.taskType || d?.taskType,
+              requestId: r.requestId,
+              transportHttpStatus: r.transportHttpStatus,
+              upstreamHttpStatus: r.upstreamHttpStatus,
+              usage: r.usage,
+              pollCount: elapsed,
+            });
             logBus.success(`任务完成 → ${r.videoUrl}`, src);
             taskCompletionSound.notifyComplete(id, 'seedance');
             resolve();
           } else if (r.status === 'failed') {
+            receivedTerminal = true;
             pollRejectRef.current = null;
             stopPoll();
             const msg = r.failReason || '生成失败';
@@ -449,6 +464,10 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
               error: { message: msg },
               httpStatusSource: 'local-backend',
             });
+            if (!isCurrentGenerationRun(runId)) {
+              rejectStoppedGeneration(reject);
+              return;
+            }
             update({ status: 'error', error: msg });
             setError(msg);
             logBus.error(`生成失败: ${msg}`, src);
@@ -459,6 +478,12 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
         } catch (e: any) {
           if (!isCurrentGenerationRun(runId)) {
             rejectStoppedGeneration(reject);
+            return;
+          }
+          if (receivedTerminal) {
+            pollRejectRef.current = null;
+            stopPoll();
+            reject(e);
             return;
           }
           // 偶发失败不停止
@@ -556,7 +581,7 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
     const traceModel = isExternalSelected && providerSelection.provider ? externalProviderModel : builtinModel;
     await reporter?.providerRequest({ provider: traceProvider, model: traceModel });
     taskCompletionSound.primeAudio();
-    update({ status: 'submitting', error: null, videoUrl: null, taskId: null });
+    update(beginVideoRegeneration(d));
 
     try {
       if (isExternalSelected && providerSelection.provider) {
@@ -618,10 +643,9 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
           status: 'succeeded',
           httpStatusSource: 'local-backend',
         });
+        if (!isCurrentGenerationRun(runId)) return;
         update({
-          status: 'success',
-          videoUrl: nextVideoUrl,
-          videoUrls: r.videoUrls,
+          ...completeVideoRegeneration(r.videoUrls, finalPrompt),
           remoteVideoUrls: r.remoteVideoUrls,
           taskId: r.taskId || null,
           provider: traceProvider,
@@ -630,12 +654,11 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
           transportHttpStatus: r.transportHttpStatus,
           upstreamHttpStatus: r.upstreamHttpStatus,
           usage: r.usage,
-          lastPrompt: finalPrompt,
           progress: '100%',
         });
         logBus.success(`扩展平台 SD2.0 完成 → ${nextVideoUrl}`, src);
         taskCompletionSound.notifyComplete(id, 'seedance');
-        return;
+        return true;
       }
 
       // 拆分参考图(对齐主项目 sd_firstFrame / sd_lastFrame / sd_refImgs):
@@ -723,15 +746,18 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
         taskProvider: submittedProvider,
         resolvedModel: r.model || builtinModel,
         taskType: r.taskType || null,
-        lastPrompt: finalPrompt,
         progress: '15%',
       });
       logBus.info(`异步任务已提交 taskId=${r.taskId}, 进入轮询…`, src);
       // v1.2.9.11: await 让 useRunTrigger 等到任务真正完成才 markDone，循环器才能拿到 videoUrl
-      await startPolling(r.taskId, runId, submittedProvider, reporter);
+      await startPolling(r.taskId, runId, submittedProvider, reporter, finalPrompt);
+      return isCurrentGenerationRun(runId);
     } catch (e: any) {
       if (!isCurrentGenerationRun(runId)) return;
       const msg = e?.message || '提交失败';
+      setError(msg);
+      update({ status: 'error', error: msg });
+      logBus.error(`提交失败: ${msg}`, src);
       await reporter?.providerResponse({
         provider: traceProvider,
         model: traceModel,
@@ -742,13 +768,12 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
         error: { message: msg, code: e?.code },
         httpStatusSource: 'local-backend',
       });
-      setError(msg);
-      update({ status: 'error', error: msg });
-      logBus.error(`提交失败: ${msg}`, src);
+      throw e;
     }
   };
 
   const handleStop = () => {
+    if (cancelRunTrigger() === false) return;
     generationRunRef.current += 1;
     cancelActivePoll();
     setError(null);
@@ -764,11 +789,30 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
   };
 
   // 批量运行接入
-  useRunTrigger(id, async (reporter) => {
-    if (status === 'submitting' || status === 'polling') return;
-    await handleGenerate(reporter);
+  const captureHistoryInput = () => {
+    const { prompt: upstreamPrompt, imageUrls, videoUrls, audioUrls } = collectUpstream();
+    const finalPrompt = (upstreamPrompt || resolveMediaMentions(localPrompt, promptMentions, mentionMaterials) || '').trim();
+    return {
+      schema: HISTORY_SEEDANCE_INPUT_SCHEMA, origin: 'frontend-request', prompt: finalPrompt,
+      model: isSeedance25 ? builtinModel : model, seedanceNzModel,
+      seedanceApiSource: isSeedance25 ? 'seedance-nz' : builtinSource,
+      providerSource: isExternalSelected ? providerSelection.providerSource : 'zhenzhen',
+      ...(isExternalSelected ? { providerId: providerSelection.provider!.id, providerModel: externalProviderModel } : {}),
+      duration, ratio: isExternalSelected ? ratio : builtinRatio, resolution: isExternalSelected ? resolution : builtinResolution,
+      generateAudio, returnLastFrame, watermark, webSearch, seed, maxPoll, pollInt, frameMode: activeFrameMode,
+      localRefImages: imageUrls, localRefVideos: videoUrls, localRefAudios: audioUrls,
+      providerParams: !isExternalSelected ? providerParams : isJimengCliSelected
+        ? { ...(d?.providerParams || {}), frameMode: activeFrameMode }
+        : { ...(d?.providerParams || {}), generate_audio: generateAudio, return_last_frame: returnLastFrame, watermark, web_search: webSearch, frameMode: activeFrameMode },
+    };
+  };
+  const cancelRunTrigger = useRunTrigger(id, async (reporter) => {
+    const completed = status === 'submitting' || status === 'polling'
+      ? false : await handleGenerate(reporter);
+    assertFreshGenerationCompleted(completed);
   }, 'seedance', {
     lifecycleAware: true,
+    captureHistoryInput,
     shouldReuseResult: (nodeData) => shouldReuseGenerationResult('seedance', nodeData),
   });
 
@@ -1362,6 +1406,7 @@ const SeedanceNode = ({ id, data, selected }: NodeProps) => {
           </div>
         )}
 
+        <PreviousGenerationNotice data={d} />
         {error && (
           <div className="flex items-start gap-1 text-[10px] text-red-300 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
             <AlertCircle size={11} className="mt-0.5 flex-shrink-0" />

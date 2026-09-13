@@ -1,3 +1,5 @@
+import { minimumProviderMediaPollCount } from './providerTimeoutPolicy';
+
 export type RunRecoveryKind =
   | 'runninghub'
   | 'seedance'
@@ -50,6 +52,7 @@ function normalizeExplicitRecovery(value: unknown): RunRecoveryDescriptor | null
   const taskIds = Array.isArray(raw.taskIds)
     ? [...new Set(raw.taskIds.map((item) => text(item, 512)).filter(Boolean))].slice(0, 20)
     : [];
+  const pollIntervalMs = Math.max(250, Math.min(30000, Math.trunc(Number(raw.pollIntervalMs) || 3000)));
   const descriptor: RunRecoveryDescriptor = {
     version: 1,
     kind,
@@ -61,8 +64,8 @@ function normalizeExplicitRecovery(value: unknown): RunRecoveryDescriptor | null
     site: ['cn', 'intl'].includes(text(raw.site, 20).toLowerCase()) ? text(raw.site, 20).toLowerCase() as 'cn' | 'intl' : undefined,
     taskProvider: ['seedance-nz', 'zhenzhen-legacy'].includes(text(raw.taskProvider, 80)) ? text(raw.taskProvider, 80) as 'seedance-nz' | 'zhenzhen-legacy' : undefined,
     speed: ['relax', 'fast', 'turbo'].includes(text(raw.speed, 20).toLowerCase()) ? text(raw.speed, 20).toLowerCase() as 'relax' | 'fast' | 'turbo' : undefined,
-    pollIntervalMs: Math.max(250, Math.min(30000, Math.trunc(Number(raw.pollIntervalMs) || 3000))),
-    maxPolls: Math.max(1, Math.min(7200, Math.trunc(Number(raw.maxPolls) || 1200))),
+    pollIntervalMs,
+    maxPolls: Math.min(7200, minimumProviderMediaPollCount(pollIntervalMs, Number(raw.maxPolls) || 1200)),
   };
   if (kind === 'suno') return descriptor.taskIds?.length ? descriptor : null;
   if (kind === 'image-fal' || kind === 'video-fal') {
@@ -84,7 +87,7 @@ export function inferRunRecoveryDescriptor(payload: Record<string, unknown>): Ru
   const taskId = text(payload.taskId ?? payload.upstreamTaskId, 512);
   const taskIds = Array.isArray(payload.taskIds) ? payload.taskIds.map((item) => text(item, 512)).filter(Boolean) : [];
   const pollIntervalMs = Math.max(250, Math.min(30000, Math.trunc(Number(payload.pollIntervalMs) || 3000)));
-  const maxPolls = Math.max(1, Math.min(7200, Math.trunc(Number(payload.pollLimit) || 1200)));
+  const maxPolls = Math.min(7200, minimumProviderMediaPollCount(pollIntervalMs, Number(payload.pollLimit) || 1200));
   if (provider === 'suno' && taskIds.length) return { version: 1, kind: 'suno', taskIds, model, pollIntervalMs, maxPolls };
   if (!taskId) return null;
   if (provider === 'runninghub') {

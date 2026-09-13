@@ -29,6 +29,7 @@ import {
 import {
   SUNO_VERSIONS,
   DEFAULT_SUNO_VERSION,
+  sunoWorkshopTextLimitError,
   DEFAULT_SUNO_NZ_OPERATION,
   SUNO_NZ_ACTIONS,
   getSunoNzActionDef,
@@ -152,8 +153,14 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
   const isSunoNz = isSuno && sunoPlatform === 'seedance-nz';
   const sunoNzOperation: SunoNzOperation = getSunoNzActionDef(d?.sunoNzOperation || DEFAULT_SUNO_NZ_OPERATION).value;
   const sunoNzAction = getSunoNzActionDef(sunoNzOperation);
+  const isSunoNzCreateModel = sunoNzOperation === 'suno-create-model';
+  const isSunoNzUploadCover = sunoNzOperation === 'suno-upload-cover';
+  const isSunoNzUploadExtend = sunoNzOperation === 'suno-upload-extend';
+  const isSunoNzV6Upload = isSunoNzUploadCover || isSunoNzUploadExtend;
   const mode: AudioMode = d?.mode || 'generate';
   const version: string = d?.version || DEFAULT_SUNO_VERSION;
+  const sunoNzCustomModelId: string = typeof d?.sunoNzCustomModelId === 'string' ? d.sunoNzCustomModelId : '';
+  const sunoNzUsesCustomModel = isSunoNzV6Upload && !!sunoNzCustomModelId.trim();
   const sunoNzVersion = sunoNzAction.allowedVersions.includes(d?.sunoNzVersion)
     ? d.sunoNzVersion
     : sunoNzAction.defaultVersion || sunoNzAction.allowedVersions[0] || '';
@@ -163,6 +170,19 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
   const sunoVocalGender: string = d?.sunoVocalGender || '';
   const sunoCustom: boolean = d?.sunoCustom === true;
   const sunoInstrumental: boolean = d?.sunoInstrumental === true;
+  const sunoNzModelName: string = typeof d?.sunoNzModelName === 'string' ? d.sunoNzModelName : '';
+  const sunoNzGptDescription: string = typeof d?.sunoNzGptDescription === 'string' ? d.sunoNzGptDescription : '';
+  const sunoNzNegativeTags: string = typeof d?.sunoNzNegativeTags === 'string' ? d.sunoNzNegativeTags : '';
+  const sunoNzStyleWeight: number = Number.isFinite(d?.sunoNzStyleWeight) ? d.sunoNzStyleWeight : 0.5;
+  const sunoNzWeirdness: number = Number.isFinite(d?.sunoNzWeirdness) ? d.sunoNzWeirdness : 0.5;
+  const sunoNzAudioWeight: number = Number.isFinite(d?.sunoNzAudioWeight) ? d.sunoNzAudioWeight : 0.5;
+  const sunoNzAutoLyrics: boolean = d?.sunoNzAutoLyrics === true;
+  const sunoNzVocalGender: '' | 'Male' | 'Female' = ['Male', 'Female'].includes(d?.sunoNzVocalGender) ? d.sunoNzVocalGender : '';
+  const sunoNzPersonaId: string = typeof d?.sunoNzPersonaId === 'string' ? d.sunoNzPersonaId : '';
+  const sunoNzTargetDurationSeconds: number = Number.isInteger(d?.sunoNzTargetDurationSeconds) ? d.sunoNzTargetDurationSeconds : 10;
+  const sunoNzVariety: 'off' | 'normal' | 'high' | 'extra' | 'max' = ['off', 'normal', 'high', 'extra', 'max'].includes(d?.sunoNzVariety) ? d.sunoNzVariety : 'normal';
+  const sunoNzMaxMode: boolean = d?.sunoNzMaxMode === true;
+  const sunoNzAudioFormat: 'mp3' | 'm4a' | 'wav' = ['mp3', 'm4a', 'wav'].includes(d?.sunoNzAudioFormat) ? d.sunoNzAudioFormat : 'mp3';
   const sunoTaskRef: string = d?.sunoTaskRef || '';
   const sunoTaskRef2: string = d?.sunoTaskRef2 || '';
   const sunoAudioIndex: number = Number.isInteger(d?.sunoAudioIndex) && d.sunoAudioIndex > 0 ? d.sunoAudioIndex : 1;
@@ -318,6 +338,12 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
   // === 本地拖入参考音频 (跨节点 Ctrl 拖拽) ===
   const localRefAudio: string = typeof d?.localRefAudio === 'string' ? d.localRefAudio : '';
   const localRefImage: string = typeof d?.localRefImage === 'string' ? d.localRefImage : '';
+  const sunoNzLocalRefAudios: string[] = Array.isArray(d?.sunoNzLocalRefAudios)
+    ? d.sunoNzLocalRefAudios.map((value: unknown) => String(value || '').trim()).filter(Boolean)
+    : [];
+  const sunoNzLocalRefAudioNames: string[] = Array.isArray(d?.sunoNzLocalRefAudioNames)
+    ? d.sunoNzLocalRefAudioNames.map((value: unknown) => String(value || '').trim())
+    : [];
   const localRefAudioMaterials: Material[] = useMemo(
     () =>
       localRefAudio
@@ -359,8 +385,13 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
     const audioUrl = orderedAudios[0]?.url || (isWhisper ? orderedVideos[0]?.url : '') || localRefAudio || '';
     const audioClipId = orderedAudios.map((item) => String(item.clipId || '').trim()).find(Boolean) || '';
     const imageUrls = [...orderedImages.map((item) => item.url), localRefImage].filter(Boolean).slice(0, 1);
-    const maxAudios = isMinimaxClone ? 1 : isSunoNz ? 4 : 3;
-    const audioUrls = [...orderedAudios.map((item) => item.url), localRefAudio].filter((value, index, values) => !!value && values.indexOf(value) === index).slice(0, maxAudios);
+    const audioCandidates = isSunoNzCreateModel
+      ? [...orderedAudios.map((item) => item.url), ...sunoNzLocalRefAudios]
+      : [...orderedAudios.map((item) => item.url), localRefAudio];
+    const maxAudios = isMinimaxClone ? 1 : isSunoNzCreateModel ? 24 : isSunoNz ? 4 : 3;
+    const audioUrls = isSunoNzCreateModel
+      ? audioCandidates.filter(Boolean)
+      : audioCandidates.filter((value, index, values) => !!value && values.indexOf(value) === index).slice(0, maxAudios);
     return { prompt, audioUrl, audioClipId, imageUrls, audioUrls };
   };
 
@@ -389,10 +420,29 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
   };
 
   const onSelectFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
+    const selectedFiles = Array.from(e.target.files || []);
+    const f = selectedFiles[0];
     if (!f) return;
     setError(null);
     try {
+      if (isSunoNzCreateModel) {
+        if (sunoNzLocalRefAudios.length + selectedFiles.length > 24) {
+          throw new Error(translate('nodes:audio.sunoCreateModelMaxReferences'));
+        }
+        setUploading(true);
+        const uploadedUrls: string[] = [];
+        for (const selectedFile of selectedFiles) {
+          const uploaded = await uploadLocalFile(selectedFile);
+          uploadedUrls.push(uploaded.url);
+        }
+        update({
+          sunoNzLocalRefAudios: [...sunoNzLocalRefAudios, ...uploadedUrls],
+          sunoNzLocalRefAudioNames: [...sunoNzLocalRefAudioNames, ...selectedFiles.map((file) => file.name)],
+          uploadedClipId: '',
+        });
+        logBus.success(translate('nodes:audio.sunoCreateModelImported', { count: uploadedUrls.length }), src);
+        return;
+      }
       if (isSeedAudio || isWhisper || isSunoNz || isMinimaxClone || isLyria) {
         setUploading(true);
         const uploaded = await uploadLocalFile(f);
@@ -981,6 +1031,13 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
     const upstream = collectUpstream();
     const resolvedLocalPrompt = resolveMediaMentions(localPrompt, promptMentions, mentionMaterials);
     const finalPrompt = (upstream.prompt || resolvedLocalPrompt || '').trim();
+    if (isSuno && !isSunoNz) {
+      const limitError = sunoWorkshopTextLimitError(version, finalPrompt, tags);
+      if (limitError) {
+        setError(translate(limitError === 'prompt' ? 'nodes:audio.sunoV6PromptLimit' : 'nodes:audio.sunoV6TagsLimit'));
+        return;
+      }
+    }
     const sunoNzNeedsPrompt = sunoNzAction.requiredFields.includes('prompt');
     if (!isWhisper && !isSunoNz && !isLyria && !(isMureka && murekaInstrumentalId.trim()) && !finalPrompt) {
       setError(isSeedAudio ? '请填写音频提示词' : '请填写歌词 / 提示词');
@@ -1260,7 +1317,13 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
       if (isSunoNz) {
         const referenceTaskId = sunoTaskRef.trim() || String(taskId || '').trim();
         const sourceAudios = upstream.audioUrls;
-        if (sunoNzAction.referenceType === 'url' && sourceAudios.length === 0) {
+        if (isSunoNzCreateModel && (sourceAudios.length < 6 || sourceAudios.length > 24)) {
+          throw new Error(translate('nodes:audio.sunoCreateModelReferenceCount', { count: sourceAudios.length }));
+        }
+        if (isSunoNzV6Upload && sourceAudios.length !== 1) {
+          throw new Error(translate('nodes:audio.sunoSingleReferenceRequired', { action: sunoNzOperation, count: sourceAudios.length }));
+        }
+        if (sunoNzAction.referenceType === 'url' && !isSunoNzV6Upload && sourceAudios.length === 0) {
           throw new Error(`${sunoNzOperation} 需要连接、拖入或导入参考音频`);
         }
         if (sunoNzAction.referenceType === 'task_audio' && !referenceTaskId) {
@@ -1275,39 +1338,65 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
         if (sunoNzOperation === 'suno-persona' && !sunoPersonaName.trim()) {
           throw new Error('suno-persona 需要填写 Persona 名称');
         }
+        if (isSunoNzCreateModel && !sunoNzModelName.trim()) {
+          throw new Error(translate('nodes:audio.sunoCreateModelNameRequired'));
+        }
+        if (sunoNzUsesCustomModel && sunoNzPersonaId.trim()) {
+          throw new Error(translate('nodes:audio.sunoCustomModelPersonaConflict'));
+        }
+        if (isSunoNzUploadCover && !sunoCustom && !sunoNzGptDescription.trim()) {
+          throw new Error(translate('nodes:audio.sunoCoverDescriptionRequired'));
+        }
+        if (isSunoNzUploadCover && sunoCustom && !sunoInstrumental && !finalPrompt) {
+          throw new Error(translate('nodes:audio.sunoCoverPromptRequired'));
+        }
+        if (isSunoNzUploadExtend && continueAt < 1) {
+          throw new Error(translate('nodes:audio.sunoExtendContinueMinimum'));
+        }
 
         logBus.info(`提交平价AI小屋 Suno: ${sunoNzOperation}${sunoNzVersion ? ` · ${sunoNzVersion}` : ''}`, src);
         const result = await submitSunoNz({
           operation: sunoNzOperation,
-          prompt: finalPrompt || undefined,
-          version: sunoNzVersion || undefined,
-          custom: sunoCustom,
-          instrumental: sunoInstrumental,
-          title: title.trim() || undefined,
-          style: sunoStyle.trim() || undefined,
-          vocal_gender: sunoVocalGender || undefined,
-          tags: tags.trim() || undefined,
+          prompt: isSunoNzUploadCover && !sunoCustom ? undefined : finalPrompt || undefined,
+          version: sunoNzUsesCustomModel ? undefined : sunoNzVersion || undefined,
+          custom: sunoNzOperation === 'suno-generation' || isSunoNzUploadCover ? sunoCustom : undefined,
+          instrumental: sunoNzOperation === 'suno-generation' || isSunoNzUploadCover ? sunoInstrumental : undefined,
+          title: sunoNzOperation === 'suno-generation' || isSunoNzUploadExtend || (isSunoNzUploadCover && sunoCustom) ? title.trim() || undefined : undefined,
+          style: sunoNzOperation === 'suno-generation' ? sunoStyle.trim() || undefined : undefined,
+          vocal_gender: isSunoNzV6Upload ? sunoNzVocalGender || undefined : sunoVocalGender || undefined,
+          tags: sunoNzOperation === 'suno-upsample-tags' || isSunoNzUploadExtend || (isSunoNzUploadCover && sunoCustom) ? tags.trim() || undefined : undefined,
+          custom_model_id: isSunoNzV6Upload ? sunoNzCustomModelId.trim() || undefined : undefined,
+          gpt_description: isSunoNzUploadCover && !sunoCustom ? sunoNzGptDescription.trim() || undefined : undefined,
+          negative_tags: isSunoNzUploadExtend || (isSunoNzUploadCover && sunoCustom) ? sunoNzNegativeTags.trim() || undefined : undefined,
+          style_weight: isSunoNzUploadExtend || (isSunoNzUploadCover && sunoCustom) ? sunoNzStyleWeight : undefined,
+          weirdness: isSunoNzUploadExtend || (isSunoNzUploadCover && sunoCustom) ? sunoNzWeirdness : undefined,
+          audio_weight: isSunoNzUploadExtend || (isSunoNzUploadCover && sunoCustom) ? sunoNzAudioWeight : undefined,
+          auto_lyrics: isSunoNzUploadExtend || (isSunoNzUploadCover && sunoCustom) ? sunoNzAutoLyrics : undefined,
+          persona_id: !sunoNzUsesCustomModel && (isSunoNzUploadExtend || (isSunoNzUploadCover && sunoCustom)) ? sunoNzPersonaId.trim() || undefined : undefined,
+          variety: isSunoNzV6Upload ? sunoNzVariety : undefined,
+          max_mode: isSunoNzUploadExtend || (isSunoNzUploadCover && sunoCustom) ? sunoNzMaxMode : undefined,
+          audio_format: isSunoNzV6Upload ? sunoNzAudioFormat : undefined,
           audioFilePath: sunoNzOperation === 'suno-upload' ? upstream.audioUrl : undefined,
-          audio_url: sunoNzOperation === 'suno-create-voice' ? upstream.audioUrl : undefined,
-          audio_urls: sunoNzOperation === 'suno-inspo' ? sourceAudios : undefined,
+          audio_url: sunoNzOperation === 'suno-create-voice' || isSunoNzV6Upload ? upstream.audioUrl : undefined,
+          audio_urls: sunoNzOperation === 'suno-inspo' || isSunoNzCreateModel ? sourceAudios : undefined,
           task_id: referenceTaskId || undefined,
           task_id_2: sunoTaskRef2.trim() || undefined,
           task_ids: sunoNzAction.referenceType === 'mashup'
             ? [referenceTaskId, sunoTaskRef2.trim()]
             : undefined,
           audio_index: sunoAudioIndex,
-          continue_at: sunoNzOperation === 'suno-extend' ? continueAt : undefined,
+          continue_at: sunoNzOperation === 'suno-extend' || isSunoNzUploadExtend ? continueAt : undefined,
           start_s: ['suno-crop', 'suno-remove-section', 'suno-replace-music', 'suno-sample'].includes(sunoNzOperation)
             ? sunoStartSeconds
             : undefined,
           end_s: ['suno-crop', 'suno-remove-section', 'suno-replace-music', 'suno-sample'].includes(sunoNzOperation)
             ? sunoEndSeconds
             : undefined,
-          duration_s: ['suno-fade-in', 'suno-fade-out'].includes(sunoNzOperation)
-            ? sunoDurationSeconds
-            : undefined,
+          duration_s: isSunoNzV6Upload
+            ? sunoNzTargetDurationSeconds
+            : ['suno-fade-in', 'suno-fade-out'].includes(sunoNzOperation) ? sunoDurationSeconds : undefined,
           speed: sunoNzOperation === 'suno-adjust-speed' ? sunoSpeed : undefined,
-          name: sunoNzOperation === 'suno-persona' ? sunoPersonaName.trim() : undefined,
+          name: isSunoNzCreateModel ? sunoNzModelName.trim() : sunoNzOperation === 'suno-persona' ? sunoPersonaName.trim() : undefined,
         }, { submissionKey: reporter?.providerSubmissionKey });
         const normalizedStatus = String(result.status || '').trim().toLowerCase();
         if (result.taskId) {
@@ -1465,7 +1554,7 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
 
   const isBusy = status === 'submitting' || status === 'polling';
   const showRefArea = isSuno && !isSunoNz && (mode === 'cover' || mode === 'extend');
-  const showSunoNzAudioImport = isSunoNz && sunoNzAction.referenceType === 'url';
+  const showSunoNzAudioImport = isSunoNz && ['url', 'model_audios'].includes(sunoNzAction.referenceType);
   const audioColor = PORT_COLOR.audio;
   const textColor = PORT_COLOR.text;
   const videoColor = PORT_COLOR.video;
@@ -1625,6 +1714,7 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
               ))}
             </select>
           </div>
+          <p className="col-span-2 text-[10px] text-white/60 leading-relaxed">{translate('nodes:audio.sunoV6Hint')}</p>
         </div>
         )}
 
@@ -1652,7 +1742,7 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
                 ))}
               </select>
             </div>
-            {sunoNzAction.allowedVersions.length > 0 && (
+            {sunoNzAction.allowedVersions.length > 0 && !sunoNzUsesCustomModel && (
               <div>
                 <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:audio.version')}</label>
                 <select
@@ -1670,6 +1760,11 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
               官方路径：{sunoNzAction.action ? `/v1/music/generations/${sunoNzAction.action}` : '/v1/music/generations'}
               {' · '}结果：{sunoNzAction.resultFamily}
             </div>
+            {isSunoNzV6Upload && (
+              <div className="text-[10px] leading-relaxed text-cyan-100/55">
+                {translate('nodes:audio.sunoV6UploadContract')}
+              </div>
+            )}
           </div>
         )}
 
@@ -1909,6 +2004,48 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
         </div>
         </>
         )}
+        {isSunoNzCreateModel && (
+          <div className="rounded border border-cyan-300/20 bg-cyan-400/[0.05] p-2 space-y-2">
+            <div>
+              <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:audio.sunoCustomModelName')}</label>
+              <input value={sunoNzModelName} onChange={(e) => update({ sunoNzModelName: e.target.value })} placeholder={translate('nodes:audio.sunoCustomModelNamePlaceholder')} className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none" />
+            </div>
+            <div className="text-[10px] leading-relaxed text-cyan-100/60">
+              {translate('nodes:audio.sunoCreateModelReferences', { count: orderedAudios.length + sunoNzLocalRefAudios.length })}
+            </div>
+          </div>
+        )}
+        {isSunoNzV6Upload && (
+          <div className="rounded border border-cyan-300/20 bg-cyan-400/[0.05] p-2 space-y-2">
+            <div>
+              <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:audio.sunoCustomModelIdOptional')}</label>
+              <input value={sunoNzCustomModelId} onChange={(e) => update({ sunoNzCustomModelId: e.target.value })} placeholder={translate('nodes:audio.sunoCustomModelIdPlaceholder')} className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none" />
+              <div className="mt-1 text-[10px] leading-relaxed text-white/40">{translate('nodes:audio.sunoCustomModelIdHint')}</div>
+            </div>
+            {isSunoNzUploadCover && (
+              <div className="grid grid-cols-2 gap-1.5">
+                <label className="flex items-center gap-1.5 rounded border border-white/10 px-2 py-1 text-[10px] text-white/65">
+                  <input type="checkbox" checked={sunoCustom} onChange={(e) => update({ sunoCustom: e.target.checked })} />
+                  {translate('nodes:audio.customMode')}
+                </label>
+                <label className="flex items-center gap-1.5 rounded border border-white/10 px-2 py-1 text-[10px] text-white/65">
+                  <input type="checkbox" checked={sunoInstrumental} onChange={(e) => update({ sunoInstrumental: e.target.checked })} />
+                  {translate('nodes:audio.instrumental')}
+                </label>
+              </div>
+            )}
+            {isSunoNzUploadCover && !sunoCustom && (
+              <div>
+                <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:audio.sunoGptDescription')}</label>
+                <textarea maxLength={3000} value={sunoNzGptDescription} onChange={(e) => update({ sunoNzGptDescription: e.target.value })} placeholder={translate('nodes:audio.sunoGptDescriptionPlaceholder')} className="h-20 w-full resize-y rounded bg-white/5 border border-white/10 px-2 py-1 text-[11px] text-white outline-none" />
+                <div className="text-right text-[9px] text-white/35">{[...sunoNzGptDescription].length}/3000</div>
+              </div>
+            )}
+            {isSunoNzUploadExtend && (
+              <div className="text-[10px] leading-relaxed text-amber-100/60">{translate('nodes:audio.sunoUploadExtendFixedCustom')}</div>
+            )}
+          </div>
+        )}
         {isSunoNz && sunoNzOperation === 'suno-generation' && (
           <div className="rounded border border-white/10 bg-black/10 p-2 space-y-2">
             <div>
@@ -1945,7 +2082,7 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
             <input value={tags} onChange={(e) => update({ tags: e.target.value })} placeholder="pop, cinematic, energetic" className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none" />
           </div>
         )}
-        {!isWhisper && (!isSunoNz || sunoNzAction.requiredFields.includes('prompt')) && (!isLyria || flowMusicNeedsPrompt) && (
+        {!isWhisper && (!isSunoNz || sunoNzAction.requiredFields.includes('prompt') || isSunoNzUploadExtend || (isSunoNzUploadCover && sunoCustom && !sunoInstrumental)) && (!isLyria || flowMusicNeedsPrompt) && (
         <div>
           <label className="text-[10px] text-white/50 block mb-1">{
             isSeedAudio ? '音频提示词'
@@ -1960,7 +2097,10 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
                             : flowMusicOperation === 'flowmusic-lyrics'
                               ? '歌词主题 / 写作要求'
                               : '续写 / 替换 / 翻唱指令'
-                        : sunoNzOperation === 'suno-lyrics' ? '歌词主题 / 要求' : '歌词 / 提示词'
+                        : sunoNzOperation === 'suno-lyrics'
+                          ? '歌词主题 / 要求'
+                          : isSunoNzUploadCover ? translate('nodes:audio.sunoCoverPrompt')
+                            : isSunoNzUploadExtend ? translate('nodes:audio.sunoExtendPrompt') : '歌词 / 提示词'
           }</label>
           <MentionPromptInput
             title={translate('nodes:audio.promptTitle')}
@@ -1983,6 +2123,78 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
             className="w-full h-16 resize-none rounded bg-white/5 border border-white/10 px-2 py-1 text-[11px] text-white outline-none focus:border-white/30 placeholder:text-white/30"
           />
         </div>
+        )}
+
+        {isSunoNzV6Upload && (
+          <div className="rounded border border-white/10 bg-black/10 p-2 space-y-2">
+            {(isSunoNzUploadExtend || sunoCustom) && (
+              <>
+                <div>
+                  <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:audio.titleOptional')}</label>
+                  <input maxLength={80} value={title} onChange={(e) => update({ title: e.target.value })} placeholder="My Song" className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:audio.styleTags')}</label>
+                  <textarea maxLength={1000} value={tags} onChange={(e) => update({ tags: e.target.value })} placeholder="cinematic, electronic" className="h-16 w-full resize-y rounded bg-white/5 border border-white/10 px-2 py-1 text-[11px] text-white outline-none" />
+                  <div className="text-right text-[9px] text-white/35">{[...tags].length}/1000</div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:audio.sunoNegativeTags')}</label>
+                  <input value={sunoNzNegativeTags} onChange={(e) => update({ sunoNzNegativeTags: e.target.value })} placeholder={translate('nodes:audio.sunoNegativeTagsPlaceholder')} className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none" />
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    ['sunoNzStyleWeight', translate('nodes:audio.sunoStyleWeight'), sunoNzStyleWeight],
+                    ['sunoNzWeirdness', translate('nodes:audio.sunoWeirdness'), sunoNzWeirdness],
+                    ['sunoNzAudioWeight', translate('nodes:audio.sunoAudioWeight'), sunoNzAudioWeight],
+                  ].map(([field, label, value]) => (
+                    <label key={String(field)} className="text-[9px] text-white/50">{label}
+                      <input type="number" min={0} max={1} step={0.05} value={Number(value)} onChange={(e) => update({ [String(field)]: Number(e.target.value) })} className="mt-1 w-full rounded bg-white/5 border border-white/10 px-1.5 py-1 text-[10px] text-white" />
+                    </label>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <label className="flex items-center gap-1.5 rounded border border-white/10 px-2 py-1 text-[10px] text-white/65">
+                    <input type="checkbox" checked={sunoNzAutoLyrics} onChange={(e) => update({ sunoNzAutoLyrics: e.target.checked })} />
+                    {translate('nodes:audio.sunoAutoLyrics')}
+                  </label>
+                  <label className="flex items-center gap-1.5 rounded border border-white/10 px-2 py-1 text-[10px] text-white/65">
+                    <input type="checkbox" checked={sunoNzMaxMode} onChange={(e) => update({ sunoNzMaxMode: e.target.checked })} />
+                    {translate('nodes:audio.sunoMaxMode')}
+                  </label>
+                </div>
+                {!sunoNzUsesCustomModel && (
+                  <div>
+                    <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:audio.sunoPersonaIdOptional')}</label>
+                    <input value={sunoNzPersonaId} onChange={(e) => update({ sunoNzPersonaId: e.target.value })} placeholder={translate('nodes:audio.sunoPersonaIdPlaceholder')} className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none" />
+                  </div>
+                )}
+                <div>
+                  <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:audio.sunoTargetDuration')}</label>
+                  <input type="number" min={10} max={360} step={1} value={sunoNzTargetDurationSeconds} onChange={(e) => update({ sunoNzTargetDurationSeconds: Number(e.target.value) })} className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none" />
+                </div>
+              </>
+            )}
+            <div className="grid grid-cols-3 gap-1.5">
+              <label className="text-[9px] text-white/50">{translate('nodes:audio.vocalGenderOptional')}
+                <select value={sunoNzVocalGender} onChange={(e) => update({ sunoNzVocalGender: e.target.value })} className="mt-1 w-full rounded bg-white/5 border border-white/10 px-1.5 py-1 text-[10px] text-white">
+                  <option value="" className="bg-zinc-900">{translate('nodes:generation.automatic')}</option>
+                  <option value="Male" className="bg-zinc-900">Male</option>
+                  <option value="Female" className="bg-zinc-900">Female</option>
+                </select>
+              </label>
+              <label className="text-[9px] text-white/50">{translate('nodes:audio.sunoVariety')}
+                <select value={sunoNzVariety} onChange={(e) => update({ sunoNzVariety: e.target.value })} className="mt-1 w-full rounded bg-white/5 border border-white/10 px-1.5 py-1 text-[10px] text-white">
+                  {['off', 'normal', 'high', 'extra', 'max'].map((item) => <option key={item} value={item} className="bg-zinc-900">{item}</option>)}
+                </select>
+              </label>
+              <label className="text-[9px] text-white/50">{translate('nodes:audio.format')}
+                <select value={sunoNzAudioFormat} onChange={(e) => update({ sunoNzAudioFormat: e.target.value })} className="mt-1 w-full rounded bg-white/5 border border-white/10 px-1.5 py-1 text-[10px] text-white">
+                  {['mp3', 'm4a', 'wav'].map((item) => <option key={item} value={item} className="bg-zinc-900">{item}</option>)}
+                </select>
+              </label>
+            </div>
+          </div>
         )}
 
         {isSunoNz && (sunoNzAction.referenceType === 'task_audio' || sunoNzAction.referenceType === 'mashup') && (
@@ -2024,10 +2236,11 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
           </div>
         )}
 
-        {isSunoNz && sunoNzOperation === 'suno-extend' && (
+        {isSunoNz && (sunoNzOperation === 'suno-extend' || isSunoNzUploadExtend) && (
           <div>
             <label className="text-[10px] text-white/50 block mb-1">续写起点（秒）</label>
-            <input type="number" min={0} step="0.1" value={continueAt} onChange={(e) => update({ continueAt: Number(e.target.value) || 0 })} className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none" />
+            <input type="number" min={isSunoNzUploadExtend ? 1 : 0} step="0.1" value={continueAt} onChange={(e) => update({ continueAt: Number(e.target.value) || 0 })} className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none" />
+            {isSunoNzUploadExtend && <div className="mt-1 text-[10px] text-white/40">{translate('nodes:audio.sunoExtendSourceDurationHint')}</div>}
           </div>
         )}
 
@@ -2146,18 +2359,34 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
                 : isLyria
                   ? '上游素材 · 文本 / 音频 / clip_id'
               : isSunoNz
-                ? '上游素材 · 文本 / 最多 4 段音频'
+                ? isSunoNzCreateModel
+                  ? translate('nodes:audio.sunoCreateModelUpstreamTitle')
+                  : isSunoNzV6Upload ? translate('nodes:audio.sunoSingleUpstreamTitle') : '上游素材 · 文本 / 最多 4 段音频'
                 : mode === 'generate' ? '上游素材 · 歌词提示' : '上游素材 · 参考音频'}
         />
 
-        {(isSeedAudio || isWhisper || isMinimaxClone || isLyria || showSunoNzAudioImport) && (localRefImage || localRefAudio) && (
+        {(isSeedAudio || isWhisper || isMinimaxClone || isLyria || showSunoNzAudioImport) && (localRefImage || localRefAudio || (isSunoNzCreateModel && sunoNzLocalRefAudios.length > 0)) && (
           <div className="rounded border border-cyan-300/20 bg-cyan-400/[0.05] p-2 space-y-1">
             <div className="flex items-center justify-between gap-2 text-[10px] text-cyan-100/75">
               <span>本地参考素材</span>
-              <button type="button" onClick={() => update({ localRefImage: '', localRefAudio: '' })} className="text-white/40 hover:text-white" title="清除本地参考素材"><X size={11} /></button>
+              <button type="button" onClick={() => update({ localRefImage: '', localRefAudio: '', sunoNzLocalRefAudios: [], sunoNzLocalRefAudioNames: [] })} className="text-white/40 hover:text-white" title="清除本地参考素材"><X size={11} /></button>
             </div>
             {localRefImage && <div className="truncate text-[10px] text-white/50">参考图：{localRefImage.split('/').pop()}</div>}
             {localRefAudio && <div className="truncate text-[10px] text-white/50">参考音频：{localRefAudio.split('/').pop()}</div>}
+            {isSunoNzCreateModel && sunoNzLocalRefAudios.map((url, index) => (
+              <div key={`${url}:${index}`} className="flex items-center gap-1 text-[10px] text-white/50">
+                <span className="min-w-0 flex-1 truncate">{index + 1}. {sunoNzLocalRefAudioNames[index] || url.split('/').pop()}</span>
+                <button
+                  type="button"
+                  onClick={() => update({
+                    sunoNzLocalRefAudios: sunoNzLocalRefAudios.filter((_item, itemIndex) => itemIndex !== index),
+                    sunoNzLocalRefAudioNames: sunoNzLocalRefAudioNames.filter((_item, itemIndex) => itemIndex !== index),
+                  })}
+                  className="shrink-0 text-white/35 hover:text-white"
+                  title={translate('nodes:audio.sunoRemoveReference')}
+                ><X size={10} /></button>
+              </div>
+            ))}
           </div>
         )}
 
@@ -2166,6 +2395,7 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
             <input
               ref={fileInputRef}
               type="file"
+              multiple={isSunoNzCreateModel}
               accept={isWhisper ? 'audio/*,video/mp4,.mp3,.wav,.flac,.m4a,.mp4,.ogg,.opus,.aac,.aiff,.aif' : 'audio/*,.mp3,.wav,.flac,.ogg'}
               className="hidden"
               onChange={onSelectFile}
@@ -2177,7 +2407,9 @@ const AudioNode = ({ id, data, selected }: NodeProps) => {
                 : isWhisper ? '导入待转写音频 / MP4'
                   : isMinimaxClone ? '导入克隆参考音频（10 秒–5 分钟）'
                     : isLyria ? '导入 Lyria 参考音频'
-                    : isSunoNz ? '导入 Suno 参考音频（至少 6 秒）' : '导入参考音频'}
+                    : isSunoNzCreateModel ? translate('nodes:audio.sunoImportModelReferences')
+                      : isSunoNzV6Upload ? translate('nodes:audio.sunoImportSingleReference')
+                        : isSunoNz ? '导入 Suno 参考音频（至少 6 秒）' : '导入参考音频'}
             </button>
           </div>
         )}

@@ -1,3 +1,5 @@
+import { minimumProviderMediaPollCount } from './providerTimeoutPolicy';
+
 export type FalToolboxMediaKind = 'text' | 'image' | 'video' | 'audio' | 'model3d' | 'json';
 
 export type FalToolboxUserParamKind = 'text' | 'textarea' | 'number' | 'select' | 'boolean';
@@ -355,11 +357,16 @@ export function normalizeFalToolboxManifest(manifest: Partial<FalToolboxManifest
         : [],
       userParams,
       runtime: raw?.runtime && typeof raw.runtime === 'object'
-        ? {
-            pollIntervalMs: Number.isFinite(raw.runtime.pollIntervalMs) ? Number(raw.runtime.pollIntervalMs) : undefined,
-            maxPolls: Number.isFinite(raw.runtime.maxPolls) ? Number(raw.runtime.maxPolls) : undefined,
-            statusPath: cleanText(raw.runtime.statusPath),
-          }
+        ? (() => {
+            const pollIntervalMs = Number.isFinite(raw.runtime.pollIntervalMs)
+              ? Math.max(1000, Number(raw.runtime.pollIntervalMs))
+              : 3000;
+            return {
+              pollIntervalMs,
+              maxPolls: minimumProviderMediaPollCount(pollIntervalMs, raw.runtime.maxPolls),
+              statusPath: cleanText(raw.runtime.statusPath),
+            };
+          })()
         : undefined,
       ui: raw?.ui && typeof raw.ui === 'object'
         ? {

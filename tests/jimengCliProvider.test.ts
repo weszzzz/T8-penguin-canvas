@@ -33,7 +33,7 @@ test('Jimeng image generation builds text2image command and extracts returned me
   assert.ok(commands[0].args.includes('--prompt=basketball pose'));
   assert.ok(commands[0].args.includes('--ratio=16:9'));
   assert.ok(commands[0].args.includes('--resolution_type=2k'));
-  assert.ok(commands[0].args.includes('--poll=20'));
+  assert.ok(commands[0].args.includes('--poll=900'));
   assert.deepEqual(result.imageUrls, ['/files/output/jimeng.png']);
 });
 
@@ -92,7 +92,7 @@ test('Jimeng video generation builds image2video command when one reference imag
   assert.ok(commands[0].args.includes('--image=C:\\tmp\\ref.png'));
   assert.ok(commands[0].args.includes('--model_version=seedance2.0fast_vip'));
   assert.ok(commands[0].args.includes('--video_resolution=720p'));
-  assert.ok(commands[0].args.includes('--poll=20'));
+  assert.ok(commands[0].args.includes('--poll=900'));
   assert.deepEqual(result.videoUrls, ['/files/output/jimeng.mp4']);
   assert.equal(result.taskId, 'sub-1');
 });

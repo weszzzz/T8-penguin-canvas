@@ -14,6 +14,8 @@ const { publicAsset, redactLocalPaths } = require('../services/assetPublicView')
 const { redactAndScanRunValue } = require('../services/runRedaction');
 const { normalizeRunError } = require('../services/runErrors');
 const { explicitRunCost } = require('../services/runUsage');
+const { listGenerationHistory } = require('../services/generationHistory');
+const { createHistoryRecoveryHandler } = require('./generationHistoryRecovery');
 const { getRunRecoveryManager } = require('../services/runRecovery');
 const { getCollaborationGateway } = require('../collaboration/gateway');
 const { ExecutionPolicyError, HostExecutionPolicy } = require('../collaboration/executionPolicy');
@@ -262,6 +264,22 @@ function stripRunIntentLeaseAuthority(value, seen = new WeakSet()) {
   }
   return output;
 }
+
+router.post('/generation-history/recover', createHistoryRecoveryHandler({
+  getDatabase: () => database, config, isTrustedRequest: isTrustedHostArtifactRequest,
+}));
+
+router.get('/generation-history', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    res.json({ success: true, data: listGenerationHistory(database, req.query) });
+  } catch (error) {
+    res.status(error?.status || 500).json({
+      success: false, code: error?.code || 'GENERATION_HISTORY_UNAVAILABLE',
+      error: error?.status ? error.message : '生成历史暂时无法读取，请稍后重试',
+    });
+  }
+});
 
 router.get('/', (req, res) => {
   res.json({

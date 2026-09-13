@@ -1615,7 +1615,7 @@ export const AUDIO_MODELS: AudioModelDef[] = [
   { id: 'suno-v5.5-extend', label: 'Suno V5.5 续写', provider: 'zhenzhen', mode: 'extend' },
 ];
 
-// Suno 版本下拉选项（完全对齐主项目 gpt-image-2-web 的 SUNO_MV_MAP）。
+// 工坊版本选项：保留旧版本，V6 对齐 Comfyui-zhenzhen/suno_workshop.py。
 // value 将被原样发送给后端。
 export const SUNO_VERSIONS: Array<{ value: string; label: string }> = [
   { value: 'v3.0', label: 'v3.0' },
@@ -1625,11 +1625,26 @@ export const SUNO_VERSIONS: Array<{ value: string; label: string }> = [
   { value: 'v4.5+', label: 'v4.5+' },
   { value: 'v5', label: 'v5' },
   { value: 'v5.5', label: 'v5.5' },
+  { value: 'v6', label: 'V6' },
+  { value: 'v6 wild', label: 'V6 wild' },
+  { value: 'v6 mini', label: 'V6 mini' },
 ];
 export const DEFAULT_SUNO_VERSION = 'v5.5';
 
+// Workshop only; the Budget AI House action/version contract is independent.
+export function sunoWorkshopTextLimitError(version: string, prompt: string, tags: string): 'prompt' | 'tags' | null {
+  if (!['v6', 'v6 wild', 'v6 mini', 'chirp-hawk', 'chirp-hawk-wild', 'chirp-goose'].includes(version.replace(/^suno-/i, ''))) return null;
+  // Match the reference Python contract: Unicode characters, not UTF-16 units.
+  if ([...prompt].length > 5000) return 'prompt';
+  if ([...tags].length > 1000) return 'tags';
+  return null;
+}
+
 export type SunoNzOperation =
   | 'suno-generation'
+  | 'suno-create-model'
+  | 'suno-upload-cover'
+  | 'suno-upload-extend'
   | 'suno-lyrics'
   | 'suno-upload'
   | 'suno-extend'
@@ -1661,8 +1676,8 @@ export type SunoNzOperation =
   | 'suno-add-instrumental'
   | 'suno-add-stem';
 
-export type SunoNzResultFamily = 'audio' | 'text' | 'video' | 'file';
-export type SunoNzReferenceType = 'none' | 'url' | 'task_audio' | 'mashup';
+export type SunoNzResultFamily = 'audio' | 'text' | 'video' | 'file' | 'model';
+export type SunoNzReferenceType = 'none' | 'url' | 'model_audios' | 'task_audio' | 'mashup';
 export type SunoNzField =
   | 'prompt'
   | 'version'
@@ -1672,6 +1687,17 @@ export type SunoNzField =
   | 'style'
   | 'vocal_gender'
   | 'tags'
+  | 'custom_model_id'
+  | 'gpt_description'
+  | 'negative_tags'
+  | 'style_weight'
+  | 'weirdness'
+  | 'audio_weight'
+  | 'auto_lyrics'
+  | 'persona_id'
+  | 'variety'
+  | 'max_mode'
+  | 'audio_format'
   | 'audioFilePath'
   | 'audio_url'
   | 'audio_urls'
@@ -1697,6 +1723,7 @@ export interface SunoNzActionDef {
 }
 
 export const SUNO_NZ_VERSIONS = ['v3.5', 'v4', 'v4.5', 'v4.5+', 'v4.5-all', 'v5', 'v5.5'] as const;
+export const SUNO_NZ_V6_VERSIONS = ['v6', 'v6-wild', 'v6-mini'] as const;
 const SUNO_NZ_INSPO_VERSIONS = ['v4', 'v4.5', 'v4.5+', 'v4.5-all', 'v5', 'v5.5'] as const;
 const SUNO_NZ_REPLACE_VERSIONS = ['v4', 'v4.5+', 'v5', 'v5.5'] as const;
 const SUNO_NZ_REMASTER_VERSIONS = ['v4.5+', 'v5', 'v5.5'] as const;
@@ -1722,11 +1749,14 @@ const sunoNzAction = (
 });
 
 /**
- * api.seedance.nz 官方 Suno 31 项动作。
+ * api.seedance.nz 官方 Suno 34 项动作。
  * 这里使用显式目录，前后端都不会根据用户输入拼接未知 action 路径。
  */
 export const SUNO_NZ_ACTIONS: readonly SunoNzActionDef[] = [
   sunoNzAction('suno-generation', '音乐生成', ['version', 'prompt'], 'audio', 'none', SUNO_NZ_VERSIONS),
+  sunoNzAction('suno-create-model', '创建自定义模型', ['name', 'audio_urls'], 'model', 'model_audios'),
+  sunoNzAction('suno-upload-cover', '上传音频翻唱', ['audio_url'], 'audio', 'url', SUNO_NZ_V6_VERSIONS, 'v6'),
+  sunoNzAction('suno-upload-extend', '上传音频续写', ['audio_url', 'continue_at'], 'audio', 'url', SUNO_NZ_V6_VERSIONS, 'v6'),
   sunoNzAction('suno-lyrics', '生成歌词', ['prompt'], 'text'),
   sunoNzAction('suno-upload', '上传音频', ['audioFilePath'], 'audio', 'url'),
   sunoNzAction('suno-extend', '续写', ['task_id', 'continue_at'], 'audio', 'task_audio', SUNO_NZ_VERSIONS, 'v5.5'),

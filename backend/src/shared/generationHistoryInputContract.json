@@ -1,0 +1,17 @@
+{
+  "schema": "t8-generation-settings-input-v1",
+  "seedanceResolvedInputSchema": "t8-seedance-frontend-input-v1",
+  "imageInputContextSchema": "t8-image-frontend-context-v1",
+  "imageSettingsContextSchema": "t8-image-frontend-context-v2",
+  "videoInputContextSchema": "t8-video-frontend-context-v1",
+  "purpose": "prefill-only",
+  "maxStringChars": 131072,
+  "maxBytes": 524288,
+  "maxNodes": 80,
+  "maxEdges": 90,
+  "maxDepth": 7,
+  "maxArrayItems": 100,
+  "maxObjectKeys": 200,
+  "privateKeyPattern": "(?:^|[-_])(?:api[-_]?key|authorization|auth|cookie|tokens?|secrets?|password|passwd|credentials?|private[-_]?key|access[-_]?key|signature)(?:$|[-_])",
+  "safeTokenCountPattern": "^(?:max|total|prompt|completion|input|output|cached|reasoning)[-_]?tokens?(?:[-_]?count)?$"
+}

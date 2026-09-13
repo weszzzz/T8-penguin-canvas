@@ -92,6 +92,7 @@ import type {
   WorkspaceRole,
 } from '../types/project';
 import type { SubflowDefinition } from '../utils/subflows';
+import { HISTORY_QUERY_TIMEOUT, withHistoryRequestDeadline } from '../utils/historyRequestDeadline';
 import {
   parseCanvasAgentToolResult,
   type CanvasAgentToolName,
@@ -974,6 +975,20 @@ export async function updateSettings(patch: Partial<ApiSettings>): Promise<void>
 }
 
 // ========== 运行中心 ==========
+export async function listGenerationHistory(
+  filters: import('../types/generationHistory').GenerationHistoryQuery,
+  options: { signal?: AbortSignal } = {},
+): Promise<import('../types/generationHistory').GenerationHistoryPage> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== '') query.set(key, String(value));
+  }
+  const res = await withHistoryRequestDeadline(30000, options.signal, signal =>
+    request<{ success: boolean; data: import('../types/generationHistory').GenerationHistoryPage }>(
+      `${BASE}/project-runs/generation-history?${query}`, { signal }), HISTORY_QUERY_TIMEOUT);
+  return res.data;
+}
+
 export async function listProjectRuns(filters: { projectId?: string; canvasId?: string; status?: string; initiatorId?: string; provider?: string; model?: string; limit?: number } = {}, options: { signal?: AbortSignal } = {}): Promise<RunSummary[]> {
   const query = new URLSearchParams();
   if (filters.projectId) query.set('projectId', filters.projectId);
@@ -990,6 +1005,7 @@ export async function listProjectRuns(filters: { projectId?: string; canvasId?: 
 
 export async function createProjectRun(input: {
   id?: string;
+  projectId?: string;
   canvasId: string;
   canvasRevision?: number;
   initiatorId?: string;
@@ -3013,6 +3029,7 @@ export async function createProjectNodeRun(runId: string, input: {
   subflowPath?: string[];
   status?: string;
   inputSnapshot?: Record<string, unknown>;
+  historyInputSnapshot?: Record<string, unknown>;
 }): Promise<NodeRunSummary> {
   const res = await request<{ success: boolean; data: NodeRunSummary }>(
     `${BASE}/project-runs/${encodeURIComponent(runId)}/nodes`,

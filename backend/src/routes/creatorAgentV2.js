@@ -41,6 +41,14 @@ const {
   splitLongScriptScenes,
 } = require('../services/creatorLongScriptWork');
 const { prepareSceneProductionMutation } = require('../services/creatorSceneProduction');
+const { CreatorSkillStore } = require('../services/creatorSkillStore');
+const { CreatorSkillError, hash: skillHash, canonicalJson: skillCanonicalJson } = require('../services/creatorSkillPackages');
+const {
+  normalizeSkillSelection, createSkillBinding, validateSkillAction, validateSkillActionInputs,
+  normalizeSkillOutput, prepareSkillArtifactMutation, readCurrentSkillWork,
+} = require('../services/creatorSkillRuntime');
+const { createCreatorSkillRouter } = require('./creatorSkills');
+const { buildSkillReadiness, preferencesForSkill, assertSkillTurnInputLimits, assertSkillModelSelection } = require('../services/creatorSkillReadiness');
 const {
   AgentControlAssetError,
   createAgentControlAssetService,
@@ -140,10 +148,19 @@ function createCreatorAgentV2Router(options = {}) {
     assetIndexer: options.assetIndexer,
     pollIntervalMs: options.pollIntervalMs,
     timeoutMs: options.actionTimeoutMs,
+    skillActionGuard: (action, scope) => guardSkillAction(action, scope),
   });
   const assetService = options.assetService || createAgentControlAssetService({ config: runtimeConfig, database: database() });
   const activeResponses = options.activeResponses || new Map();
   const faultInjector = typeof options.faultInjector === 'function' ? options.faultInjector : null;
+  let skillStore = options.skillStore || null;
+  const getSkillStore = () => {
+    if (!skillStore) {
+      const { bundledCreatorSkillOptions } = require('../services/creatorSkillBundled');
+      skillStore = new CreatorSkillStore({ root: path.resolve(runtimeConfig.DATA_DIR, 'creator-agent', 'skills'), ...bundledCreatorSkillOptions() });
+    }
+    return skillStore;
+  };
 
   const requireScope = (input = {}) => {
     const projectId = bounded(input.projectId, 180);
@@ -237,10 +254,39 @@ function createCreatorAgentV2Router(options = {}) {
     return { attachments, selected };
   };
 
+  const guardSkillAction = (action, inputScope) => {
+    if (!action.skillBinding) return;
+    const scope = requireScope(inputScope);
+    const binding = action.skillBinding;
+    const loaded = getSkillStore().loadForTask(scope, binding.selection.id, binding.selection.packageDigest);
+    if (loaded.context.contextDigest !== binding.contextDigest || loaded.skill.adapterId !== binding.adapterId
+      || loaded.skill.origin !== binding.origin
+      || (binding.definitionDigest && skillHash(skillCanonicalJson(loaded.skill.definition)) !== binding.definitionDigest)
+      || (loaded.skill.compatibility === 'reference-only') !== binding.referenceOnly) {
+      throw new CreatorSkillError('CREATOR_SKILL_BINDING_INVALID', '技能固定版本或执行范围校验失败', 409);
+    }
+    validateSkillActionInputs(binding, action, scope, database(), selectedNodeIds => resolveTurnContext(scope, { selectedNodeIds }).selected);
+  };
+
   router.use((_req, res, next) => {
     res.set('Cache-Control', 'no-store');
     return next();
   });
+
+  router.post('/skills/:id/preflight', (req, res, next) => {
+    try {
+      const scope = req.body?.sessionId ? scopeForSession(req.body.sessionId, req.body) : requireScope(req.body);
+      const selection = normalizeSkillSelection({ id: req.params.id, packageDigest: req.body?.packageDigest, taskId: req.body?.taskId });
+      const existing = req.body.sessionId && repository.getSkillTaskBinding(req.body.sessionId, selection, scope);
+      const loaded = existing ? getSkillStore().loadForTask(scope, selection.id, selection.packageDigest)
+        : getSkillStore().load(scope, selection.id, selection.packageDigest);
+      const context = resolveTurnContext(scope, req.body);
+      assertSkillTurnInputLimits(req.body, context);
+      const readiness = buildSkillReadiness(loaded, repository.getPreferences(scope), settingsProvider() || {}, context.attachments, runtimeConfig);
+      return res.json(result({ readiness, materials: context.attachments, generated: false }));
+    } catch (error) { return next(error); }
+  });
+  router.use('/skills', createCreatorSkillRouter({ getStore: getSkillStore, requireScope }));
 
   router.get('/sessions', (req, res, next) => {
     try {
@@ -416,11 +462,13 @@ function createCreatorAgentV2Router(options = {}) {
     try {
       const scope = scopeForSession(req.params.sessionId, req.body || {});
       const creationMode = creatorCreationMode(req.body?.creationMode);
+      const skill = normalizeSkillSelection(req.body?.skill);
       const priorRequest = repository.findUserMessageByClientRequest(req.params.sessionId, {
         ...scope,
         body: req.body?.text,
         clientRequestId: req.body?.clientRequestId,
         creationMode,
+        skill,
       });
       if (priorRequest) {
         const priorAssistant = repository.findAssistantResponseForUserMessage(
@@ -438,7 +486,17 @@ function createCreatorAgentV2Router(options = {}) {
         : hydrateLlmAssetRefs(turnContext.attachments);
       const longScriptDocumentSources = [];
       const turnSelectedNodes = priorRequest?.selectedNodes || turnContext.selected;
+      if (skill && !priorRequest) assertSkillTurnInputLimits(req.body || {}, turnContext);
       const turnBody = priorRequest?.body || creatorTurnBody(req.body || {}, turnAttachments, turnSelectedNodes);
+      const existingSkillTask = repository.getSkillTaskBinding(req.params.sessionId, skill, scope);
+      const loadedSkill = skill ? (existingSkillTask
+        ? getSkillStore().loadForTask(scope, skill.id, skill.packageDigest)
+        : getSkillStore().load(scope, skill.id, skill.packageDigest)) : null;
+      const skillBinding = loadedSkill ? createSkillBinding(loadedSkill, skill, scope, turnAttachments, turnSelectedNodes) : null;
+      if (priorRequest?.skillBinding && priorRequest.skillBinding.bindingDigest !== skillBinding?.bindingDigest) {
+        throw new CreatorSkillError('CREATOR_SKILL_BINDING_INVALID', '原任务的技能快照已经变化，请重新整理', 409);
+      }
+      if (skillBinding) validateSkillActionInputs(skillBinding, null, scope, database(), selectedNodeIds => resolveTurnContext(scope, { selectedNodeIds }).selected);
       if (turnAttachments.some((item) => item.kind === 'file')) {
         try {
           const grounding = await groundCreatorDocumentAttachments(turnAttachments);
@@ -484,7 +542,9 @@ function createCreatorAgentV2Router(options = {}) {
         });
         turnAttachments = grounding.attachments;
       }
-      const preferences = repository.getPreferences(scope);
+      const savedPreferences = repository.getPreferences(scope);
+      const skillReadiness = loadedSkill ? buildSkillReadiness(loadedSkill, savedPreferences, settingsProvider() || {}, turnAttachments, runtimeConfig) : null;
+      const preferences = preferencesForSkill(savedPreferences, skillReadiness);
       const llmSnapshot = llm.modelSnapshot('llm', preferences, {
         requiresVision: turnAttachments.some((item) => ['image', 'video'].includes(item.kind)),
         preferredModelId: creationMode === 'scene'
@@ -499,6 +559,7 @@ function createCreatorAgentV2Router(options = {}) {
           selectedNodes: turnSelectedNodes,
           clientRequestId: req.body?.clientRequestId,
           creationMode,
+          skillBinding,
         });
       if (appended.duplicate) {
         const priorAssistant = repository.findAssistantResponseForUserMessage(
@@ -560,7 +621,7 @@ function createCreatorAgentV2Router(options = {}) {
         : null;
       const importCandidate = explicitImportCandidate || forcedSingleSceneCandidate;
       const singleSceneDraftImport = Boolean(importCandidate && !explicitImportCandidate);
-      const workStateBefore = importCandidate
+      const workStateBefore = importCandidate || skillBinding
         ? repository.getWorkState(req.params.sessionId, {
             ...scope,
             includeCurrentVersions: true,
@@ -605,6 +666,10 @@ function createCreatorAgentV2Router(options = {}) {
         workingBrief: conversationBefore.conversation.workingBrief,
         currentPhase: conversationBefore.conversation.phase,
         sceneContext,
+        skillBinding,
+        skillContext: loadedSkill?.context || null,
+        skillReadiness,
+        skillCurrentWork: readCurrentSkillWork(skillBinding, workStateBefore.currentVersions),
       }, {
         registerAbort: (handler) => {
           responseControl.abort = handler;
@@ -617,6 +682,10 @@ function createCreatorAgentV2Router(options = {}) {
       if (responseControl.stopRequested) {
         throw new CreatorLlmRuntimeError('CREATOR_LLM_STOPPED', '已停止这次回复。', 409);
       }
+      validateSkillAction(skillBinding, generated.proposedAction);
+      assertSkillModelSelection(skillReadiness, generated.proposedAction);
+      const skillOutput = normalizeSkillOutput(generated.skillOutput, skillBinding);
+      const skillMutation = prepareSkillArtifactMutation(skillOutput, skillBinding, workStateBefore.currentVersions);
       const allowedAssetIds = new Set(appended.message.media.map((item) => item.assetId));
       const proposedAction = generated.proposedAction ? {
         ...generated.proposedAction,
@@ -678,7 +747,7 @@ function createCreatorAgentV2Router(options = {}) {
           422,
         );
       }
-      const workMutationPlan = longScriptImport ? {
+      let workMutationPlan = longScriptImport ? {
         expectedWorkRevision: longScriptImport.expectedWorkRevision,
         currentSceneId: scenePatchMutation?.currentSceneId || longScriptImport.previewWork.currentSceneId,
         taskProfile: longScriptImport.taskProfile,
@@ -696,6 +765,16 @@ function createCreatorAgentV2Router(options = {}) {
           ...(sceneProductionPlan?.mutations || []),
         ],
       } : null;
+      if (skillMutation) {
+        workMutationPlan = workMutationPlan || {
+          expectedWorkRevision: workStateBefore.snapshot?.revision || 0,
+          taskProfile: workStateBefore.snapshot?.taskProfile || {
+            family: 'mixed', intent: '技能文本创作', deliveryKind: 'PromptPack', modalities: ['text'], qualityMode: 'quality',
+          },
+          mutations: [],
+        };
+        workMutationPlan.mutations.push(skillMutation);
+      }
       const completionAction = proposedAction?.workBinding ? {
         ...proposedAction,
         shots: sceneProductionPlan.shots,
@@ -713,7 +792,8 @@ function createCreatorAgentV2Router(options = {}) {
         ...scope,
         body: generated.replyMarkdown,
         suggestions: generated.suggestions,
-        action: completionAction,
+        action: completionAction && skillBinding ? { ...completionAction, skillBinding } : completionAction,
+        ...(skillBinding ? { skillBinding, skillOutput } : {}),
         conversationContext: {
           workingBrief: generated.workingBrief,
           phaseDecision: generated.phaseDecision,
@@ -895,6 +975,8 @@ function createCreatorAgentV2Router(options = {}) {
   router.post('/sessions/:sessionId/actions/:actionId/confirm', (req, res, next) => {
     try {
       const scope = scopeForSession(req.params.sessionId, req.body || {});
+      const pending = repository.getAction(req.params.actionId, req.params.sessionId, scope);
+      if (['pending', 'failed'].includes(pending.status)) guardSkillAction(pending, scope);
       const action = executor.start(req.params.sessionId, req.params.actionId, scope);
       repository.updateConversationPhase(req.params.sessionId, 'shots', scope);
       return res.status(202).json(result({ action }, '已开始生成'));
@@ -912,6 +994,8 @@ function createCreatorAgentV2Router(options = {}) {
   router.post('/sessions/:sessionId/actions/:actionId/retry', (req, res, next) => {
     try {
       const scope = scopeForSession(req.params.sessionId, req.body || {});
+      const previous = repository.getAction(req.params.actionId, req.params.sessionId, scope);
+      if (previous.status === 'failed') guardSkillAction(previous, scope);
       const clientRequestId = bounded(req.body?.clientRequestId, 180)
         || `action-retry-${digest({ actionId: req.params.actionId }).slice(0, 32)}`;
       const action = repository.retryFailedAction(
@@ -1023,7 +1107,8 @@ function createCreatorAgentV2Router(options = {}) {
     const known = error instanceof CreatorConversationError
       || error instanceof CreatorLlmRuntimeError
       || error instanceof CreatorActionExecutorError
-      || error instanceof AgentControlAssetError;
+      || error instanceof AgentControlAssetError
+      || error instanceof CreatorSkillError;
     const status = known ? Math.max(400, Math.min(599, Number(error.status) || 400)) : 500;
     return res.status(status).json({
       schema: CREATOR_AGENT_V2_HTTP_SCHEMA,

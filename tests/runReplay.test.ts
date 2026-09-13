@@ -402,7 +402,8 @@ test('one failed Attempt can be retried from the exact stored input even after a
 
 test('Canvas mounts replay clones only in rendered graph, never in persisted nodes or edges state', () => {
   const source = readFileSync(new URL('../src/components/Canvas.tsx', import.meta.url), 'utf8');
-  assert.match(source, /return runReplayRuntime \? \[\.\.\.themedNodes, \.\.\.runReplayRuntime\.nodes\] : themedNodes/);
+  assert.match(source, /const proxiedNodes = themedNodes\.map\(/);
+  assert.match(source, /return runReplayRuntime \? \[\.\.\.proxiedNodes, \.\.\.runReplayRuntime\.nodes\] : proxiedNodes/);
   assert.match(source, /runReplayRuntime \? \[\.\.\.edges, \.\.\.runReplayRuntime\.edges\] : edges/);
   assert.match(source, /nodes=\{renderedNodes\}[\s\S]*?edges=\{renderedEdges\}/);
   assert.doesNotMatch(source, /setNodes\([^\n]*runReplayRuntime/);

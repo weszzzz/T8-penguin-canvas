@@ -430,6 +430,9 @@ app.use('/api/canvas-agent', (req, res, next) => {
   });
 }, canvasAgentToolsRouter);
 app.use('/api/creator-agent/v2', (req, res, next) => {
+  // Only the dedicated multipart Skill import may exceed the normal JSON cap.
+  // Its storage counts actual streamed bytes as well as Content-Length.
+  if (req.method === 'POST' && req.path === '/skills/import' && req.is('multipart/form-data')) return next();
   const contentLength = Number(req.get('content-length'));
   if (Number.isFinite(contentLength) && contentLength > CREATOR_AGENT_V2_REQUEST_LIMIT) {
     return res.status(413).json({

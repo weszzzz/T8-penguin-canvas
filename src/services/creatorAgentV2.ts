@@ -3,6 +3,96 @@ const BASE = '/api/creator-agent/v2';
 export type CreatorPhase = 'idea' | 'script' | 'assets' | 'shots' | 'candidates' | 'delivery';
 export type CreatorMediaKind = 'image' | 'video' | 'audio' | 'file';
 
+export interface CreatorSkillSelectionV2 {
+  id: string;
+  packageDigest: string;
+  taskId: string;
+}
+
+export interface CreatorSkillBindingV2 {
+  schema: 't8-creator-skill-binding-v1';
+  selection: CreatorSkillSelectionV2;
+  projectId: string;
+  canvasId: string;
+  origin: 'private' | 'official';
+  adapterId: 'text-v1' | 'image-v1' | 'video-v1';
+  title: string;
+  version: string;
+  contextDigest: string;
+  referenceOnly: boolean;
+  assets: Array<{ assetId: string; kind: CreatorMediaKind; contentHash: string | null; contentRevision: number }>;
+  nodes: Array<{ nodeId: string; contentDigest: string }>;
+  bindingDigest: string;
+  definitionDigest?: string;
+  contract?: CreatorSkillContractV2;
+}
+
+export interface CreatorSkillContractV2 {
+  schema: 't8-creator-skill-contract-v1';
+  referenceKind: 'image' | 'video' | 'audio';
+  minReferences: number;
+  maxReferences: number;
+  maxOutputs: number;
+  maxShots: number;
+  checks: string[];
+}
+
+export interface CreatorSkillReadinessV2 {
+  schema: 't8-creator-skill-readiness-v1';
+  llm: CreatorSkillModelReadinessV2;
+  media: CreatorSkillModelReadinessV2 & { kind?: 'image' | 'video'; automatic?: boolean };
+  input: { state: 'ready' | 'missing' | 'choose-reference'; referenceKind?: 'image' | 'video' | 'audio'; minimum?: number; maximum?: number };
+  credentialsVerified: false;
+  providerCalls: 0;
+  referenceOnly: boolean;
+}
+interface CreatorSkillModelReadinessV2 {
+  state: 'configured' | 'missing-credentials' | 'incompatible' | 'unavailable' | 'not-required';
+  choice: { providerId: string; modelId: string; label: string; catalogDigest: string } | null;
+}
+
+export interface CreatorSkillOutputV2 {
+  schema: 't8-creator-skill-output-v1';
+  title: string;
+  body: string;
+  status: 'text-produced' | 'reference-produced';
+  skillBindingDigest: string;
+}
+
+export interface CreatorSkillCatalogItemV2 {
+  id: string;
+  packageDigest: string;
+  title: string;
+  description?: string;
+  version: string;
+  kind: 'text' | 'image' | 'video';
+  adapterId: CreatorSkillBindingV2['adapterId'];
+  quality?: { status: string };
+  revoked?: boolean;
+  contract?: CreatorSkillContractV2;
+  presentation?: { titleEn: string; descriptionEn: string; inputZh: string; inputEn: string; outputZh: string; outputEn: string };
+}
+
+export interface CreatorInstalledSkillV2 {
+  id: string;
+  packageDigest: string;
+  origin: 'private' | 'official';
+  status: 'active' | 'disabled' | 'retained';
+  title: string;
+  description?: string;
+  name?: string;
+  version?: string;
+  license?: string | null;
+  totalBytes?: number;
+  fileCount?: number;
+  compatibility: 'text-only' | 'reference-only' | 'text-adapter' | 'image-adapter' | 'video-adapter' | 'revoked' | 'unavailable';
+  adapterId?: CreatorSkillBindingV2['adapterId'];
+  diagnostics: Array<{ code: string; message: string }>;
+  quality: { status: string };
+  definition?: CreatorSkillCatalogItemV2 | null;
+  previousVersions?: Array<{ packageDigest: string; installedAt: number }>;
+}
+
 export interface CreatorMediaRef {
   assetId: string;
   kind: CreatorMediaKind;
@@ -64,6 +154,8 @@ export interface CreatorMessageV2 {
   errorCode: string | null;
   createdAt: number;
   updatedAt: number;
+  skillBinding?: CreatorSkillBindingV2;
+  skillOutput?: CreatorSkillOutputV2;
 }
 
 export interface CreatorSuggestionV2 {
@@ -104,6 +196,7 @@ export interface CreatorActionV2 {
   errorMessage: string | null;
   createdAt: number;
   updatedAt: number;
+  skillBinding?: CreatorSkillBindingV2;
 }
 
 export interface CreatorConversationV2 {
@@ -292,7 +385,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init?.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...(init?.headers || {}),
     },
   });
@@ -306,6 +399,69 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 const scopeQuery = (projectId: string, canvasId: string) => new URLSearchParams({ projectId, canvasId });
+
+export function listCreatorSkillsV2(projectId: string, canvasId: string, signal?: AbortSignal) {
+  return request<{ items: CreatorInstalledSkillV2[] }>(`/skills?${scopeQuery(projectId, canvasId)}`, { signal });
+}
+
+export function getCreatorSkillCatalogV2(projectId: string, canvasId: string, signal?: AbortSignal) {
+  return request<{ revision: number; items: CreatorSkillCatalogItemV2[] }>(`/skills/catalog?${scopeQuery(projectId, canvasId)}`, { signal });
+}
+
+export function importCreatorSkillV2(projectId: string, canvasId: string, files: File[], signal?: AbortSignal) {
+  const body = new FormData();
+  for (const file of files) body.append('files', file, file.webkitRelativePath || file.name);
+  return request<{ item: CreatorInstalledSkillV2; generated: false }>(`/skills/import?${scopeQuery(projectId, canvasId)}`, {
+    method: 'POST', body, signal,
+  });
+}
+
+export function installCreatorSkillV2(projectId: string, canvasId: string, id: string, packageDigest: string) {
+  return request<{ item: CreatorInstalledSkillV2; generated: false }>('/skills/install', {
+    method: 'POST', body: JSON.stringify({ projectId, canvasId, id, packageDigest }),
+  });
+}
+
+export function updateCreatorSkillV2(projectId: string, canvasId: string, id: string, previousDigest: string, packageDigest: string) {
+  return request<{ item: CreatorInstalledSkillV2; generated: false }>(`/skills/${encodeURIComponent(id)}/update`, {
+    method: 'POST', body: JSON.stringify({ projectId, canvasId, previousDigest, packageDigest }),
+  });
+}
+
+export function setCreatorSkillStatusV2(projectId: string, canvasId: string, id: string, packageDigest: string, status: CreatorInstalledSkillV2['status']) {
+  return request<{ id: string; packageDigest: string; status: CreatorInstalledSkillV2['status']; retainedForExistingWork: boolean }>(`/skills/${encodeURIComponent(id)}/status`, {
+    method: 'POST', body: JSON.stringify({ projectId, canvasId, packageDigest, status }),
+  });
+}
+
+export function getCreatorSkillDetailsV2(projectId: string, canvasId: string, id: string, packageDigest: string, signal?: AbortSignal) {
+  const query = scopeQuery(projectId, canvasId);
+  query.set('packageDigest', packageDigest);
+  return request<{ item: CreatorInstalledSkillV2; instructions: string; files: Array<{ path: string; size: number; sha256: string }> }>(
+    `/skills/${encodeURIComponent(id)}?${query}`, { signal },
+  );
+}
+
+export function prepareCreatorSkillV2(projectId: string, canvasId: string, id: string, packageDigest: string, signal?: AbortSignal) {
+  const query = scopeQuery(projectId, canvasId);
+  query.set('packageDigest', packageDigest);
+  return request<{ item: CreatorInstalledSkillV2; generated: false }>(
+    `/skills/${encodeURIComponent(id)}/prepare?${query}`, { signal },
+  );
+}
+
+export function preflightCreatorSkillV2(input: {
+  projectId: string; canvasId: string; sessionId?: string; skill: CreatorSkillSelectionV2;
+  attachments: CreatorMediaRef[]; selectedNodeIds: string[];
+}, signal?: AbortSignal) {
+  return request<{ readiness: CreatorSkillReadinessV2; materials: CreatorMediaRef[]; generated: false }>(
+    `/skills/${encodeURIComponent(input.skill.id)}/preflight`, { method: 'POST', signal,
+      body: JSON.stringify({ projectId: input.projectId, canvasId: input.canvasId, sessionId: input.sessionId,
+        taskId: input.skill.taskId, packageDigest: input.skill.packageDigest,
+        attachments: input.attachments.map(({ assetId, kind }) => ({ assetId, kind })), selectedNodeIds: input.selectedNodeIds }),
+    },
+  );
+}
 
 export async function listCreatorConversationsV2(projectId: string, canvasId: string, before?: string) {
   const query = scopeQuery(projectId, canvasId);
@@ -370,6 +526,7 @@ export async function sendCreatorMessageV2(sessionId: string, input: {
   selectedNodeIds?: string[];
   currentSceneId?: string | null;
   creationMode?: 'auto' | 'scene';
+  skill?: CreatorSkillSelectionV2 | null;
 }) {
   return request<CreatorSnapshotV2 & { assistant: CreatorMessageV2; evidence: { providerCalls: number } }>(
     `/sessions/${encodeURIComponent(sessionId)}/messages`,

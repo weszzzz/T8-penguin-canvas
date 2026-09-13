@@ -1,7 +1,47 @@
 // preload.cjs — 暴露最小信息给 BrowserWindow 渲染进程
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
+let canvasCloseHandler = null;
+let canvasCloseEverRegistered = false;
+let canvasCloseRequest = null;
+ipcRenderer.on('t8pc:canvas-close-cancel', (_event, requestId) => {
+  if (canvasCloseRequest?.id !== requestId) return;
+  canvasCloseRequest.cancelled = true;
+  if (canvasCloseRequest.settled) canvasCloseRequest = null;
+});
+ipcRenderer.on('t8pc:canvas-close-request', async (_event, requestId) => {
+  if (typeof requestId !== 'string' || canvasCloseRequest) return;
+  const request = { id: requestId, cancelled: false, settled: false, approved: false };
+  canvasCloseRequest = request;
+  try {
+    const result = canvasCloseHandler
+      ? await canvasCloseHandler(() => request.cancelled)
+      : { ok: !canvasCloseEverRegistered, reason: 'save' };
+    request.approved = result?.ok === true;
+    if (!request.cancelled) ipcRenderer.send('t8pc:canvas-close-result', {
+      requestId, ok: result?.ok === true,
+      reason: ['running', 'conflict'].includes(result?.reason) ? result.reason : 'save',
+    });
+  } catch {
+    request.approved = false;
+    if (!request.cancelled) ipcRenderer.send('t8pc:canvas-close-result', { requestId, ok: false, reason: 'save' });
+  } finally {
+    request.settled = true;
+    // A successful ACK can race the main deadline. Keep its cancellation
+    // handle alive until the window closes or main explicitly cancels it.
+    if (canvasCloseRequest === request && (request.cancelled || !request.approved)) canvasCloseRequest = null;
+  }
+});
+
 contextBridge.exposeInMainWorld('t8pc', {
+  onCanvasCloseRequest: (callback) => {
+    if (typeof callback !== 'function') return () => {};
+    canvasCloseEverRegistered = true;
+    canvasCloseHandler = callback;
+    return () => {
+      if (canvasCloseHandler === callback) canvasCloseHandler = null;
+    };
+  },
   getInfo: () => ipcRenderer.invoke('t8pc:get-info'),
   locale: {
     get: () => ipcRenderer.invoke('t8pc:locale:get'),

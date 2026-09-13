@@ -40,3 +40,11 @@ test('external image/video providers default to 3600s generation timeout while p
   assert.match(read('backend/src/providers/volcengine.js'), /GENERATION_TIMEOUT_MS\s*=\s*60\s*\*\s*60\s*\*\s*1000/);
   assert.match(read('backend/src/routes/externalProviders.js'), /EXTERNAL_GENERATION_TIMEOUT_MS\s*=\s*60\s*\*\s*60\s*\*\s*1000/);
 });
+
+test('Jimeng production settings clamp legacy short polling windows to 15 minutes', () => {
+  const { normalizeAdvancedProviders } = require('../backend/src/providers/registry.js');
+  const providers = normalizeAdvancedProviders([
+    { id: 'jimeng-cli', protocol: 'jimeng-cli', jimengConfig: { pollSeconds: 20 } },
+  ]);
+  assert.equal(providers.find((provider: any) => provider.id === 'jimeng-cli')?.jimengConfig?.pollSeconds, 15 * 60);
+});

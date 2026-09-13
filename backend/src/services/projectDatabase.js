@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const { generationInputMetadata, generationReferenceAssets, storedRunInput, runInputWithoutHistory } = require('./generationHistoryInputs');
 const { TextDecoder, types: utilTypes } = require('util');
 const { isMainThread } = require('node:worker_threads');
 const BetterSqlite3 = require('better-sqlite3');
@@ -23726,6 +23727,9 @@ class ProjectDatabase {
             outputOrdinal: payload.outputOrdinal,
             provider: attempt.provider || null,
             model: attempt.model || null,
+            // Preserve this classification after Run/Attempt retention. A reused
+            // output still needs its authoritative runtime receipt, not a new generation.
+            reusedResult: attempt.metadata?.reusedResult === true,
           },
           strictReferences: true,
           createdAt: timestamp + operationIndex,
@@ -25706,7 +25710,7 @@ class ProjectDatabase {
       definitionVersion: input.definitionVersion == null ? null : Math.max(1, Number(input.definitionVersion) || 1),
       subflowPath: Array.isArray(input.subflowPath) ? input.subflowPath.map(String) : [],
       status: String(input.status || 'queued'),
-      inputSnapshot: input.inputSnapshot && typeof input.inputSnapshot === 'object' ? input.inputSnapshot : {},
+      inputSnapshot: runInputWithoutHistory(input.inputSnapshot),
       outputRefs: Array.isArray(input.outputRefs) ? input.outputRefs.map(String) : [],
       createdAt: now,
       updatedAt: now,
@@ -25726,7 +25730,8 @@ class ProjectDatabase {
       nodeRun.definitionId, nodeRun.definitionVersion,
       JSON.stringify(nodeRun.subflowPath),
       nodeRun.status,
-      JSON.stringify(nodeRun.inputSnapshot),
+      JSON.stringify(storedRunInput(nodeRun.inputSnapshot, input.historyInputSnapshot, nodeRun.originalNodeId || nodeRun.nodeId,
+        { database: this, projectId: this.getRun(runId)?.projectId })),
       JSON.stringify(nodeRun.outputRefs),
       now,
       now,
@@ -25779,7 +25784,7 @@ class ProjectDatabase {
       definitionVersion: row.definition_version,
       subflowPath: parseJson(row.subflow_path_json, []),
       status: row.status,
-      inputSnapshot: parseJson(row.input_json, {}),
+      inputSnapshot: runInputWithoutHistory(parseJson(row.input_json, {})),
       outputRefs: parseJson(row.output_refs_json, []),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -25981,7 +25986,8 @@ class ProjectDatabase {
       : null;
     const sourceNodeId = String(nodeRun.originalNodeId || snapshotNode?.id || nodeRun.nodeId);
     const sourceNodeType = String(snapshotNode?.type || 'unknown').slice(0, 120);
-    const inputAssets = this.findAssetsBySourceUrls(run.projectId, collectSnapshotAssetUrls(nodeRun.inputSnapshot));
+    const inputAssets = generationReferenceAssets(this, run, nodeRun)
+      ?? this.findAssetsBySourceUrls(run.projectId, collectSnapshotAssetUrls(nodeRun.inputSnapshot));
     const prepared = {
       input,
       run,
@@ -26084,6 +26090,7 @@ class ProjectDatabase {
             outputIndex: index,
             provider: attempt?.provider || null,
             model: attempt?.model || null,
+            reusedResult: attempt?.metadata?.reusedResult === true,
           },
           strictReferences: true,
         };
@@ -30798,6 +30805,11 @@ class ProjectDatabase {
 
   _mapAssetLineageRow(row) {
     if (!row) return null;
+    const publicMetadata = parseJson(row.metadata_json, {});
+    // Full input graphs belong to the separately scoped history detail read,
+    // never to ordinary asset lineage/graph responses or write receipts.
+    delete publicMetadata.generationInput;
+    delete publicMetadata.generationInputRef;
     return {
       id: row.id,
       eventId: row.id,
@@ -30825,7 +30837,7 @@ class ProjectDatabase {
       promptSummary: row.prompt_summary,
       promptDigest: row.prompt_digest,
       derivedOperation: row.derived_operation,
-      metadata: parseJson(row.metadata_json, {}),
+      metadata: publicMetadata,
       createdAt: row.created_at,
     };
   }
@@ -30896,7 +30908,10 @@ class ProjectDatabase {
       const promptSummary = String(input.promptSummary || '').replace(/\s+/g, ' ').trim().slice(0, 1200) || null;
       const promptDigest = String(input.promptDigest || (promptSummary ? `sha256:${crypto.createHash('sha256').update(promptSummary).digest('hex')}` : '')).slice(0, 100) || null;
       const createdAt = Number(input.createdAt) || Date.now();
-      const lineageMetadata = input.metadata && typeof input.metadata === 'object' ? input.metadata : {};
+      const lineageMetadata = generationInputMetadata(this, {
+        run, nodeRun, attempt, sourceType,
+        metadata: input.metadata && typeof input.metadata === 'object' ? input.metadata : {},
+      });
       const rawOutputOrdinal = input.outputOrdinal ?? lineageMetadata.outputOrdinal ?? lineageMetadata.outputIndex;
       const outputOrdinal = rawOutputOrdinal == null
         ? null

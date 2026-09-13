@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const config = require('../config');
 const { runLocalHooks } = require('../extensions/runtimeHooks');
 const { safeRemoteMediaFetch } = require('../utils/safeRemoteMediaFetch');
+const { MIN_PROVIDER_MEDIA_TIMEOUT_MS } = require('../providers/providerTimeoutPolicy');
 const {
   providerSubmissionContextMiddleware,
   currentProviderSubmissionKey,
@@ -104,8 +105,8 @@ async function saveOneMediaOutput(url, kind = 'image') {
       allowedKinds: [kind],
       trustedProviderOutput: true,
       maxBytes: kind === 'video' ? 1024 * 1024 * 1024 : kind === 'audio' ? 256 * 1024 * 1024 : 64 * 1024 * 1024,
-      deadlineMs: 5 * 60 * 1000,
-      idleTimeoutMs: 30 * 1000,
+      deadlineMs: MIN_PROVIDER_MEDIA_TIMEOUT_MS,
+      idleTimeoutMs: MIN_PROVIDER_MEDIA_TIMEOUT_MS,
       maxRedirects: 4,
       userAgent: 'T8-PenguinCanvas-GrokOAuth/1.0',
     });

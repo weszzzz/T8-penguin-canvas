@@ -2,6 +2,10 @@ const { normalizeT8LocalMediaRef, resolveMediaRef } = require('./mediaResolver')
 const { normalizeLlmMessageMedia } = require('./llmMedia');
 const { providerTrace } = require('./providerTrace');
 const { providerIdempotencyHeadersLike } = require('../services/providerSubmissionContext');
+const {
+  normalizeProviderLlmTimeoutMs,
+  normalizeProviderMediaTimeoutMs,
+} = require('./providerTimeoutPolicy');
 
 const DEFAULT_TIMEOUT_MS = 8000;
 const IMAGE_EDIT_REMOTE_MAX_BYTES = 20 * 1024 * 1024;
@@ -673,6 +677,10 @@ function providerErrorDetail(raw) {
 async function generateChat(provider, input = {}, options = {}) {
   const validation = validateProvider(provider, { apiKeyRequired: true });
   if (!validation.ok) return validation;
+  const generationOptions = {
+    ...options,
+    timeoutMs: normalizeProviderLlmTimeoutMs(options.timeoutMs),
+  };
 
   let model;
   try {
@@ -737,9 +745,9 @@ async function generateChat(provider, input = {}, options = {}) {
         Accept: shouldReadStream ? 'text/event-stream' : 'application/json',
       },
       body: JSON.stringify(body),
-      timeoutMs: options.timeoutMs,
-      fetchImpl: options.fetchImpl,
-      signal: options.signal,
+      timeoutMs: generationOptions.timeoutMs,
+      fetchImpl: generationOptions.fetchImpl,
+      signal: generationOptions.signal,
     });
     if (!res.ok) {
       const raw = await responseJson(res);
@@ -761,7 +769,7 @@ async function generateChat(provider, input = {}, options = {}) {
       ? String(res.headers.get('content-type') || '').toLowerCase()
       : '';
     if (shouldReadStream && res.body && !contentType.includes('application/json')) {
-      const streamed = await readChatEventStream(res, options);
+      const streamed = await readChatEventStream(res, generationOptions);
       const traceRaw = {
         ...(streamed.lastRaw && typeof streamed.lastRaw === 'object' ? streamed.lastRaw : {}),
         ...(streamed.requestId ? { requestId: streamed.requestId } : {}),
@@ -856,6 +864,7 @@ async function generateChat(provider, input = {}, options = {}) {
 async function generateImage(provider, input = {}, options = {}) {
   const validation = validateProvider(provider, { apiKeyRequired: true });
   if (!validation.ok) return validation;
+  const generationTimeoutMs = normalizeProviderMediaTimeoutMs(options.timeoutMs);
 
   const prompt = String(input.prompt || '').trim();
   if (!prompt) {
@@ -900,7 +909,10 @@ async function generateImage(provider, input = {}, options = {}) {
     try {
       files = await resolveImageEditFiles(refsInput, {
         baseUrl: options.baseUrl,
-        timeoutMs: options.referenceTimeoutMs || options.timeoutMs,
+        timeoutMs: normalizeProviderMediaTimeoutMs(
+          options.referenceTimeoutMs,
+          { fallback: generationTimeoutMs },
+        ),
         fetchImpl: options.fetchImpl,
         signal: options.signal,
       });
@@ -933,7 +945,7 @@ async function generateImage(provider, input = {}, options = {}) {
       method: 'POST',
       headers: requestHeaders,
       body: requestBody,
-      timeoutMs: options.timeoutMs,
+      timeoutMs: generationTimeoutMs,
       fetchImpl: options.fetchImpl,
       signal: options.signal,
     });
@@ -971,6 +983,7 @@ async function generateImage(provider, input = {}, options = {}) {
 async function generateVideo(provider, input = {}, options = {}) {
   const validation = validateProvider(provider, { apiKeyRequired: true });
   if (!validation.ok) return validation;
+  const generationTimeoutMs = normalizeProviderMediaTimeoutMs(options.timeoutMs);
 
   const prompt = String(input.prompt || '').trim();
   if (!prompt) {
@@ -1007,7 +1020,7 @@ async function generateVideo(provider, input = {}, options = {}) {
       method: 'POST',
       headers: bearerHeaders(provider),
       body: JSON.stringify(body),
-      timeoutMs: options.timeoutMs,
+      timeoutMs: generationTimeoutMs,
       fetchImpl: options.fetchImpl,
       signal: options.signal,
     });

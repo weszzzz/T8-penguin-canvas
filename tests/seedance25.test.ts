@@ -287,5 +287,5 @@ test('Seedance 2.5 standalone and Video UI share submit/query plumbing', () => {
   assert.match(video, /const isSeedance25/);
   assert.match(video, /if \(isSeedance25\)/);
   assert.match(video, /querySeedance\(tid, 'seedance-nz'\)/);
-  assert.match(video, /maxMentionAudios = isSeedance25[\s\S]*?SEEDANCE25_MULTI_MAX_AUDIOS/);
+  assert.match(video, /const maxMentionAudios = [^;]*isSeedance25 && seedance25Mode === 'multi'\s*\? SEEDANCE25_MULTI_MAX_AUDIOS/);
 });

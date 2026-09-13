@@ -10081,6 +10081,55 @@ html[data-theme="dark"][data-theme-visual="farm-story"] .t8-farm-story-toolbar-t
 }
 
 /* Generation history drawer v1. */
+.t8-history-recovery { flex-shrink: 0; padding: 0 10px 8px; font-size: 12px; overflow-wrap: anywhere; }
+.t8-history-recovery button { padding: 5px 9px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 7px; margin-right: 6px; }
+.t8-history-recovery button:disabled { opacity: .5; cursor: default; }
+.t8-history-recovery details { max-height: 100px; overflow: auto; margin-block: 6px; }
+.t8-history-record { min-width: 0; padding: 12px; border: 1px solid currentColor; border-color: color-mix(in srgb, currentColor 14%, transparent); border-radius: 10px; }
+.t8-history-record > header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 11px; opacity: .75; margin-bottom: 10px; }
+.t8-history-record-outputs { display: grid; gap: 12px; }
+.t8-history-record-outputs.is-batch { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.t8-history-record-outputs.is-batch > div { min-width: 0; }
+.t8-history-record-outputs.is-batch img, .t8-history-record-outputs.is-batch video { height: 110px; }
+.t8-history-record-outputs img, .t8-history-record-outputs video { display: block; width: 100%; max-height: 280px; object-fit: contain; border-radius: 7px; background: #080808; }
+.t8-history-record-outputs audio { width: 100%; }
+.t8-history-record details { font-size: 12px; overflow-wrap: anywhere; }
+.t8-history-record details summary { cursor: pointer; padding: 8px 0; }
+.t8-history-prompt { font-size: 12px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; margin: 4px 0 10px; }
+.t8-history-unavailable { font-size: 12px; padding: 24px 8px; text-align: center; overflow-wrap: anywhere; }
+.t8-history-record button:disabled { opacity: .5; cursor: default; }
+.t8-history-image-open { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.t8-history-image-dialog { position: fixed; inset: 0; margin: auto; max-width: 92vw; max-height: 92vh; padding: 12px; border: 1px solid #777; border-radius: 12px; background: var(--bg-primary, #fff); color: var(--text-primary, #111); }
+.t8-history-image-dialog::backdrop { background: #000a; }
+.t8-history-settings-dialog { position: fixed; inset: 0; margin: auto; width: min(580px, 92vw); max-height: 85vh; max-height: 85dvh; overflow: hidden; padding: 0; border: 1px solid #777; border-radius: 12px; background: var(--bg-primary, #fff); color: var(--text-primary, #111); font-size: 13px; }
+.t8-history-settings-dialog[open] { display: flex; flex-direction: column; }
+.t8-history-settings-content { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 20px; overflow-wrap: anywhere; }
+.t8-history-settings-dialog::backdrop { background: #0009; }
+.t8-history-settings-dialog h3 { font-size: 18px; margin-bottom: 10px; }
+.t8-history-settings-dialog p { margin: 8px 0; line-height: 1.6; }
+.t8-history-settings-dialog pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; max-height: 180px; overflow: auto; padding: 8px; }
+.t8-history-settings-fields { margin: 12px 0; }
+.t8-history-settings-fields section { border-top: 1px solid #8885; padding: 8px 0; }
+.t8-history-settings-diff { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 8px; }
+.t8-history-settings-diff span { opacity: .75; }
+.t8-history-settings-diff pre { background: #8881; border-radius: 5px; max-height: 120px; }
+.t8-history-settings-open { margin-right: 8px; padding: 5px 8px; border: 1px solid #8888; border-radius: 5px; }
+@media (max-width: 480px) { .t8-history-settings-diff { grid-template-columns: minmax(0, 1fr); } }
+.t8-history-settings-dialog label { display: block; line-height: 1.7; }
+.t8-history-settings-dialog input { margin-right: 6px; }
+.t8-history-settings-dialog footer { display: flex; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; gap: 12px; padding: 12px 20px; border-top: 1px solid #8885; }
+.t8-history-settings-dialog button { min-height: 36px; padding: 6px 12px; border: 1px solid #8888; border-radius: 6px; }
+.t8-history-settings-dialog.is-new-input .t8-history-settings-diff { grid-template-columns: minmax(0, 1fr); }
+.t8-history-input-references { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.t8-history-input-references h4 { grid-column: 1 / -1; }
+.t8-history-input-references > div { min-width: 0; display: flex; flex-direction: column; gap: 5px; border: 1px solid #8885; border-radius: 6px; padding: 6px; }
+.t8-history-input-references img { width: 100%; height: 80px; object-fit: contain; background: #8881; }
+.t8-history-reference-recovery { margin-top: 10px; padding: 10px; border: 1px solid #8885; border-radius: 8px; background: #8881; }
+.t8-history-reference-recovery p { margin: 6px 0; line-height: 1.6; overflow-wrap: anywhere; }
+.t8-history-reference-recovery label { display: block; margin: 8px 0; }
+.t8-history-reference-recovery button { min-height: 32px; padding: 5px 8px; margin: 4px 6px 0 0; border: 1px solid #8888; border-radius: 5px; }
+.t8-history-image-dialog form { text-align: right; margin-bottom: 8px; }
+.t8-history-record-outputs .t8-history-image-dialog img { width: auto; max-width: 85vw; height: auto; max-height: 80vh; }
 .t8-generation-history-panel {
   position: fixed;
   top: 58px;

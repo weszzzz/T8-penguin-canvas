@@ -68,7 +68,7 @@ async function fixture(options = {}) {
         prompt: '雨夜车站电影海报，冷蓝环境，暖色列车灯，纵深构图',
         parameters: { ratio: '16:9', count: 1 },
         inputAssetIds: [],
-        modelSnapshot: { kind: 'image', providerId: 'seedance-nz', modelId: 'zhenzhen-image-gk-v2', catalogDigest: '9ef6b59cec91b32595b0215c78f801d8c231de81062f64f68e06d772fb59d9c2' },
+        modelSnapshot: { kind: 'image', providerId: 'seedance-nz', modelId: 'zhenzhen-image-gk-v2', catalogDigest: require('../backend/src/shared/creativeModelCatalog.json').sourceDigest },
       },
       evidence: { providerCalls: 1, providerId: 'seedance-nz', modelId: 'bytedance/doubao-seed-2.1-pro', catalogDigest: '9ef6b59cec91b32595b0215c78f801d8c231de81062f64f68e06d772fb59d9c2', responseDigest: digest({ ok: true }) },
       });
@@ -95,13 +95,14 @@ async function fixture(options = {}) {
     }); },
   };
   const router = createCreatorAgentV2Router({
-    config: { SETTINGS_FILE: 'unused', DATA_DIR: 'unused' },
+    config: { SETTINGS_FILE: 'unused', DATA_DIR: directory },
     database,
     repository,
     llmRuntime,
     actionExecutor,
     assetService,
     faultInjector: options.faultInjector,
+    skillStore: options.skillStore,
     settingsProvider: () => ({ zhenzhenSd2ApiKey: 'configured-but-never-returned' }),
   });
   const app = express();
@@ -170,6 +171,235 @@ test('Creator v2 thin route completes one natural LLM turn with one pending deci
     assert.equal(JSON.stringify(turn.body).includes('configured-but-never-returned'), false);
     assert.equal(/价格|费用|余额|额度|账单/u.test(JSON.stringify(turn.body)), false);
   } finally { await f.close(); }
+});
+
+test('Creator skill turn persists full text work and fixed selection; retry after uninstall makes no model call', async (t) => {
+  const { CreatorSkillStore } = require('../backend/src/services/creatorSkillStore');
+  const { buildSkillPackage } = require('../backend/src/services/creatorSkillPackages');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 't8-skill-v2-turn-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const skillStore = new CreatorSkillStore({ root });
+  const scope = { projectId: 'project-local', canvasId: 'canvas-local' };
+  const source = '---\nname: prompt-method\ndescription: Write complete prompts.\n---\nKeep the product facts. Read [guide](references/guide.md).';
+  const pack = buildSkillPackage([
+    { path: 'SKILL.md', bytes: Buffer.from(source) },
+    { path: 'references/guide.md', bytes: Buffer.from('Do not invent product text.') },
+  ]);
+  const installed = skillStore.installPrivate(scope, pack);
+  let calls = 0;
+  const body = '完整的商品摄影提示词，保留主体、文字与颜色。\n'.repeat(220);
+  const f = await fixture({ skillStore, llmRuntime: {
+    modelSnapshot: () => ({ kind: 'llm', providerId: 'seedance-nz', modelId: 'zhenzhen/gk-4.6', catalogDigest: 'a'.repeat(64) }),
+    respond: async input => {
+      calls += 1;
+      assert.equal(input.skillContext.body, pack.body);
+      assert.equal(input.skillContext.resources[0].text, 'Do not invent product text.');
+      assert.equal(input.skillBinding.selection.packageDigest, pack.packageDigest);
+      assert.equal(input.skillCurrentWork?.body || null, calls === 1 ? null : body.trim());
+      return { replyMarkdown: '完整提示词已整理，可以继续修改。', suggestions: ['精简文案', '调整色调', '保留这版'], proposedAction: null,
+        skillOutput: { schema: 't8-creator-skill-output-v1', title: '商品摄影提示词', body }, evidence: { providerCalls: 1, responseDigest: digest(body) } };
+    },
+  } });
+  t.after(() => f.close());
+  const sessionId = 'skill-text-session';
+  assert.equal((await request(f.baseUrl, '/sessions', { method: 'POST', body: JSON.stringify({ ...scope, sessionId }) })).status, 201);
+  const payload = { ...scope, clientRequestId: 'skill-text-turn', text: '请整理完整提示词，不生成图片',
+    skill: { id: installed.id, packageDigest: pack.packageDigest, taskId: 'skill-task-1' } };
+  const turn = await request(f.baseUrl, `/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify(payload) });
+  assert.equal(turn.status, 201, JSON.stringify(turn.body));
+  assert.equal(turn.body.data.assistant.skillOutput.body, body.trim());
+  assert.equal(turn.body.data.assistant.skillOutput.status, 'text-produced');
+  assert.equal(turn.body.data.pendingAction, null);
+  const state = f.repository.getWorkState(sessionId, { ...scope, includeCurrentVersions: true });
+  assert.equal(state.currentVersions.length, 1);
+  assert.equal(state.currentVersions[0].kind, 'PromptPack');
+  assert.equal(state.currentVersions[0].fields.prompts[0].body, body.trim());
+  const continued = await request(f.baseUrl, `/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify({ ...payload, clientRequestId: 'skill-text-refine', text: '继续调整这份提示词' }) });
+  assert.equal(continued.status, 201, JSON.stringify(continued.body));
+  skillStore.setStatus(scope, installed.id, pack.packageDigest, 'retained');
+  const replay = await request(f.baseUrl, `/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify(payload) });
+  assert.equal(replay.status, 200);
+  assert.equal(calls, 2);
+  const conflict = await request(f.baseUrl, `/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify({ ...payload, skill: null }) });
+  assert.equal(conflict.status, 409);
+  const newTurn = await request(f.baseUrl, `/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify({ ...payload, clientRequestId: 'skill-text-next' }) });
+  assert.equal(newTurn.status, 409);
+  assert.equal(newTurn.body.code, 'CREATOR_SKILL_DISABLED');
+  assert.equal(calls, 2);
+});
+
+test('Creator private skill cannot turn text guidance into a media action', async (t) => {
+  const { CreatorSkillStore } = require('../backend/src/services/creatorSkillStore');
+  const { buildSkillPackage } = require('../backend/src/services/creatorSkillPackages');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 't8-skill-v2-guard-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const scope = { projectId: 'project-local', canvasId: 'canvas-local' };
+  const skillStore = new CreatorSkillStore({ root });
+  const pack = buildSkillPackage([{ path: 'SKILL.md', bytes: Buffer.from('---\nname: prompt-guide\ndescription: Guide only.\n---\nWrite a prompt.') }]);
+  const installed = skillStore.installPrivate(scope, pack);
+  const f = await fixture({ skillStore });
+  t.after(() => f.close());
+  await request(f.baseUrl, '/sessions', { method: 'POST', body: JSON.stringify({ ...scope, sessionId: 'skill-guard-session' }) });
+  const turn = await request(f.baseUrl, '/sessions/skill-guard-session/messages', { method: 'POST', body: JSON.stringify({ ...scope,
+    clientRequestId: 'skill-guard-turn', text: '生成图片', skill: { id: installed.id, packageDigest: pack.packageDigest, taskId: 'guard-task' } }) });
+  assert.equal(turn.status, 409);
+  assert.equal(turn.body.code, 'CREATOR_SKILL_ACTION_UNSUPPORTED');
+  assert.equal(f.repository.getConversation('skill-guard-session', scope).pendingAction, null);
+});
+
+test('default V2 catalog installs bundled methods and carries signed limits through message and confirmation', async t => {
+  const scope = { projectId: 'project-local', canvasId: 'canvas-local' };
+  for (const kind of ['image', 'video']) await t.test(kind, async t => {
+    let count = 1;
+    const f = await fixture({ llmRuntime: {
+      modelSnapshot: () => ({ kind: 'llm', providerId: 'seedance-nz', modelId: 'test-llm', catalogDigest: 'a'.repeat(64) }),
+      respond: async input => {
+        assert.equal(input.skillBinding.contract.referenceKind, 'image');
+        assert.equal(input.skillBinding.contract.maxOutputs, 1);
+        assert.equal(input.skillContext.resources.length, 1);
+        assert.ok(input.skillContext.body.length > 300);
+        return { replyMarkdown: '方向已整理，请确认生成。', suggestions: ['调整方向', '调整光线', '开始生成'],
+          proposedAction: { id: `builtin-action-${kind}-${count}`, type: kind, prompt: '保留商品参考主体，使用明确的光线与运动方向',
+            parameters: { ratio: '16:9', count }, inputAssetIds: ['asset-result-001'],
+            modelSnapshot: { kind, ...input.skillReadiness.media.choice } },
+          evidence: { providerCalls: 1, responseDigest: digest({ kind, count }) } };
+      },
+    } });
+    t.after(() => f.close());
+    const query = '?projectId=project-local&canvasId=canvas-local';
+    const catalog = await request(f.baseUrl, '/skills/catalog' + query);
+    assert.equal(catalog.status, 200);
+    assert.equal(catalog.body.data.items.length, 3);
+    const entry = catalog.body.data.items.find(item => item.kind === kind);
+    const installed = await request(f.baseUrl, '/skills/install', { method: 'POST', body: JSON.stringify({ ...scope, id: entry.id, packageDigest: entry.packageDigest }) });
+    assert.equal(installed.status, 201);
+    const skill = { id: installed.body.data.item.id, packageDigest: entry.packageDigest, taskId: `builtin-task-${kind}` };
+    const sessionId = `builtin-session-${kind}`;
+    await request(f.baseUrl, '/sessions', { method: 'POST', body: JSON.stringify({ ...scope, sessionId }) });
+    const payload = { ...scope, clientRequestId: `builtin-turn-${kind}`, skill, text: '根据参考商品生成一个作品', attachments: [{ assetId: 'asset-result-001', kind: 'image' }] };
+    const turn = await request(f.baseUrl, `/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify(payload) });
+    assert.equal(turn.status, 201, JSON.stringify(turn.body));
+    assert.deepEqual(turn.body.data.pendingAction.skillBinding.contract, entry.contract);
+    assert.deepEqual(turn.body.data.pendingAction.skillBinding, turn.body.data.assistant.skillBinding);
+    const confirmed = await request(f.baseUrl, `/sessions/${sessionId}/actions/${turn.body.data.pendingAction.id}/confirm`, { method: 'POST', body: JSON.stringify(scope) });
+    assert.equal(confirmed.status, 202, JSON.stringify(confirmed.body));
+    assert.equal(confirmed.body.data.action.status, 'running');
+    const invalidSession = `${sessionId}-invalid`;
+    await request(f.baseUrl, '/sessions', { method: 'POST', body: JSON.stringify({ ...scope, sessionId: invalidSession }) });
+    count = 2;
+    const invalid = await request(f.baseUrl, `/sessions/${invalidSession}/messages`, { method: 'POST', body: JSON.stringify({ ...payload, clientRequestId: `${payload.clientRequestId}-invalid` }) });
+    assert.equal(invalid.status, 409);
+    assert.equal(invalid.body.code, 'CREATOR_SKILL_ACTION_UNSUPPORTED');
+    assert.equal(f.repository.getConversation(invalidSession, scope).pendingAction, null);
+  });
+});
+
+test('skill preflight resolves authorized canvas materials without creating conversations or model calls', async t => {
+  const f = await fixture();
+  t.after(() => f.close());
+  const scope = { projectId: 'project-local', canvasId: 'canvas-local' };
+  const catalog = await request(f.baseUrl, '/skills/catalog?projectId=project-local&canvasId=canvas-local');
+  const entry = catalog.body.data.items.find(item => item.kind === 'image');
+  const installed = await request(f.baseUrl, '/skills/install', { method: 'POST', body: JSON.stringify({ ...scope, id: entry.id, packageDigest: entry.packageDigest }) });
+  const item = installed.body.data.item;
+  f.document.nodes.push({ id: 'product-node', type: 'upload', data: { sourceAssetId: 'asset-result-001', label: '用户选中的商品' } });
+  const payload = { ...scope, packageDigest: item.packageDigest, taskId: 'prepare-task', selectedNodeIds: ['product-node'], attachments: [] };
+  const result = await request(f.baseUrl, `/skills/${encodeURIComponent(item.id)}/preflight`, { method: 'POST', body: JSON.stringify(payload) });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.equal(result.body.data.readiness.media.choice.modelId, 'zhenzhen-image-gk-v2-edit');
+  assert.equal(result.body.data.materials[0].assetId, 'asset-result-001');
+  assert.equal(result.body.data.materials[0].previewUrl, '/api/project-assets/asset-result-001/media');
+  assert.equal(result.body.data.generated, false);
+  assert.equal(f.llmInputs.length, 0);
+  assert.deepEqual(f.repository.listConversations(scope).items, []);
+  assert.equal(JSON.stringify(result.body).includes('configured-but-never-returned'), false);
+  assert.equal(JSON.stringify(result.body).includes(f.managedImage), false);
+  const other = await request(f.baseUrl, `/skills/${encodeURIComponent(item.id)}/preflight`, { method: 'POST', body: JSON.stringify({ ...payload, canvasId: 'wrong-canvas' }) });
+  assert.equal(other.status, 404);
+});
+
+async function officialSkillFixture(t, extra = {}) {
+  const crypto = require('node:crypto');
+  const { CreatorSkillStore, CATALOG_SCHEMA } = require('../backend/src/services/creatorSkillStore');
+  const { buildSkillPackage, canonicalJson } = require('../backend/src/services/creatorSkillPackages');
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 't8-official-skill-turn-'));
+  const keys = crypto.generateKeyPairSync('ed25519');
+  const makePackage = version => buildSkillPackage([{ path: 'SKILL.md', bytes: Buffer.from(`---\nname: product-method\ndescription: Create product images.\n---\nPreserve product facts. Method version ${version}.`) }]);
+  const envelopeFor = (pack, revision) => {
+    const manifest = { schema: CATALOG_SCHEMA, revision, skills: [{ id: 'product-method', packageDigest: pack.packageDigest,
+      title: '商品创作', version: String(revision), kind: 'image', adapterId: 'image-v1' }] };
+    return { manifest, keyId: 'test-root', signature: crypto.sign(null, Buffer.from(canonicalJson(manifest)), keys.privateKey).toString('base64') };
+  };
+  const pack = makePackage(1);
+  const skillStore = new CreatorSkillStore({ root: directory, catalog: envelopeFor(pack, 1),
+    trustedKeys: { 'test-root': keys.publicKey.export({ type: 'spki', format: 'pem' }) }, packageProvider: () => pack });
+  const scope = { projectId: 'project-local', canvasId: 'canvas-local' };
+  const installed = skillStore.installOfficial(scope, 'product-method', pack.packageDigest);
+  const f = await fixture({ ...extra, skillStore });
+  t.after(async () => { await f.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const skill = { id: installed.id, packageDigest: pack.packageDigest, taskId: 'official-skill-task' };
+  const upgrade = () => {
+    const next = makePackage(2);
+    const envelope = envelopeFor(next, 2);
+    skillStore.catalog = envelope.manifest;
+    skillStore.catalogEnvelope = envelope;
+    skillStore.packageProvider = () => next;
+    skillStore.updateOfficial(scope, skill.id, pack.packageDigest, next.packageDigest);
+    return next;
+  };
+  return { ...f, scope, skill, skillStore, upgrade };
+}
+
+test('official skill confirmation validates live references and still permits unrelated layout changes', async t => {
+  const f = await officialSkillFixture(t);
+  const sessionId = 'official-media-session';
+  f.document.nodes.push({ id: 'product-node', type: 'text', position: { x: 0, y: 0 }, data: { text: '保留黑色瓶盖' } });
+  await request(f.baseUrl, '/sessions', { method: 'POST', body: JSON.stringify({ ...f.scope, sessionId }) });
+  const turn = await request(f.baseUrl, `/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify({ ...f.scope,
+    clientRequestId: 'official-media-turn', text: '生成商品图', selectedNodeIds: ['product-node'], skill: f.skill }) });
+  assert.equal(turn.status, 201, JSON.stringify(turn.body));
+  const actionId = turn.body.data.pendingAction.id;
+  assert.equal(turn.body.data.pendingAction.skillBinding.selection.id, f.skill.id);
+  f.upgrade();
+  f.document.nodes[0].data.text = '换成红色瓶盖';
+  const endpoint = `/sessions/${sessionId}/actions/${actionId}/confirm`;
+  const confirm = () => request(f.baseUrl, endpoint, { method: 'POST', body: JSON.stringify(f.scope) });
+  const stale = await confirm();
+  assert.equal(stale.status, 409);
+  assert.equal(stale.body.code, 'CREATOR_SKILL_INPUT_STALE');
+  assert.equal(f.repository.getAction(actionId, sessionId, f.scope).status, 'pending');
+  f.document.nodes[0].data.text = '保留黑色瓶盖';
+  f.document.nodes[0].position = { x: 500, y: 400 };
+  f.document.revision += 5;
+  assert.equal((await confirm()).status, 202);
+});
+
+test('official skill continuation uses the pinned old package; switching version needs a new task', async t => {
+  const used = [];
+  const f = await officialSkillFixture(t, { llmRuntime: {
+    modelSnapshot: () => ({ kind: 'llm', providerId: 'seedance-nz', modelId: 'zhenzhen/gk-4.6', catalogDigest: 'a'.repeat(64) }),
+    respond: async input => {
+      used.push(input.skillContext.body);
+      return { replyMarkdown: '可以继续调整商品创作方向。', suggestions: ['调整色调', '修改构图', '保留这版'], proposedAction: null };
+    },
+  } });
+  const sessionId = 'official-text-session';
+  await request(f.baseUrl, '/sessions', { method: 'POST', body: JSON.stringify({ ...f.scope, sessionId }) });
+  const send = (requestId, skill) => request(f.baseUrl, `/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify({ ...f.scope,
+    clientRequestId: requestId, text: '整理商品图方向', skill }) });
+  assert.equal((await send('official-first-turn', f.skill)).status, 201);
+  const next = f.upgrade();
+  assert.equal((await send('official-second-turn', f.skill)).status, 201);
+  assert.equal(used[0], used[1]);
+  assert.match(used[1], /version 1/);
+  const switched = await send('official-changed-turn', { ...f.skill, packageDigest: next.packageDigest });
+  assert.equal(switched.status, 409);
+  assert.equal(switched.body.code, 'CREATOR_SKILL_TASK_CONFLICT');
+  const staleNewTask = await send('official-stale-new-turn', { ...f.skill, taskId: 'new-task' });
+  assert.equal(staleNewTask.status, 409);
+  assert.equal(staleNewTask.body.code, 'CREATOR_SKILL_VERSION_STALE');
+  assert.equal((await send('official-new-turn', { ...f.skill, taskId: 'new-task', packageDigest: next.packageDigest })).status, 201);
+  assert.match(used[2], /version 2/);
 });
 
 test('Creator v2 explicit scene mode drafts one short idea atomically, restores it, and keeps retries idempotent', async () => {

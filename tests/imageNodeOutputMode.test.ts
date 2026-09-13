@@ -61,7 +61,8 @@ test('ImageNode exposes the default-on output setting and every text collector h
   assert.match(imageNode, /const imageOnlyOutput = d\?\.imageOnlyOutput !== false/);
   assert.match(imageNode, /checked=\{imageOnlyOutput\}/);
   assert.match(imageNode, /update\(\{ imageOnlyOutput: event\.currentTarget\.checked \}\)/);
-  assert.match(imageNode, /仅输出图片/);
+  assert.match(imageNode, /translate\('nodes:image\.imageOnly'\)/);
+  assert.match(imageNode, /aria-label=\{translate\('nodes:image\.imageOnlyAria'\)\}/);
   assert.match(upstreamMaterials, /shouldCollectNodeTextOutput\(n\.type, n\.data\)/);
   assert.match(outputNode, /shouldCollectNodeTextOutput\(\(n as any\)\?\.type, n\?\.data\)/);
   assert.match(outputNode, /ud\.imageOnlyOutput === false/);

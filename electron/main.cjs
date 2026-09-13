@@ -58,6 +58,68 @@ if (process.platform === 'win32') {
 }
 
 let mainWindow = null;
+let mainWindowCloseGate = null;
+
+// A close receipt belongs to one window, main frame, and random request only.
+// Backend shutdown must not start until the renderer's existing CAS queue is saved.
+function createCanvasCloseGate(window) {
+  let approved = false;
+  let pending = null;
+  let warning = null;
+  const warn = (reason) => {
+    if (warning || window.isDestroyed()) return;
+    warning = dialog.showMessageBox(window, {
+      type: 'warning', title: electronT('close.title'),
+      message: electronT(`close.${reason === 'running' || reason === 'conflict' ? reason : 'save'}`),
+      buttons: [electronT('close.keepOpen')], defaultId: 0, cancelId: 0,
+    }).catch(() => undefined).finally(() => { warning = null; });
+  };
+  const finish = (ok, reason) => {
+    const request = pending;
+    if (!request) return;
+    pending = null;
+    clearTimeout(request.timer);
+    approved = ok === true;
+    if (!approved && !window.isDestroyed()) {
+      try { window.webContents.send('t8pc:canvas-close-cancel', request.id); } catch {}
+      warn(reason);
+    }
+    request.resolve(approved);
+  };
+  const onResult = (event, result) => {
+    if (!pending || window.isDestroyed() || event.sender !== window.webContents
+      || event.senderFrame !== window.webContents.mainFrame || result?.requestId !== pending.id) return;
+    finish(result.ok === true, result.reason);
+  };
+  ipcMain.on('t8pc:canvas-close-result', onResult);
+  const request = () => {
+    if (window.isDestroyed() || approved) return Promise.resolve(true);
+    if (pending) return pending.promise;
+    let resolve;
+    const promise = new Promise((done) => { resolve = done; });
+    const id = crypto.randomUUID();
+    pending = { id, resolve, promise, timer: setTimeout(() => finish(false, 'save'), 10_000) };
+    try { window.webContents.send('t8pc:canvas-close-request', id); }
+    catch { finish(false, 'save'); }
+    return promise;
+  };
+  let closing = false;
+  window.on('close', (event) => {
+    if (approved) return;
+    event.preventDefault();
+    if (closing) return;
+    closing = true;
+    void request().then((ok) => {
+      closing = false;
+      if (ok && !window.isDestroyed()) window.close();
+    });
+  });
+  window.on('closed', () => {
+    ipcMain.removeListener('t8pc:canvas-close-result', onResult);
+    finish(false, 'save');
+  });
+  return { request };
+}
 let vibeXRhLoginWindow = null;
 let logWindow = null;
 let startupShellReadyPromise = Promise.resolve();
@@ -2460,7 +2522,10 @@ function createMainWindow() {
     clearRevealDeadline();
     frontendLoadGeneration += 1;
     mainWindow = null;
+    mainWindowCloseGate = null;
   });
+
+  mainWindowCloseGate = createCanvasCloseGate(pendingMainWindow);
 
   mainWindow.on('resize', () => {
     scheduleVibeXFrameUiPatch(250);
@@ -2752,13 +2817,21 @@ app.on('before-quit', (event) => {
   if (electronQuitReady) return;
   event.preventDefault();
   if (!electronQuitFinalizationPromise) {
-    electronQuitFinalizationPromise = shutdownBackendForElectron('ELECTRON_QUIT')
+    electronQuitFinalizationPromise = (async () => {
+      if (mainWindowCloseGate && !(await mainWindowCloseGate.request())) {
+        electronQuitRequested = false;
+        return;
+      }
+      try { await shutdownBackendForElectron('ELECTRON_QUIT'); }
+      finally { electronQuitReady = true; }
+    })()
       .catch((error) => {
         dbgLog(`[backend] Electron quit cleanup failed: ${error && error.stack ? error.stack : error}`);
+        electronQuitRequested = false;
       })
       .finally(() => {
-        electronQuitReady = true;
-        app.quit();
+        electronQuitFinalizationPromise = null;
+        if (electronQuitReady) app.quit();
       });
   }
 });

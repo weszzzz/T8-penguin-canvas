@@ -92,6 +92,9 @@ test('B2 media GET/HEAD stay pure while availability repair is one explicit trus
   });
   const baseUrl = `http://127.0.0.1:${server.address().port}/api/project-assets`;
   const requestOrigin = new URL(baseUrl).origin;
+  // Route runtimes are lazy; fixtures using indexer before their first HTTP
+  // request must initialize through the existing runtime entry point.
+  router.getRuntime();
 
   const originalSync = database.syncAssetAvailabilityObservations;
   let syncCalls = 0;

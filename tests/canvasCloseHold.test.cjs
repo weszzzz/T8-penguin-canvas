@@ -1,0 +1,76 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const ts = require('typescript');
+
+// Execute the actual Canvas effect with controlled DOM/IPC/save observation;
+// this tests hold ownership, not native UI rendering or CAS durability.
+function fixture({ initiallyInert = false, wait = async () => ({ ok: true }) } = {}) {
+  const source = fs.readFileSync(require.resolve('../src/components/Canvas.tsx'), 'utf8');
+  const normalized = source.replace(/\r\n/g, '\n');
+  const begin = normalized.indexOf('  useEffect(() => {\n    const subscribe = window.t8pc?.onCanvasCloseRequest;');
+  const end = normalized.indexOf('  }, [flushCanvasViewportStorage, t]);', begin);
+  assert.ok(begin >= 0 && end > begin);
+  const code = ts.transpileModule(normalized.slice(begin, end + '  }, [flushCanvasViewportStorage, t]);'.length), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const root = { inert: initiallyInert };
+  const notices = new Set(), timers = new Map();
+  let handler, cleanup, timerId = 0, unsubscribed = false;
+  vm.runInNewContext(code, {
+    useEffect: callback => { cleanup = callback(); },
+    flushCanvasViewportStorage: () => {}, t: key => key,
+    waitForCanvasCloseSave: wait,
+    document: {
+      getElementById: () => root, activeElement: { blur() {} },
+      createElement: () => {
+        const notice = { style: {}, setAttribute() {}, remove: () => notices.delete(notice) };
+        return notice;
+      },
+      body: { appendChild: notice => notices.add(notice) },
+    },
+    window: {
+      t8pc: { onCanvasCloseRequest: callback => { handler = callback; return () => { unsubscribed = true; }; } },
+      setInterval: callback => { timers.set(++timerId, callback); return timerId; },
+      clearInterval: id => timers.delete(id),
+    },
+  });
+  return { root, notices, timers, close: cancelled => handler(cancelled), cleanup: () => cleanup(),
+    get unsubscribed() { return unsubscribed; } };
+}
+
+test('cancel then immediate retry owns a fresh hold; late old cleanup cannot unlock it', async () => {
+  const f = fixture();
+  let aCancelled = false, bCancelled = false;
+  assert.equal((await f.close(() => aCancelled)).ok, true);
+  const oldWatch = [...f.timers.values()][0];
+  aCancelled = true;
+  assert.equal((await f.close(() => bCancelled)).ok, true);
+  assert.equal(f.notices.size, 1); assert.equal(f.timers.size, 1); assert.equal(f.root.inert, true);
+  oldWatch();
+  assert.equal(f.notices.size, 1); assert.equal(f.root.inert, true);
+  bCancelled = true;
+  [...f.timers.values()][0]();
+  assert.equal(f.notices.size, 0); assert.equal(f.timers.size, 0); assert.equal(f.root.inert, false);
+  f.cleanup();
+});
+
+for (const initiallyInert of [false, true]) test(`unmount releases successful hold and preserves prior inert=${initiallyInert}`, async () => {
+  const f = fixture({ initiallyInert });
+  await f.close(() => false);
+  f.cleanup(); f.cleanup();
+  assert.equal(f.root.inert, initiallyInert); assert.equal(f.notices.size, 0);
+  assert.equal(f.timers.size, 0); assert.equal(f.unsubscribed, true);
+});
+
+test('save refusal and thrown observer both release input and notice', async () => {
+  for (const throws of [false, true]) {
+    const f = fixture({ wait: async () => { if (throws) throw new Error('observer failed'); return { ok: false, reason: 'save' }; } });
+    if (throws) await assert.rejects(f.close(() => false), /observer failed/);
+    else assert.equal((await f.close(() => false)).ok, false);
+    assert.equal(f.root.inert, false); assert.equal(f.notices.size, 0); assert.equal(f.timers.size, 0);
+    f.cleanup();
+  }
+});

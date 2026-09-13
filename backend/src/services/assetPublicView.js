@@ -25,6 +25,9 @@ const PRIVATE_PATH_KEYS = new Set([
 
 const PRIVATE_OBSERVATION_KEYS = new Set([
   'observedcontenthash',
+  'generationinput',
+  'generationinputref',
+  'generationreferencerecovery',
 ]);
 
 const SENSITIVE_KEYS = new Set([

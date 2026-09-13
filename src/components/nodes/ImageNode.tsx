@@ -12,6 +12,7 @@ import SmartImage from '../SmartImage';
 import LazyVideo from '../LazyVideo';
 import PromptTextarea from '../PromptTextarea';
 import { resolveMediaMentions, type MediaMention } from './mediaMentions';
+import historyInputContract from '../../../backend/src/shared/generationHistoryInputContract.json';
 import {
   IMAGE_MODELS,
   FAL_REGISTRY,
@@ -106,6 +107,8 @@ import { useHasAutoOutput } from './useHasAutoOutput';
 import { useRunTrigger } from '../../hooks/useRunTrigger';
 import { requestCanvasNodeRun } from '../../utils/canvasRunRequest';
 import { hasReusableGenerationResult, shouldReuseGenerationResult } from '../../utils/reuseGenerationResult';
+import { assertFreshGenerationCompleted } from '../../utils/generationResultRetention';
+import { collectRunOutputAssets } from '../../utils/runProviderTrace';
 import { useThemeStore } from '../../stores/theme';
 import { logBus } from '../../stores/logs';
 import { useDragMaterialStore, type MaterialPayload } from '../../stores/dragMaterial';
@@ -1086,9 +1089,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
     else update({ mjOrefImages: mjOrefImages.filter((_, i) => i !== idx) });
   };
 
-  const handleGenerate = async (reporter?: RunNodeLifecycleReporter) => {
-    setError(null);
-    setDownloadNotice(null);
+  const resolveGenerationInput = () => {
     const { prompt: upstreamPrompt, images: upstreamImages } = collectUpstream();
     const resolvedLocalPrompt = resolveMediaMentions(localPrompt, promptMentions, mentionMaterials);
     const comfyProviderPrompt = isComfyExternal
@@ -1113,6 +1114,14 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         )
       : { finalPrompt: basePrompt, active: [], inactive: [], text: '', language: 'zh' as const };
     const finalPrompt = compiledPrompt.finalPrompt;
+    return { upstreamImages, basePrompt, compiledPrompt, finalPrompt };
+  };
+
+  const handleGenerate = async (reporter?: RunNodeLifecycleReporter) => {
+    if (status === 'generating' || reporter?.signal?.aborted) return;
+    setError(null);
+    setDownloadNotice(null);
+    const { upstreamImages, basePrompt, compiledPrompt, finalPrompt } = resolveGenerationInput();
     const src = `image:${id.slice(0, 6)}`;
     const promptRequired = !isSeedreamLayerTab && !isVosr2ImageTab && (
       !isZhenzhenBudgetMjSelected
@@ -1266,6 +1275,21 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
       }
     }
     const runId = nextGenerationRun();
+    const generationActive = () => isCurrentGenerationRun(runId) && !reporter?.signal?.aborted;
+    const completeGeneration = async (patch: Record<string, unknown>, soundKind: 'image' | 'video' = 'image', response?: Record<string, unknown>) => {
+      if (!generationActive()) return;
+      if (response) await reporter?.providerResponse(response);
+      if (!generationActive()) return;
+      // A successful batch replaces all output families this node can produce.
+      // Keep the old preview untouched until this point, and archive only this
+      // returned batch, never arbitrary leftover fields in the node data.
+      const result = { imageUrl: null, imageUrls: [], videoUrl: null, videoUrls: [], outputText: '', textSegments: [], ...patch };
+      const assets = collectRunOutputAssets(result);
+      if (!assets.length) throw new Error('本次生成没有返回可归档的结果');
+      update(result);
+      taskCompletionSound.notifyComplete(id, soundKind);
+      return { assets };
+    };
     const traceProvider = isExternalSelected && providerSelection.provider
       ? providerSelection.provider.id
       : isFal
@@ -1286,10 +1310,15 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         : isMj
           ? mjVersion
           : apiModel;
-    await reporter?.providerRequest({ provider: traceProvider, model: traceModel });
-    taskCompletionSound.primeAudio();
-    update({ status: 'generating', progress: '0%', error: null });
+    const onExecutionAbort = () => {
+      if (isCurrentGenerationRun(runId)) stopLocalGeneration();
+    };
+    reporter?.signal?.addEventListener('abort', onExecutionAbort, { once: true });
     try {
+      await reporter?.providerRequest({ provider: traceProvider, model: traceModel });
+      if (!generationActive()) return;
+      taskCompletionSound.primeAudio();
+      update({ status: 'generating', progress: '0%', error: null });
       // collectUpstream 已返回「本地上传 + 上游接入」按用户拖拽顺序合并后的列表,
       // 这里不再二次叠加 refImages, 避免本地参考图重复传递。
       const allRefs = upstreamImages.slice(0, maxRefs);
@@ -1349,7 +1378,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           n: Math.max(1, Math.min(externalImageCountLimit, Number(d?.providerParams?.n || 1))),
           providerParams: externalProviderParams,
         }, { submissionKey: reporter?.providerSubmissionKey });
-        if (!isCurrentGenerationRun(runId)) return;
+        if (!generationActive()) return;
         const urls = res.imageUrls || [];
         if (!urls.length) throw new Error('扩展平台完成但未返回图片');
         if (res.taskId || res.requestId) await reporter?.providerSubmitted({
@@ -1373,7 +1402,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           status: 'succeeded',
           httpStatusSource: 'local-backend',
         });
-        update({
+        if (!generationActive()) return;
+        logBus.success(`扩展平台完成 → ${urls[0]}`, src);
+        return await completeGeneration({
           status: 'success',
           progress: '100%',
           imageUrl: urls[0],
@@ -1387,9 +1418,6 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           upstreamHttpStatus: res.upstreamHttpStatus,
           usage: res.usage,
         });
-        logBus.success(`扩展平台完成 → ${urls[0]}`, src);
-        taskCompletionSound.notifyComplete(id, 'image');
-        return;
       }
 
       // ============ MJ 路径(对齐 gpt-image-2-web runMJ L4437~L4716) ============
@@ -1438,7 +1466,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           const submit = await submitMidjourneyNz(request, {
             submissionKey: reporter?.providerSubmissionKey,
           });
-          if (!isCurrentGenerationRun(runId)) return;
+          if (!generationActive()) return;
           const submittedTaskId = String(submit.taskId || '').trim();
           if (submittedTaskId) {
             await reporter?.providerSubmitted({
@@ -1456,21 +1484,11 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           const finishMidjourneyNz = async (
             result: MidjourneyNzTaskResult,
             pollCount = 0,
-          ): Promise<boolean> => {
+          ): Promise<Awaited<ReturnType<typeof completeGeneration>> | 'interaction-required' | false> => {
+            if (!generationActive()) return;
             const resultStatus = String(result.status || '').toLowerCase();
             const taskId = String(result.taskId || submittedTaskId || '').trim();
             if (resultStatus === 'modal') {
-              update({
-                status: 'idle',
-                progress: '等待遮罩 / Modal',
-                taskId,
-                mjNzLastTaskId: taskId,
-                mjNzSourceTaskId: taskId,
-                mjNzOperation: 'midjourney-modal',
-                mjNzButtons: result.buttons || [],
-                error: null,
-              });
-              logBus.success('Midjourney 已进入 MODAL：请连接 PNG 遮罩后再次生成', src);
               await reporter?.providerResponse({
                 provider: traceProvider,
                 model: traceModel,
@@ -1483,7 +1501,14 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                 status: 'succeeded',
                 httpStatusSource: 'local-backend',
               });
-              return true;
+              if (!generationActive()) return;
+              update({
+                status: 'idle', progress: '等待遮罩 / Modal', taskId,
+                mjNzLastTaskId: taskId, mjNzSourceTaskId: taskId,
+                mjNzOperation: 'midjourney-modal', mjNzButtons: result.buttons || [], error: null,
+              });
+              logBus.success('Midjourney 已进入 MODAL：请连接 PNG 遮罩后再次生成', src);
+              return 'interaction-required';
             }
             if (!['completed', 'success', 'succeeded', 'done'].includes(resultStatus)) return false;
             const imageUrls = Array.isArray(result.imageUrls) ? result.imageUrls : [];
@@ -1495,7 +1520,18 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             if (!imageUrls.length && !videoUrls.length && !outputText) {
               throw new Error('Midjourney 任务完成但没有返回可用结果');
             }
-            update({
+            await reporter?.providerResponse({
+              provider: traceProvider, model: traceModel, upstreamTaskId: taskId,
+              requestId: result.requestId || submit.requestId,
+              transportHttpStatus: result.transportHttpStatus, upstreamHttpStatus: result.upstreamHttpStatus,
+              usage: result.usage, pollCount, status: 'succeeded', httpStatusSource: 'local-backend',
+            });
+            if (!generationActive()) return;
+            logBus.success(
+              `平价AI小屋 MJ 完成 · ${resultFamily}${imageUrls.length ? ` · 图片 ${imageUrls.length}` : ''}${videoUrls.length ? ` · 视频 ${videoUrls.length}` : ''}${outputText ? ' · 文本' : ''}`,
+              src,
+            );
+            return await completeGeneration({
               status: 'success',
               progress: '100%',
               imageUrl: imageUrls[0] || null,
@@ -1516,28 +1552,12 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               upstreamHttpStatus: result.upstreamHttpStatus,
               usage: result.usage,
               pollCount,
-            });
-            logBus.success(
-              `平价AI小屋 MJ 完成 · ${resultFamily}${imageUrls.length ? ` · 图片 ${imageUrls.length}` : ''}${videoUrls.length ? ` · 视频 ${videoUrls.length}` : ''}${outputText ? ' · 文本' : ''}`,
-              src,
-            );
-            taskCompletionSound.notifyComplete(id, resultFamily === 'video' ? 'video' : 'image');
-            await reporter?.providerResponse({
-              provider: traceProvider,
-              model: traceModel,
-              upstreamTaskId: taskId,
-              requestId: result.requestId || submit.requestId,
-              transportHttpStatus: result.transportHttpStatus,
-              upstreamHttpStatus: result.upstreamHttpStatus,
-              usage: result.usage,
-              pollCount,
-              status: 'succeeded',
-              httpStatusSource: 'local-backend',
-            });
-            return true;
+            }, resultFamily === 'video' ? 'video' : 'image');
           };
 
-          if (await finishMidjourneyNz(submit)) return;
+          const immediate = await finishMidjourneyNz(submit);
+          if (immediate) return immediate;
+          if (!generationActive()) return;
           if (!submittedTaskId) throw new Error('Midjourney 未返回任务 ID 或同步结果');
           update({
             progress: submit.progress || '5%',
@@ -1552,9 +1572,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           for (let i = 0; i < maxPoll; i++) {
             await new Promise((resolve) => setTimeout(resolve, nextPollDelay));
             nextPollDelay = interval;
-            if (!isCurrentGenerationRun(runId)) return;
+            if (!generationActive()) return;
             const query = await queryMidjourneyNz(submittedTaskId);
-            if (!isCurrentGenerationRun(runId)) return;
+            if (!generationActive()) return;
             await reporter?.polling({
               provider: traceProvider,
               model: traceModel,
@@ -1569,6 +1589,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               status: query.status,
               progress: query.progress,
             });
+            if (!generationActive()) return;
             const queryStatus = String(query.status || '').toLowerCase();
             if (queryStatus === 'materializing') {
               nextPollDelay = Math.max(interval, Math.min(30_000, Number(query.retryAfterMs) || 5_000));
@@ -1577,7 +1598,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               continue;
             }
             if (query.progress) update({ progress: query.progress });
-            if (await finishMidjourneyNz(query, i + 1)) return;
+            const completed = await finishMidjourneyNz(query, i + 1);
+            if (completed) return completed;
+            if (!generationActive()) return;
             if (['failed', 'failure', 'error'].includes(queryStatus)) {
               throw new Error(query.error || 'Midjourney 任务失败');
             }
@@ -1594,16 +1617,16 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         for (const u of allRefs) {
           try {
             const resp = await fetch(u);
-            if (!isCurrentGenerationRun(runId)) return;
+            if (!generationActive()) return;
             const blob = await resp.blob();
-            if (!isCurrentGenerationRun(runId)) return;
+            if (!generationActive()) return;
             const dataUrl: string = await new Promise((resolve, reject) => {
               const fr = new FileReader();
               fr.onload = () => resolve(String(fr.result || ''));
               fr.onerror = () => reject(new Error('读取失败'));
               fr.readAsDataURL(blob);
             });
-            if (!isCurrentGenerationRun(runId)) return;
+            if (!generationActive()) return;
             base64Array.push(dataUrl);
           } catch (err: any) {
             logBus.warn(`MJ 主参考图转 base64 失败,跳过: ${u}`, src);
@@ -1637,7 +1660,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           base64Array,
           remix: true,
         }, { submissionKey: reporter?.providerSubmissionKey });
-        if (!isCurrentGenerationRun(runId)) return;
+        if (!generationActive()) return;
         const taskId = submit.taskId;
         await reporter?.providerSubmitted({
           provider: traceProvider,
@@ -1649,6 +1672,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           usage: submit.usage,
           httpStatusSource: 'local-backend',
         });
+        if (!generationActive()) return;
         logBus.info(`MJ 任务已提交 taskId=${taskId} fullPrompt="${fullPrompt.slice(0, 120)}${fullPrompt.length > 120 ? '…' : ''}"`, src);
         update({ progress: '15%', taskId });
         const interval = Math.max(1, Math.min(30, mjPollInt || 3)) * 1000;
@@ -1659,9 +1683,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         );
         for (let i = 0; i < maxPoll; i++) {
           await new Promise((r) => setTimeout(r, interval));
-          if (!isCurrentGenerationRun(runId)) return;
+          if (!generationActive()) return;
           const q = await queryMjTask(taskId, mjSpeed);
-          if (!isCurrentGenerationRun(runId)) return;
+          if (!generationActive()) return;
           await reporter?.polling({
             provider: traceProvider,
             model: traceModel,
@@ -1677,6 +1701,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             status: q.status,
             progress: q.progress,
           });
+          if (!generationActive()) return;
           if (String(q.status || '').toLowerCase() === 'materializing') {
             update({ progress: '100% · 正在下载' });
             setDownloadNotice(q.error || '图片已经生成，正在通过当前 TUN/代理或直连网络保存到本机。');
@@ -1707,7 +1732,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             }
             const final = main || all[0];
             logBus.success(`MJ 任务完成 → ${final}` + (grid.length ? ` (含 ${grid.length} 张子图)` : ''), src);
-            update({
+            return await completeGeneration({
               status: 'success',
               progress: '100%',
               imageUrl: final,
@@ -1719,9 +1744,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               upstreamHttpStatus: q.upstreamHttpStatus,
               usage: q.usage,
               pollCount: i + 1,
-            });
-            taskCompletionSound.notifyComplete(id, 'image');
-            await reporter?.providerResponse({
+            }, 'image', {
               provider: traceProvider,
               model: traceModel,
               upstreamTaskId: taskId,
@@ -1733,7 +1756,6 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               status: 'succeeded',
               httpStatusSource: 'local-backend',
             });
-            return;
           }
         }
         throw new Error(`MJ 轮询超时: ${maxPoll} 次 × ${interval / 1000}s`);
@@ -1771,7 +1793,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           image_mode: falKind === 'nbpro-fal' ? nbImgMode : undefined,
           providerParams,
         }, { submissionKey: reporter?.providerSubmissionKey });
-        if (!isCurrentGenerationRun(runId)) return;
+        if (!generationActive()) return;
 
         // 同步完成
         if (submit.sync && submit.urls && submit.urls.length) {
@@ -1785,11 +1807,13 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             status: 'succeeded',
             httpStatusSource: 'local-backend',
           });
+          if (!generationActive()) return;
           logBus.success(`FAL同步返回 → ${submit.urls[0]}`, src);
-          update({
+          return await completeGeneration({
             status: 'success',
             progress: '100%',
             imageUrl: submit.urls[0],
+            imageUrls: submit.urls,
             lastPrompt: finalPrompt,
             usedI2I: allRefs.length > 0,
             requestId: submit.requestId,
@@ -1797,8 +1821,6 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             upstreamHttpStatus: submit.upstreamHttpStatus,
             usage: submit.usage,
           });
-          taskCompletionSound.notifyComplete(id, 'image');
-          return;
         }
 
         // 异步轮询: 1200×3s = 3600s，避免 FAL 图像长队列 30min 提前超时。
@@ -1813,6 +1835,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           usage: submit.usage,
           httpStatusSource: 'local-backend',
         });
+        if (!generationActive()) return;
         logBus.info(`FAL异步任务已提交 requestId=${requestId}`, src);
         update({
           progress: '5%',
@@ -1823,9 +1846,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         const maxPoll = minPollCountForTimeout(interval);
         for (let i = 0; i < maxPoll; i++) {
           await new Promise((r) => setTimeout(r, interval));
-          if (!isCurrentGenerationRun(runId)) return;
+          if (!generationActive()) return;
           const q = await queryImageFal({ endpoint, requestId });
-          if (!isCurrentGenerationRun(runId)) return;
+          if (!generationActive()) return;
           const st = String(q.status || '').toLowerCase();
           await reporter?.polling({
             provider: traceProvider,
@@ -1844,6 +1867,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             status: st,
             providerStatus: q.falStatus,
           });
+          if (!generationActive()) return;
           if (st === 'materializing') {
             update({ progress: '100% · 正在下载' });
             setDownloadNotice(q.error || '图片已经生成，正在通过当前 TUN/代理或直连网络保存到本机。');
@@ -1859,10 +1883,11 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             const url = q.urls?.[0];
             if (!url) throw new Error('FAL 任务完成但未返回图片');
             logBus.success(`FAL 任务完成 → ${url}`, src);
-            update({
+            return await completeGeneration({
               status: 'success',
               progress: '100%',
               imageUrl: url,
+              imageUrls: q.urls,
               lastPrompt: finalPrompt,
               usedI2I: allRefs.length > 0,
               requestId: q.requestId || requestId,
@@ -1870,9 +1895,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               upstreamHttpStatus: q.upstreamHttpStatus,
               usage: q.usage,
               pollCount: i + 1,
-            });
-            taskCompletionSound.notifyComplete(id, 'image');
-            await reporter?.providerResponse({
+            }, 'image', {
               provider: traceProvider,
               model: traceModel,
               requestId: q.requestId || requestId,
@@ -1883,7 +1906,6 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               status: 'succeeded',
               httpStatusSource: 'local-backend',
             });
-            return;
           }
           if (st === 'failed') {
             throw new Error(q.error || 'FAL 任务失败');
@@ -2086,7 +2108,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             ? zhenzhenImageG25NsfwCheck
             : isZhenzhenGrokImageV2Edit ? grokV2EditNsfwCheck : undefined,
         }, { submissionKey: reporter?.providerSubmissionKey });
-        if (!isCurrentGenerationRun(runId)) return;
+        if (!generationActive()) return;
         const taskId = submit.taskId;
         if (!taskId) throw new Error(`${seedanceNzProviderLabel}${imageFamilyLabel} 未返回任务 ID`);
         await reporter?.providerSubmitted({
@@ -2099,15 +2121,16 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           usage: submit.usage,
           httpStatusSource: 'local-backend',
         });
+        if (!generationActive()) return;
         update({ progress: submit.progress || '0%', taskId });
         const interval = 3000;
         const maxPoll = minPollCountForTimeout(interval);
         let lastProgress = submit.progress || '0%';
         for (let i = 0; i < maxPoll; i++) {
           await new Promise((resolve) => setTimeout(resolve, interval));
-          if (!isCurrentGenerationRun(runId)) return;
+          if (!generationActive()) return;
           const query = await querySeedreamNz(taskId);
-          if (!isCurrentGenerationRun(runId)) return;
+          if (!generationActive()) return;
           await reporter?.polling({
             provider: traceProvider,
             model: traceModel,
@@ -2122,6 +2145,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             status: query.status,
             progress: query.progress,
           });
+          if (!generationActive()) return;
           if (query.progress && query.progress !== lastProgress) {
             lastProgress = query.progress;
             update({ progress: query.progress });
@@ -2142,7 +2166,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             const url = query.urls?.[0];
             if (!url) throw new Error(`${seedanceNzProviderLabel}${imageFamilyLabel} 任务完成但未返回图片`);
             logBus.success(`${seedanceNzProviderLabel}${imageFamilyLabel} 完成 → ${url}`, src);
-            update({
+            return await completeGeneration({
               status: 'success',
               progress: '100%',
               imageUrl: url,
@@ -2157,9 +2181,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               upstreamHttpStatus: query.upstreamHttpStatus,
               usage: query.usage,
               pollCount: i + 1,
-            });
-            taskCompletionSound.notifyComplete(id, 'image');
-            await reporter?.providerResponse({
+            }, 'image', {
               provider: traceProvider,
               model: traceModel,
               upstreamTaskId: taskId,
@@ -2171,7 +2193,6 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               status: 'succeeded',
               httpStatusSource: 'local-backend',
             });
-            return;
           }
           if (queryStatus === 'failed' || queryStatus === 'failure' || queryStatus === 'error') {
             throw new Error(query.error || `${seedanceNzProviderLabel}${imageFamilyLabel} 任务失败`);
@@ -2202,12 +2223,12 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         background: isGptImage25 ? gptImage25Background : undefined,
         providerParams,
       }, { submissionKey: reporter?.providerSubmissionKey });
-      if (!isCurrentGenerationRun(runId)) return;
+      if (!generationActive()) return;
 
       // 分支一:同步完成
       if (submit.sync && submit.urls && submit.urls.length) {
         logBus.success(`同步返回 → ${submit.urls[0]}`, src);
-        update({
+        return await completeGeneration({
           status: 'success',
           progress: '100%',
           imageUrl: submit.urls[0],
@@ -2218,9 +2239,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           transportHttpStatus: submit.transportHttpStatus,
           upstreamHttpStatus: submit.upstreamHttpStatus,
           usage: submit.usage,
-        });
-        taskCompletionSound.notifyComplete(id, 'image');
-        await reporter?.providerResponse({
+        }, 'image', {
           provider: traceProvider,
           model: traceModel,
           requestId: submit.requestId,
@@ -2230,7 +2249,6 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           status: 'succeeded',
           httpStatusSource: 'local-backend',
         });
-        return;
       }
 
       // 分支二:异步任务 → 轮询状态(对齐主项目 gpt-image-2-web pollTask)
@@ -2246,6 +2264,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         usage: submit.usage,
         httpStatusSource: 'local-backend',
       });
+      if (!generationActive()) return;
       logBus.info(`异步任务已提交 taskId=${taskId} 进入轮询…`, src);
       update({ progress: submit.progress || '5%', taskId });
       // GPT2 / nano-banana / nano-banana-pro 标准路径轮询上限:
@@ -2257,9 +2276,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
       for (let i = 0; i < maxPoll; i++) {
         await new Promise((r) => setTimeout(r, nextPollDelay));
         nextPollDelay = interval;
-        if (!isCurrentGenerationRun(runId)) return;
+        if (!generationActive()) return;
         const q = await queryImageStatus(taskId, apiModel);
-        if (!isCurrentGenerationRun(runId)) return;
+        if (!generationActive()) return;
         await reporter?.polling({
           provider: traceProvider,
           model: traceModel,
@@ -2275,6 +2294,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           status: q.status,
           progress: q.progress,
         });
+        if (!generationActive()) return;
         if (q.progress && q.progress !== lastProg) {
           lastProg = q.progress;
           update({ progress: q.progress });
@@ -2297,7 +2317,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           const url = q.urls?.[0];
           if (!url) throw new Error(q.error || '任务已完成，但本机没有拿到图片；请查看 Logs 中的下载失败原因');
           logBus.success(`任务完成 → ${url}`, src);
-          update({
+          return await completeGeneration({
             status: 'success',
             progress: '100%',
             imageUrl: url,
@@ -2309,9 +2329,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             upstreamHttpStatus: q.upstreamHttpStatus,
             usage: q.usage,
             pollCount: i + 1,
-          });
-          taskCompletionSound.notifyComplete(id, 'image');
-          await reporter?.providerResponse({
+          }, 'image', {
             provider: traceProvider,
             model: traceModel,
             upstreamTaskId: taskId,
@@ -2323,7 +2341,6 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             status: 'succeeded',
             httpStatusSource: 'local-backend',
           });
-          return;
         }
         if (st === 'failed' || st === 'failure' || st === 'error') {
           throw new Error(q.error || '任务失败');
@@ -2331,8 +2348,11 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
       }
       throw new Error(`超时:${maxPoll * interval / 1000}s 未完成`);
     } catch (e: any) {
-      if (!isCurrentGenerationRun(runId)) return;
+      if (!generationActive()) return;
       const msg = e?.message || '生成失败';
+      setError(msg);
+      logBus.error(`生成失败: ${msg}`, src);
+      update({ status: 'error', error: msg });
       await reporter?.providerResponse({
         provider: traceProvider,
         model: traceModel,
@@ -2343,13 +2363,14 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         error: { message: msg, code: e?.code },
         httpStatusSource: 'local-backend',
       });
-      setError(msg);
-      logBus.error(`生成失败: ${msg}`, src);
-      update({ status: 'error', error: msg });
+      if (!generationActive()) return;
+      throw e;
+    } finally {
+      reporter?.signal?.removeEventListener('abort', onExecutionAbort);
     }
   };
 
-  const handleStop = () => {
+  const stopLocalGeneration = () => {
     generationRunRef.current += 1;
     setError(null);
     update({ status: 'idle', progress: '已停止', error: null, taskId: null });
@@ -2357,8 +2378,62 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   };
 
   // 接入运行总线,供批量运行调起
-  useRunTrigger(id, handleGenerate, 'image', {
+  const handleStop = () => {
+    if (cancelRunTrigger() === false) return;
+    stopLocalGeneration();
+  };
+  const cancelRunTrigger = useRunTrigger(id, async (reporter: RunNodeLifecycleReporter) => {
+    const completion = await handleGenerate(reporter);
+    assertFreshGenerationCompleted(Boolean(completion));
+    const assets = completion === 'interaction-required' ? [] : completion!.assets;
+    await reporter.output({ status: 'succeeded', outputCount: assets.length, assets,
+      ...(completion === 'interaction-required' ? { interactionRequired: true } : {}),
+    });
+  }, 'image', {
     lifecycleAware: true,
+    captureHistoryInput: () => {
+      const { finalPrompt, upstreamImages } = resolveGenerationInput();
+      // Common frontend context, not all branch-specific Provider arguments.
+      // MJ special references/flags and backend-resolved defaults are separate.
+      return { schema: historyInputContract.imageSettingsContextSchema, origin: 'frontend-common-context',
+        prompt: finalPrompt, referenceImages: [...upstreamImages], basicSettings: {
+          model: modelDef.id, apiModel,
+          aspectRatio: isExternalSelected ? aspectRatio : effectiveAspectRatio,
+          sizeLevel: isExternalSelected ? sizeLevel : effectiveSizeLevel,
+          imageBuiltinSource: isZhenzhenBudgetPlatformSelected ? 'seedance-nz' : 'zhenzhen',
+          providerSource: isExternalSelected ? providerSelection.providerSource : 'zhenzhen',
+          providerId: isExternalSelected ? providerSelection.providerId : '',
+          providerModel: isExternalSelected ? externalProviderModel : '',
+          ...(isSeedream ? { seedreamApiSource } : {}),
+          ...(!isExternalSelected && isMj && !isZhenzhenBudgetMjSelected
+            ? { mjVersion, mjAr, mjSpeed, mjC, mjS, mjIw, mjSw, mjSv, mjNo, mjSeed, mjMaxPoll, mjPollInt } : {}),
+          ...(isStandardGptImage2 ? { gptImageQuality, gptImageModeration } : {}),
+          ...(isGptImage25 ? { gptImage25Size, gptImage25CustomWidth, gptImage25CustomHeight,
+            gptImage25Count, gptImage25Background } : {}),
+          ...(isSeedream && !isSeedreamNz && !isExternalSelected ? { seedreamCustomSize, seedreamOutputFormat } : {}),
+          ...(!isExternalSelected && isFal && falDef ? {
+            falN: falKind === 'gpt-fal' ? falN : (d?.falN ?? 1), falFormat, falSync,
+            ...(falKind === 'gpt-fal' ? { falMode, falSize, falCustomW, falCustomH, falQuality } : {}),
+            ...(falKind === 'nbpro-fal' ? { nbAspect, nbResolution, nbSafety, nbSeed, nbSysPrompt, nbWebSearch, nbImgMode } : {}),
+          } : {}),
+          ...(!isExternalSelected && isZhenzhenBudgetImageSelected ? {
+            ...(isZhenzhenImageG25 ? { zhenzhenImageG25Size, zhenzhenImageG25Resolution, zhenzhenImageG25Count,
+              ...(isZhenzhenImageG25Lowprice ? { zhenzhenImageG25NsfwCheck } : {}),
+              ...(isZhenzhenImageG25Official ? { zhenzhenImageG25CustomWidth, zhenzhenImageG25CustomHeight,
+                zhenzhenImageG25Quality, zhenzhenImageG25OutputFormat, zhenzhenImageG25OutputCompression,
+                zhenzhenImageG25Background, zhenzhenImageG25Moderation } : {}),
+            } : {}),
+            ...(isZhenzhenGrokImageV2 || isZhenzhenGrokImageV2Edit ? { grokV2ImageCount } : {}),
+            ...(isZhenzhenGrokImageV2Edit ? { grokV2EditResolution, grokV2EditNsfwCheck } : {}),
+            ...(isZhenzhenNb ? { apimartImageCount: zhenzhenNbImageCount } : {}),
+          } : {}),
+          ...(!isExternalSelected && isQwenImageTab ? { qwenSizingMode, qwenResolution, qwenCustomSize,
+            qwenImageCount, qwenSeed, qwenNegativePrompt, qwenPromptExtend } : {}),
+          ...(!isExternalSelected && isWanImageTab && !isWanImageI2I ? { wanImageWidth, wanImageHeight, wanImageThinkingMode } : {}),
+          ...(!isExternalSelected && isSeedreamLayerTab ? { seedreamLayerResolution, seedreamOutputFormat } : {}),
+          ...(!isExternalSelected && isSeedreamNz ? { seedreamNzModelFamily, seedreamNzResolution, seedreamNzCustomSize, seedreamOutputFormat } : {}),
+        } };
+    },
     shouldReuseResult: (nodeData) => shouldReuseGenerationResult('image', nodeData),
   });
 

@@ -458,7 +458,10 @@ class AssetBlobStore {
         try {
           await onInstalled(installed);
         } catch (error) {
-          if (!installed.reused && error?.preserveInstalledBlob !== true) {
+          // A failed acknowledgement is not a rolled-back database commit.
+          // Referenced bytes must survive even though the caller still receives
+          // the original failure and the writer remains fail-stopped.
+          if (!installed.reused && error?.committed !== true && error?.preserveInstalledBlob !== true) {
             try {
               await this._verifyBlob(target.filename, target.hash, installed.byteSize);
               await fs.promises.unlink(target.filename);
@@ -521,6 +524,7 @@ class AssetBlobStore {
           try {
             await options.onInstalled(buildResult(lockedInstalled));
           } catch (error) {
+            if (error?.committed === true) throw error;
             if (sourceRemoved && sourceDiffersFromTarget && !fs.existsSync(absoluteSource)) {
               try {
                 await fs.promises.copyFile(target.filename, absoluteSource, fs.constants.COPYFILE_EXCL);

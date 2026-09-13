@@ -1,5 +1,7 @@
 'use strict';
 
+const { minimumProviderMediaPollCount } = require('../providers/providerTimeoutPolicy');
+
 const ACTIVE_STATUSES = new Set(['queued', 'running', 'polling']);
 const RECOVERY_KINDS = new Set([
   'runninghub',
@@ -68,6 +70,7 @@ function normalizeRunRecoveryDescriptor(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const kind = boundedText(value.kind, 80).toLowerCase();
   if (!RECOVERY_KINDS.has(kind)) return null;
+  const pollIntervalMs = Math.max(250, Math.min(30000, Math.trunc(Number(value.pollIntervalMs) || 3000)));
   const descriptor = {
     version: 1,
     kind,
@@ -81,8 +84,8 @@ function normalizeRunRecoveryDescriptor(value) {
     site: ['cn', 'intl'].includes(boundedText(value.site, 20).toLowerCase()) ? boundedText(value.site, 20).toLowerCase() : null,
     taskProvider: ['seedance-nz', 'zhenzhen-legacy'].includes(boundedText(value.taskProvider, 80)) ? boundedText(value.taskProvider, 80) : null,
     speed: ['relax', 'fast', 'turbo'].includes(boundedText(value.speed, 20).toLowerCase()) ? boundedText(value.speed, 20).toLowerCase() : null,
-    pollIntervalMs: Math.max(250, Math.min(30000, Math.trunc(Number(value.pollIntervalMs) || 3000))),
-    maxPolls: Math.max(1, Math.min(7200, Math.trunc(Number(value.maxPolls) || 1200))),
+    pollIntervalMs,
+    maxPolls: Math.min(7200, minimumProviderMediaPollCount(pollIntervalMs, value.maxPolls || 1200)),
   };
   if (kind === 'suno') return descriptor.taskIds.length ? descriptor : null;
   if (kind === 'image-fal' || kind === 'video-fal') {

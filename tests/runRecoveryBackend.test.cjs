@@ -47,7 +47,7 @@ function createActiveRecovery(db, options = {}) {
     metadata: options.metadata || {
       recovery: {
         kind: 'wan', taskId: options.taskId || 'task-recovery-1', model: 'wan-2.7-spicy-i2v',
-        pollIntervalMs: 250, maxPolls: 4,
+        pollIntervalMs: 250, maxPolls: 3600,
       },
     },
   });

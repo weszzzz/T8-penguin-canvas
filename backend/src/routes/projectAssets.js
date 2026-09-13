@@ -11,6 +11,7 @@ const {
 const { getBackgroundAssetIndexer, hashFile } = require('../services/assetIndexer');
 const { getAssetPreviewPipeline } = require('../services/assetPreviewPipeline');
 const { getAssetBlobStore } = require('../services/assetBlobStore');
+const { hasMediaIdentity, matchesMediaIdentity } = require('../services/assetMediaIdentity');
 const {
   openVerifiedAssetMedia,
   reconcileAssetAvailabilitySnapshots,
@@ -1573,6 +1574,8 @@ async function serveProjectAssetMedia(req, res) {
   const notFound = () => res.set('Cache-Control', 'no-store').status(404).end();
   if (!isLoopbackRequest(req)) return res.set('Cache-Control', 'no-store').status(403).end();
   const asset = database.getAsset(req.params.assetId);
+  const frozenIdentity = hasMediaIdentity(req.query) ? req.query : null;
+  if (frozenIdentity && !matchesMediaIdentity(asset, frozenIdentity)) return notFound();
   const health = String(asset?.metadata?.health || '').trim().toLowerCase();
   if (!asset
     || !asset.managedPath
@@ -1603,6 +1606,15 @@ async function serveProjectAssetMedia(req, res) {
       return notFound();
     }
     const { handle, stat } = verifiedMedia;
+    // Hashing may await I/O. A deletion or identity replacement during that
+    // window must not make a frozen reference silently follow the new asset.
+    if (frozenIdentity) {
+      const current = database.getAsset(req.params.assetId);
+      if (!matchesMediaIdentity(current, frozenIdentity) || current.availability !== 'available') {
+        await handle.close();
+        return notFound();
+      }
+    }
     const rangeHeader = req.headers.range;
     const range = parseRange(rangeHeader, stat.size);
     res.setHeader('Accept-Ranges', 'bytes');

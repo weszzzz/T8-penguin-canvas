@@ -318,6 +318,9 @@ interface T8AgentControlCanvasMutation {
 
 interface Window {
   t8pc?: {
+    onCanvasCloseRequest?: (callback: (cancelled: () => boolean) => Promise<{
+      ok: boolean; reason?: 'running' | 'conflict' | 'save';
+    }>) => () => void;
     getInfo: () => Promise<{
       packaged: boolean;
       backendPort: number;

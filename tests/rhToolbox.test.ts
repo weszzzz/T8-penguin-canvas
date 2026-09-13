@@ -976,7 +976,11 @@ test('RH toolbox runtime can consume private maker events without shipping maker
   assert.match(node, /function dedupeRhToolboxDisplayTools/);
   assert.match(node, /dedupeRhToolboxDisplayTools\(listRhToolboxTools\(manifest, \{ includeDisabled: true \}\)/);
   assert.match(node, /dedupeRhToolboxDisplayTools\(filterRhToolboxTools\(manifest,/);
-  assert.match(node, /window\.setInterval\(\(\) => refreshManifest\(\), 1500\)/);
+  assert.match(node, /window\.addEventListener\('penguin:rh-toolbox-manifest-updated', refreshManifest\)/);
+  assert.match(node, /document\.addEventListener\('visibilitychange', refreshWhenVisible\)/);
+  assert.match(node, /window\.addEventListener\('focus', refreshWhenVisible\)/);
+  assert.match(node, /window\.removeEventListener\('penguin:rh-toolbox-manifest-updated', refreshManifest\)/);
+  assert.doesNotMatch(node, /window\.setInterval\(\(\) => refreshManifest\(\), 1500\)/);
   assert.match(node, /当前 manifest 有 \{allTools\.length\} 个工具/);
   assert.match(node, /rhToolboxSearchQuery:\s*''/);
   assert.match(node, /rhToolboxCategoryId:\s*RH_TOOLBOX_ALL_CATEGORY_ID/);
@@ -1258,6 +1262,7 @@ test('RH toolbox maker defaults use a 60 minute RH polling budget while theme co
   assert.match(maker, /maxPolls:\s*Number\(data\.rhToolboxMakerMaxPolls\) \|\| RH_TOOLBOX_DEFAULT_MAX_POLLS/);
   assert.match(canvas, /rhToolboxMakerMaxPolls:\s*720/);
   assert.match(service, /tool\.runtime\?\.maxPolls \|\| RH_TOOLBOX_DEFAULT_MAX_POLLS/);
+  assert.match(service, /minimumProviderMediaPollCount/);
   assert.match(slamDunkTheme, /content:\s*"TIME OUT"/);
 });
 

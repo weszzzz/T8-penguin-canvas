@@ -12,8 +12,10 @@ test('shared executable node list covers nested-only and canvas-only execution t
   }
 });
 
-test('shared executable node list has 58 explicitly audited production types', () => {
-  assert.equal(EXECUTABLE_NODE_TYPES.size, 58);
+test('shared executable node list has 64 production types classified in canvasNodeRunRequest', () => {
+  assert.equal(EXECUTABLE_NODE_TYPES.size, 64);
+  assert.equal(EXECUTABLE_NODE_TYPES.has('localization-master'), true);
+  assert.equal(EXECUTABLE_NODE_TYPES.has('volcengine-assets'), true);
 });
 
 test('shared executable node list excludes passive output nodes', () => {

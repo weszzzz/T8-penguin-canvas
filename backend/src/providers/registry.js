@@ -452,7 +452,7 @@ function normalizeJimengConfig(value) {
     executablePath: cleanText(raw.executablePath || raw.binPath || '', 260),
     useWsl: normalizeBoolean(raw.useWsl, false),
     wslDistro: cleanText(raw.wslDistro || '', 80),
-    pollSeconds: normalizeNumber(raw.pollSeconds, 3600, 0, 3600),
+    pollSeconds: normalizeNumber(raw.pollSeconds, 3600, 15 * 60, 3600),
   };
 }
 

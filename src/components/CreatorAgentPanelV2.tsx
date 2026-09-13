@@ -1,5 +1,6 @@
 import {
   AtSign,
+  BookOpen,
   Check,
   Clapperboard,
   ChevronDown,
@@ -67,6 +68,10 @@ import {
   type CreatorPreferencesV2,
 } from '../services/creatorAgentV2';
 import type { ThemeTokens } from '../theme/types';
+import CreatorSkillMarket, { skillFailureText } from './CreatorSkillMarket';
+import CreatorSkillReadiness from './CreatorSkillReadiness';
+import { creatorComposerSkillFromBinding, creatorComposerSkillFromItem, normalizeCreatorComposerSkill,
+  type CreatorComposerSkillV2 } from '../services/creatorSkillComposer';
 
 export interface CreatorAgentPanelV2Props {
   projectId: string;
@@ -95,12 +100,14 @@ type CreatorComposerDraft = {
   selectedNodeIds: string[];
   selectedNodes: CreatorSelectionSummary[];
   creationMode: 'auto' | 'scene';
+  skill: CreatorComposerSkillV2 | null;
 };
 
 type CreatorSubmitOptions = {
   attachments?: CreatorMediaRef[];
   selectedNodeIds?: string[];
   preserveComposer?: boolean;
+  skill?: CreatorComposerSkillV2 | null;
 };
 
 const EMPTY_COMPOSER_DRAFT: CreatorComposerDraft = {
@@ -110,6 +117,7 @@ const EMPTY_COMPOSER_DRAFT: CreatorComposerDraft = {
   selectedNodeIds: [],
   selectedNodes: [],
   creationMode: 'auto',
+  skill: null,
 };
 
 function boundedComposerText(value: unknown, limit: number) {
@@ -149,6 +157,7 @@ function normalizeComposerDraft(value: unknown): CreatorComposerDraft {
     selectedNodeIds,
     selectedNodes,
     creationMode: source.creationMode === 'scene' ? 'scene' : 'auto',
+    skill: normalizeCreatorComposerSkill(source.skill),
   };
 }
 
@@ -188,7 +197,7 @@ function writeComposerDraft(key: string, value: CreatorComposerDraft) {
   if (typeof window === 'undefined') return;
   const normalized = normalizeComposerDraft(value);
   if (!normalized.draft && !normalized.attachments.length && !normalized.selectedNodeIds.length
-    && normalized.creationMode === 'auto') {
+    && normalized.creationMode === 'auto' && !normalized.skill) {
     try { window.localStorage.removeItem(key); } catch { /* Best effort. */ }
     try { window.sessionStorage.removeItem(key); } catch { /* Best effort. */ }
     return;
@@ -206,7 +215,7 @@ function writeComposerDraft(key: string, value: CreatorComposerDraft) {
 
 function composerDraftHasContent(value: CreatorComposerDraft) {
   return Boolean(value.draft || value.attachments.length || value.selectedNodeIds.length
-    || value.creationMode === 'scene');
+    || value.creationMode === 'scene' || value.skill);
 }
 
 function conversationComposerDraftKey(baseKey: string, conversationId: string) {
@@ -267,6 +276,7 @@ function errorText(error: unknown, fallback = '操作没有完成，请重试') 
 type CreatorCopy = (zh: string, en: string) => string;
 
 function recoveryErrorText(error: unknown, fallback: string, copy: CreatorCopy) {
+  if (error && typeof error === 'object' && 'code' in error && String(error.code).startsWith('CREATOR_SKILL_')) return skillFailureText(error, copy);
   const raw = error instanceof Error ? error.message : '';
   if (/(?:VISION_REQUIRED|不能读取图片|不能读取视频|vision(?:-capable)? model|read (?:images|videos))/iu.test(raw)) {
     return copy('当前 LLM 不能读取这些图片或视频。请打开右上角生成设置，改用智能选择或支持视觉的模型。', 'The current LLM cannot read these images or videos. Open generation settings and use Automatic or a vision-capable model.');
@@ -371,6 +381,7 @@ function selectionDescriptor(detail: CreatorSelectionSummary | undefined, isChin
 }
 
 function failedMessageCopy(errorCode: string | null, copy: CreatorCopy) {
+  if (errorCode?.startsWith('CREATOR_SKILL_')) return skillFailureText({ code: errorCode }, copy);
   const code = String(errorCode || '').trim().toUpperCase();
   if (code === 'CREATOR_LLM_INTERRUPTED') {
     return copy('上次回复被应用关闭中断，请重新发送。', 'The previous reply was interrupted when the app closed. Send it again.');
@@ -470,6 +481,9 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
   const [messages, setMessages] = useState<CreatorMessageV2[]>([]);
   const [action, setAction] = useState<CreatorActionV2 | null>(null);
   const [draft, setDraft] = useState(initialComposerDraft.draft);
+  const [selectedSkill, setSelectedSkill] = useState<CreatorComposerSkillV2 | null>(initialComposerDraft.skill);
+  const [skillMarketOpen, setSkillMarketOpen] = useState(false);
+  useEffect(() => { setSkillMarketOpen(false); }, [open, minimized, props.projectId, props.canvasId]);
   const [creationMode, setCreationMode] = useState<'auto' | 'scene'>(initialComposerDraft.creationMode);
   const [attachments, setAttachments] = useState<CreatorMediaRef[]>(initialComposerDraft.attachments);
   const [uploadStatus, setUploadStatus] = useState<CreatorUploadStatus | null>(null);
@@ -603,6 +617,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
     setBoundSelectionIds(restored.selectedNodeIds);
     setBoundSelectionDetails(restored.selectedNodes);
     setCreationMode(restored.creationMode);
+    setSelectedSkill(restored.skill);
   }, []);
   const switchComposerDraftScope = useCallback((nextKey: string, options: {
     reset?: boolean;
@@ -680,6 +695,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
     '--creator-accent-text': props.themeTokens.accentText,
     '--creator-danger': props.themeTokens.danger,
     '--creator-success': props.themeTokens.success,
+    '--creator-warning': props.themeTokens.warning,
     '--creator-font': props.themeTokens.fontFamily,
     '--creator-panel-safe-top': `${Math.max(86, Number(props.panelSafeTop) || 86)}px`,
   }) as CSSProperties, [props.panelSafeTop, props.themeTokens]);
@@ -728,12 +744,13 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
       selectedNodeIds: boundSelectionIds,
       selectedNodes: boundSelectionDetails,
       creationMode,
+      skill: selectedSkill,
     });
     composerDraftRef.current = persisted;
     if (composerScopeKeyRef.current !== composerScopeKey) return undefined;
     const timeout = window.setTimeout(() => writeComposerDraft(composerScopeKey, persisted), 250);
     return () => window.clearTimeout(timeout);
-  }, [attachments, boundSelectionDetails, boundSelectionIds, composerScopeKey, creationMode, draft]);
+  }, [attachments, boundSelectionDetails, boundSelectionIds, composerScopeKey, creationMode, draft, selectedSkill]);
 
   useEffect(() => () => {
     writeComposerDraft(composerScopeKeyRef.current, composerDraftRef.current);
@@ -879,6 +896,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
               return restored;
             });
             setAttachments((current) => current.length ? current : stoppedTurn.attachments);
+            setSelectedSkill(current => current || stoppedTurn.skill);
             setBoundSelectionIds((current) => current.length ? current : stoppedTurn.selectedNodeIds);
             setBoundSelectionDetails((current) => current.length ? current : stoppedTurn.selectedNodes);
           }
@@ -989,6 +1007,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
     if (!open) return undefined;
     const handler = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      if (skillMarketOpen) return;
       if (settingsOpen) {
         dismissSettings();
         requestAnimationFrame(() => settingsButtonRef.current?.focus());
@@ -1003,7 +1022,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [dismissSettings, historyOpen, open, setPanelOpen, settingsOpen]);
+  }, [dismissSettings, historyOpen, open, setPanelOpen, settingsOpen, skillMarketOpen]);
 
   useEffect(() => {
     if (!open || (!historyOpen && !settingsOpen)) return undefined;
@@ -1290,6 +1309,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
     const requestedContent = text.trim();
     const turnAttachments = options.attachments ?? attachments;
     const turnSelectedNodeIds = options.selectedNodeIds ?? boundSelectionIds;
+    const turnSkill = options.skill === undefined ? selectedSkill : options.skill;
     const preserveComposer = options.preserveComposer === true;
     const turnCreationMode = sceneNavigation?.total || creationMode === 'scene' ? 'scene' : 'auto';
     const hasAttachments = turnAttachments.length > 0;
@@ -1315,6 +1335,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
       selectedNodeIds: turnSelectedNodeIds,
       selectedNodes: turnSelectedNodes,
       creationMode: turnCreationMode,
+      skill: turnSkill,
     });
     setOperation('reply');
     setError('');
@@ -1322,6 +1343,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
     if (!preserveComposer) {
       composerDraftRef.current = { ...EMPTY_COMPOSER_DRAFT, creationMode: turnCreationMode };
       setDraft('');
+      setSelectedSkill(null);
       setAttachments([]);
       clearBoundSelection();
     }
@@ -1346,6 +1368,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
         selectedNodeIds: turnSelectedNodeIds,
         currentSceneId: sceneNavigation?.currentSceneId || null,
         creationMode: turnCreationMode,
+        skill: turnSkill ? { id: turnSkill.id, packageDigest: turnSkill.packageDigest, taskId: turnSkill.taskId } : null,
       });
       const snapshot = await pending;
       setConversation(snapshot.conversation);
@@ -1382,6 +1405,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
             return restored;
           });
           setAttachments((current) => current.length ? current : turnAttachments);
+          setSelectedSkill(current => current || turnSkill);
           setBoundSelectionIds((current) => current.length ? current : turnSelectedNodeIds);
           setBoundSelectionDetails((current) => current.length
             ? current
@@ -1399,7 +1423,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
       activeTurnRef.current = null;
       finishOperation('reply');
     }
-  }, [attachments, boundSelectionDetails, boundSelectionIds, clearBoundSelection, conversation?.id, copy, creationMode, creatorLlmConfigured, dismissSettings, draft, ensureConversation, finishOperation, isChinese, isOperating, openApiSettings, props.canvasId, props.projectId, refreshCreatorSettings, sceneNavigation?.currentSceneId, sceneNavigation?.total, settleMessageScroll]);
+  }, [attachments, boundSelectionDetails, boundSelectionIds, clearBoundSelection, conversation?.id, copy, creationMode, creatorLlmConfigured, dismissSettings, draft, ensureConversation, finishOperation, isChinese, isOperating, openApiSettings, props.canvasId, props.projectId, refreshCreatorSettings, sceneNavigation?.currentSceneId, sceneNavigation?.total, settleMessageScroll, selectedSkill]);
 
   const stop = useCallback(async () => {
     if (!conversation || !activeResponseRef.current) return;
@@ -1446,6 +1470,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
       : [...messages].reverse().find((item) => item.role === 'user' && item.sequence < assistant.sequence);
     if (!user) return;
     setDraft(user.body);
+    setSelectedSkill(creatorComposerSkillFromBinding(user.skillBinding));
     setAttachments(user.media.slice(0, 12));
     setBoundSelectionIds(user.selectedNodes.map((node) => node.nodeId).slice(0, 24));
     setBoundSelectionDetails(user.selectedNodes.map((node) => ({
@@ -1462,13 +1487,14 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
       ? messages.find((item) => item.id === assistant.replyToMessageId && item.role === 'user')
       : [...messages].reverse().find((item) => item.role === 'user' && item.sequence < assistant.sequence);
     if (!user || user.body !== draft) return false;
+    if ((user.skillBinding?.selection.taskId || null) !== (selectedSkill?.taskId || null)) return false;
     const mediaIds = user.media.slice(0, 12).map((item) => item.assetId);
     const selectedIds = user.selectedNodes.slice(0, 24).map((item) => item.nodeId);
     return mediaIds.length === attachments.length
       && mediaIds.every((id, index) => attachments[index]?.assetId === id)
       && selectedIds.length === boundSelectionIds.length
       && selectedIds.every((id, index) => boundSelectionIds[index] === id);
-  }, [attachments, boundSelectionIds, draft, messages]);
+  }, [attachments, boundSelectionIds, draft, messages, selectedSkill]);
 
   const revisePendingAction = useCallback(async () => {
     if (!conversation || !action || action.status !== 'pending' || isOperating) return;
@@ -1692,7 +1718,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
     ? latestAssistant.suggestions
     : [];
   const hasTurnInput = Boolean(draft.trim() || attachments.length || boundSelectionIds.length);
-  const compactFirstScreen = messages.length === 0 && !action && !historyOpen && !settingsOpen;
+  const compactFirstScreen = messages.length === 0 && !action && !historyOpen && !settingsOpen && !skillMarketOpen;
   const requiresVisionInput = attachments.some((item) => item.kind === 'image' || item.kind === 'video')
     || boundSelectionDetails.some((item) => ['image', 'video', 'upload'].includes(String(item.type || '').toLowerCase()));
   const automaticModelHint = (kind: 'llm' | 'image' | 'video') => {
@@ -1796,6 +1822,25 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
                 <button type="button" className="t8-creator-v2-close" title={copy('关闭', 'Close')} aria-label={copy('关闭', 'Close')} onClick={() => { setHistoryOpen(false); setHistoryQuery(''); dismissSettings(); setPanelOpen(false); requestAnimationFrame(() => launcherRef.current?.focus()); }}><X size={17} /></button>
               </nav>
             </header>
+
+            {skillMarketOpen && !minimized && <CreatorSkillMarket key={`${props.projectId}:${props.canvasId}`}
+              projectId={props.projectId} canvasId={props.canvasId} copy={copy}
+              onClose={() => setSkillMarketOpen(false)} onUse={item => {
+                const title = copy(item.title, item.definition?.presentation?.titleEn || item.title);
+                const next = creatorComposerSkillFromItem({ ...item, title }, crypto.randomUUID());
+                if (!next) { setError(skillFailureText({ code: 'CREATOR_SKILL_DISABLED' }, copy)); return; }
+                setSelectedSkill(next);
+                composerDraftRef.current = { ...composerDraftRef.current, skill: next };
+                setDraft(current => current || copy(`请用「${title}」帮助我创作。`, `Help me create using “${title}”.`));
+                if (!attachments.length && !boundSelectionIds.length && props.selectedNodeIds.length > 0 && props.selectedNodeIds.length <= 24) {
+                  setBoundSelectionIds([...props.selectedNodeIds]);
+                  setBoundSelectionDetails([...selectedNodeDetails]);
+                }
+                setSkillMarketOpen(false);
+                setError('');
+                setNotice('');
+                requestAnimationFrame(() => composerRef.current?.focus());
+              }} />}
 
             <div className="t8-creator-v2-progress">
               <ol className="t8-creator-v2-phases" aria-label={copy('创作进度', 'Creation progress')}>
@@ -1971,6 +2016,27 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
                   <div data-i18n-skip="true">{resolvedRetry
                     ? copy('较早一次尝试已恢复并完成。', 'An earlier attempt was restored and completed.')
                     : visibleMessageBody(message)}</div>
+                  {message.skillOutput && message.status === 'completed' && <section className="t8-skill-output" data-i18n-skip="true">
+                    <small>{message.skillOutput.status === 'reference-produced'
+                      ? copy('参考建议 · 原技能有未支持步骤', 'Reference guidance · some skill steps are unsupported')
+                      : copy('文本作品 · 等待你核对', 'Text work · ready for your review')}</small>
+                    <details><summary>{message.skillOutput.title} · {copy('查看完整作品', 'View full work')}</summary><pre tabIndex={0} aria-label={copy('完整作品正文', 'Full work text')}>{message.skillOutput.body}</pre></details>
+                    <div className="t8-skill-output__actions"><button type="button" onClick={() => {
+                      const failed = () => setError(copy('未能复制，请展开作品后手动选择文字。', 'Could not copy. Expand the work and select its text manually.'));
+                      if (!navigator.clipboard?.writeText) { failed(); return; }
+                      try { void navigator.clipboard.writeText(message.skillOutput!.body).then(() => setNotice(copy('完整作品已复制。', 'Full work copied.')), failed); }
+                      catch { failed(); }
+                    }}>{copy('复制全文', 'Copy full text')}</button><button type="button" disabled={isOperating} onClick={() => {
+                      if (draft.trim() || attachments.length || boundSelectionIds.length) { setNotice(copy('请先发送或清空当前草稿，再继续修改这份作品。', 'Send or clear your current draft before continuing this work.')); return; }
+                      const source = messages.find(item => item.id === message.replyToMessageId);
+                      setSelectedSkill(creatorComposerSkillFromBinding(message.skillBinding));
+                      setAttachments(source?.media || []);
+                      setBoundSelectionIds(source?.selectedNodes.map(item => item.nodeId) || []);
+                      setBoundSelectionDetails(source?.selectedNodes.map(item => ({ id: item.nodeId, type: item.type, label: item.label })) || []);
+                      setDraft(copy('我想继续调整这份作品：', 'I want to refine this work: '));
+                      requestAnimationFrame(() => composerRef.current?.focus());
+                    }}>{copy('继续修改', 'Refine')}</button></div>
+                  </section>}
                   {message.media.length > 0 && (
                     <div className="t8-creator-v2-message-media">
                       {message.media.map((asset) => {
@@ -2016,7 +2082,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
                 <p className="t8-creator-v2-suggestions__heading"><strong>{copy('下一步只需选一个', 'Choose one next step')}</strong><small>{copy('也可以直接输入你的想法', 'Or type your own direction')}</small></p>
                 {visibleSuggestions.map((suggestion) => {
                   const hasDistinctDetail = suggestion.sendText.trim() !== suggestion.label.trim();
-                  return <button key={suggestion.intentKind} type="button" data-role={suggestion.role} data-i18n-skip="true" aria-label={hasDistinctDetail ? `${suggestion.label}: ${suggestion.sendText}` : suggestion.label} disabled={isOperating} onClick={() => void submit(suggestion.sendText, { attachments: suggestion.inputAssetIds.length ? suggestion.inputAssetIds.map((assetId) => knownMedia.get(assetId)).filter((asset): asset is CreatorMediaRef => Boolean(asset)) : [], selectedNodeIds: [], preserveComposer: true })}><strong>{suggestion.label}</strong>{hasDistinctDetail && <small>{suggestion.sendText}</small>}</button>;
+                  return <button key={suggestion.intentKind} type="button" data-role={suggestion.role} data-i18n-skip="true" aria-label={hasDistinctDetail ? `${suggestion.label}: ${suggestion.sendText}` : suggestion.label} disabled={isOperating} onClick={() => void submit(suggestion.sendText, { attachments: suggestion.inputAssetIds.length ? suggestion.inputAssetIds.map((assetId) => knownMedia.get(assetId)).filter((asset): asset is CreatorMediaRef => Boolean(asset)) : [], selectedNodeIds: [], preserveComposer: true, skill: creatorComposerSkillFromBinding(latestAssistant?.skillBinding) })}><strong>{suggestion.label}</strong>{hasDistinctDetail && <small>{suggestion.sendText}</small>}</button>;
                 })}
               </section>
             )}
@@ -2037,6 +2103,11 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
             )}
             {(attachments.length > 0 || boundSelectionIds.length > 0) && <div className="t8-creator-v2-attachments">{boundSelectionIds.length > 0 && <span title={linkedSelectionTitle}><span className="t8-creator-v2-attachment-label">{linkedSelectionText}</span><button type="button" aria-label={copy('取消引用选区', 'Unlink selection')} onClick={clearBoundSelection}><X size={14} /></button></span>}{attachments.map((item) => <span key={item.assetId} title={item.title || item.kind}><span className="t8-creator-v2-attachment-label">{item.title || item.kind}</span><button type="button" aria-label={copy('移除附件', 'Remove attachment')} onClick={() => setAttachments((current) => current.filter((entry) => entry.assetId !== item.assetId))}><X size={14} /></button></span>)}</div>}
 
+            {selectedSkill && <div className="t8-creator-v2-skill-draft"><div className="t8-creator-v2-skill-chip" data-i18n-skip="true"><BookOpen size={14} aria-hidden="true" /><span title={`${selectedSkill.title} · ${selectedSkill.version}`}>{copy('本次技能', 'Task skill')} · {selectedSkill.title}{selectedSkill.referenceOnly ? copy(' · 仅作参考', ' · reference only') : ''}</span><button type="button" aria-label={copy('移除本次技能，保留草稿和素材', 'Remove task skill, keep draft and materials')} onClick={() => { setSelectedSkill(null); composerDraftRef.current = { ...composerDraftRef.current, skill: null }; }}><X size={14} /></button></div>
+              <CreatorSkillReadiness projectId={props.projectId} canvasId={props.canvasId} sessionId={conversation?.id} skill={selectedSkill}
+                attachments={attachments} selectedNodeIds={boundSelectionIds} settingsRevision={JSON.stringify([preferences, props.apiSettingsRevision])}
+                copy={copy} onSettings={() => void openSettings(true)} onApiSettings={openApiSettings} />
+            </div>}
             <footer className="t8-creator-v2-composer">
               <input ref={fileInputRef} className="hidden" type="file" tabIndex={-1} aria-hidden="true" multiple accept="image/*,video/*,audio/*,.txt,.md,.pdf" onChange={onFiles} />
               <textarea ref={composerRef} data-creator-agent-composer="true" rows={2} value={draft} maxLength={30_000} aria-label={copy('描述你想做的作品', 'Describe what you want to make')} placeholder={(sceneNavigation?.total || creationMode === 'scene') ? copy('写一个场景想法，或粘贴完整剧本…', 'Write a scene idea, or paste a full script…') : copy('例如：把这张产品图做成 15 秒电影感广告…', 'For example: Turn this product photo into a cinematic 15-second ad…')} onChange={(event) => {
@@ -2050,6 +2121,7 @@ export default function CreatorAgentPanelV2(props: CreatorAgentPanelV2Props) {
                 compositionEndedAtRef.current = Date.now();
               }} />
               <div>
+                <button type="button" className="has-touch-label" aria-label={copy('技能市场', 'Skill library')} aria-expanded={skillMarketOpen} disabled={loading} onClick={() => { setHistoryOpen(false); dismissSettings(); setSkillMarketOpen(true); }}><BookOpen size={16} /><span className="t8-creator-v2-button-label">{copy('技能', 'Skills')}</span></button>
                 <button type="button" title={copy('添加附件', 'Add attachment')} aria-label={copy('添加附件', 'Add attachment')} disabled={isUploading} onClick={() => fileInputRef.current?.click()}>{isUploading ? <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> : <Paperclip size={16} />}</button>
                 <button type="button" className={`has-touch-label${boundSelectionIds.length ? ' is-active' : ''}`} title={props.selectedNodeIds.length || boundSelectionIds.length ? copy('使用画布中选中的内容', 'Use selected canvas items') : copy('先在画布上选中图片、视频或文字', 'Select an image, video, or text item on the canvas first')} aria-label={props.selectedNodeIds.length || boundSelectionIds.length ? copy('使用画布中选中的内容', 'Use selected canvas items') : copy('先在画布上选中图片、视频或文字', 'Select an image, video, or text item on the canvas first')} aria-pressed={boundSelectionIds.length > 0} onClick={pinSelection}><AtSign size={16} /><span className="t8-creator-v2-button-label">{copy('画布', 'Canvas')}</span></button>
                 <button type="button" className={`has-touch-label is-scene-mode${(sceneNavigation?.total || creationMode === 'scene') ? ' is-active' : ''}`} title={sceneNavigation?.total ? copy('当前作品正在逐场创作', 'This work is in scene mode') : copy('短想法也会直接写成高质量场稿', 'Turn even a short idea into a polished scene')} aria-label={copy('逐场创作', 'Scene mode')} aria-pressed={Boolean(sceneNavigation?.total || creationMode === 'scene')} disabled={isOperating || Boolean(sceneNavigation?.total)} onClick={() => setCreationMode((current) => current === 'scene' ? 'auto' : 'scene')}><Clapperboard size={16} /><span className="t8-creator-v2-button-label">{(sceneNavigation?.total || creationMode === 'scene') ? copy('逐场创作中', 'Scene mode on') : copy('逐场创作', 'Scene mode')}</span></button>

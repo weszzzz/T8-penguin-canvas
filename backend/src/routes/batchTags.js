@@ -7,11 +7,15 @@ const settingsRouter = require('./settings');
 const { normalizeAdvancedProviders, maskAdvancedProviders } = require('../providers/registry');
 const { generateChatWithProvider } = require('../providers/adapters');
 const { providerSubmissionContextMiddleware } = require('../services/providerSubmissionContext');
+const {
+  DEFAULT_PROVIDER_LLM_TIMEOUT_MS,
+  normalizeProviderLlmTimeoutMs,
+} = require('../providers/providerTimeoutPolicy');
 
 const router = express.Router();
 router.use(providerSubmissionContextMiddleware);
 
-const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
+const DEFAULT_TIMEOUT_MS = DEFAULT_PROVIDER_LLM_TIMEOUT_MS;
 const DEFAULT_ZHENZHEN_MODEL = 'gpt-4o-mini';
 const MODELSCOPE_QWEN3_VL_235B = 'Qwen/Qwen3-VL-235B-A22B-Instruct';
 const MODELSCOPE_QWEN3_TEXT_235B = 'Qwen/Qwen3-235B-A22B';
@@ -855,7 +859,7 @@ router.post('/tag', async (req, res) => {
       videoMaxBase64Mb: body.videoMaxBase64Mb || 8,
       videoCrf: body.videoCrf || 32,
     }, {
-      timeoutMs: Number(body.timeoutMs) || DEFAULT_TIMEOUT_MS,
+      timeoutMs: normalizeProviderLlmTimeoutMs(body.timeoutMs, { fallback: DEFAULT_TIMEOUT_MS }),
       baseUrl: `http://127.0.0.1:${config.PORT}`,
     });
     if (clientGone) return undefined;

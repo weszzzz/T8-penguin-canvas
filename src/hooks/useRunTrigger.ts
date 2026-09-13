@@ -22,6 +22,7 @@ import {
 } from '../services/api';
 import { normalizeRunError } from '../utils/runErrors';
 import { captureRunNodeInputSnapshot } from '../utils/runReplay';
+import { captureGenerationHistoryInput } from '../utils/generationHistoryCapture';
 import { inferRunRecoveryDescriptor } from '../utils/runRecovery';
 import {
   createRunNodeLifecycleController,
@@ -34,6 +35,7 @@ import {
   providerTraceAttemptPatch,
 } from '../utils/runProviderTrace';
 import type { RunNodeLifecycleReporter } from '../types/project';
+import { captureHistoryExecution } from '../utils/historyResolvedSeedanceInput';
 import type { RunOutputAssetCandidate, RunProviderTrace } from '../utils/runProviderTrace';
 
 export interface RunTriggerInitializationFailureDependencies {
@@ -135,6 +137,7 @@ export function useRunTrigger(
   options: {
     lifecycleAware?: boolean;
     shouldReuseResult?: (nodeData: Record<string, unknown>) => boolean;
+    captureHistoryInput?: () => Record<string, unknown>;
   } = {},
 ) {
   const { getNodes, getEdges } = useReactFlow();
@@ -148,6 +151,8 @@ export function useRunTrigger(
   lifecycleAwareRef.current = Boolean(options.lifecycleAware);
   const shouldReuseResultRef = useRef(options.shouldReuseResult);
   shouldReuseResultRef.current = options.shouldReuseResult;
+  const captureHistoryInputRef = useRef(options.captureHistoryInput);
+  captureHistoryInputRef.current = options.captureHistoryInput;
   const startedTokensRef = useRef(new Set<string>());
 
   useEffect(
@@ -171,6 +176,7 @@ export function useRunTrigger(
       let providerSubmissionState = '';
       let providerSubmissionExpected = false;
       let executionCallbackStarted = false;
+      let historyExecution: ReturnType<typeof captureHistoryExecution<typeof runFn>>;
       let reusedExistingResult = false;
       let terminalWrite: Promise<void> | null = null;
       let acceptLifecycleEvents = true;
@@ -428,6 +434,8 @@ export function useRunTrigger(
         }
         try {
           const inputSnapshot = captureRunNodeInputSnapshot(getNodes(), getEdges(), nodeId);
+          historyExecution = captureHistoryExecution(runFnRef.current, captureHistoryInputRef.current);
+          const historyInputSnapshot = captureGenerationHistoryInput(getNodes(), getEdges(), nodeId, historyExecution?.resolvedInput);
           const nodeDataAtStart = getNodes().find((node) => node.id === nodeId)?.data as Record<string, unknown> | undefined;
           reusedExistingResult = Boolean(
             nodeDataAtStart
@@ -442,6 +450,7 @@ export function useRunTrigger(
             subflowPath: executionContext?.subflowPath || [],
             status: 'queued',
             inputSnapshot: inputSnapshot as unknown as Record<string, unknown>,
+            historyInputSnapshot: historyInputSnapshot as unknown as Record<string, unknown>,
           });
           nodeRunId = nodeRun.id;
           useRunBusStore.getState().setActiveNodeRun(executionNodeId, nodeRunId, capturedExecutionToken);
@@ -526,9 +535,9 @@ export function useRunTrigger(
               return;
             }
             if (lifecycleAwareRef.current) {
-              await (runFnRef.current as (reporter: RunNodeLifecycleReporter) => Promise<void> | void)(lifecycle.reporter);
+              await ((historyExecution?.run || runFnRef.current) as (reporter: RunNodeLifecycleReporter) => Promise<void> | void)(lifecycle.reporter);
             } else {
-              await (runFnRef.current as () => Promise<void> | void)();
+              await ((historyExecution?.run || runFnRef.current) as () => Promise<void> | void)();
             }
           },
         );
@@ -586,7 +595,7 @@ export function useRunTrigger(
           executionNodeId,
           capturedExecutionToken,
           false,
-          stopped ? 'stopped' : completionError instanceof Error ? completionError.message : String(completionError),
+          stopped && completionError === error ? 'stopped' : completionError instanceof Error ? completionError.message : String(completionError),
         );
       } finally {
         unregisterCancelHandler();
@@ -619,4 +628,15 @@ export function useRunTrigger(
       })
       .catch((containmentError) => console.error('[run-center] failed to contain listener initialization error', containmentError));
   }, [executionNodeId, executionToken, getEdges, getNodes, nodeId, markDone]);
+  // Capture this render's identity, never look up a newer token when clicked.
+  return () => {
+    const state = useRunBusStore.getState();
+    const currentToken = state.executionTokens[executionNodeId] || null;
+    if (currentToken !== executionToken) return false;
+    // No live token: allow clearing a restored local busy indicator, without
+    // inventing a durable stop or reaching a newer execution on another canvas.
+    if (!executionToken) return null;
+    void state.cancelExecution(executionNodeId, executionToken);
+    return true;
+  };
 }

@@ -12,6 +12,10 @@ const { reconcileAssetAvailabilitySnapshots } = require('./assetAvailability');
 const { isUtf8 } = require('buffer');
 const { safeRemoteMediaDownload } = require('../utils/safeRemoteMediaFetch');
 const { withFfmpegProcessSlot } = require('../utils/ffmpegProcessQueue');
+const {
+  MIN_PROVIDER_MEDIA_TIMEOUT_MS,
+  normalizeProviderMediaTimeoutMs,
+} = require('../providers/providerTimeoutPolicy');
 
 const MAX_IMAGE_INPUT_PIXELS = 100_000_000;
 const PHASH_DCT64_ALGORITHM = 'phash-dct64-v1';
@@ -21,8 +25,8 @@ const MAX_HOST_ARTIFACT_REMOTE_MAX_BYTES = 512 * 1024 * 1024;
 const MAX_HOST_ARTIFACT_INLINE_TEXT_BYTES = 1024 * 1024;
 const DEFAULT_HOST_ARTIFACT_TOTAL_MAX_BYTES = 1024 * 1024 * 1024;
 const MAX_HOST_ARTIFACT_TOTAL_MAX_BYTES = 2 * 1024 * 1024 * 1024;
-const DEFAULT_HOST_ARTIFACT_DEADLINE_MS = 2 * 60_000;
-const MAX_HOST_ARTIFACT_DEADLINE_MS = 5 * 60_000;
+const DEFAULT_HOST_ARTIFACT_DEADLINE_MS = MIN_PROVIDER_MEDIA_TIMEOUT_MS;
+const MAX_HOST_ARTIFACT_DEADLINE_MS = 60 * 60_000;
 const DEFAULT_HOST_ARTIFACT_CONCURRENCY = 2;
 const MAX_HOST_ARTIFACT_CONCURRENCY = 4;
 const DEFAULT_HOST_ARTIFACT_QUEUE_LIMIT = 16;
@@ -1354,11 +1358,10 @@ class AssetIndexer {
         DEFAULT_HOST_ARTIFACT_REMOTE_MAX_BYTES,
         MAX_HOST_ARTIFACT_REMOTE_MAX_BYTES,
       ),
-      deadlineMs: boundedPositiveInteger(
-        this.config.HOST_ARTIFACT_DEADLINE_MS,
-        DEFAULT_HOST_ARTIFACT_DEADLINE_MS,
-        MAX_HOST_ARTIFACT_DEADLINE_MS,
-      ),
+      deadlineMs: normalizeProviderMediaTimeoutMs(this.config.HOST_ARTIFACT_DEADLINE_MS, {
+        fallback: DEFAULT_HOST_ARTIFACT_DEADLINE_MS,
+        maximum: MAX_HOST_ARTIFACT_DEADLINE_MS,
+      }),
       concurrency: boundedPositiveInteger(
         this.config.HOST_ARTIFACT_CONCURRENCY,
         DEFAULT_HOST_ARTIFACT_CONCURRENCY,
@@ -1539,8 +1542,8 @@ class AssetIndexer {
     try {
       remote = await this.remoteMediaDownload(prepared.sourceUrl, target.absolute, {
         maxBytes: maximumBytes,
-        timeoutMs: Math.min(deadlineMs, 60_000),
-        idleTimeoutMs: Math.min(deadlineMs, 30_000),
+        timeoutMs: deadlineMs,
+        idleTimeoutMs: deadlineMs,
         deadlineMs,
         maxRedirects: 4,
         protocols: ['https:'],

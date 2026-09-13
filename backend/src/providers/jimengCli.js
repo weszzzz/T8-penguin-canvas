@@ -8,6 +8,7 @@ const { mediaRefToAbsoluteUrl, resolveMediaRef, mimeFromPath } = require('./medi
 const { providerTrace } = require('./providerTrace');
 const { safeRemoteMediaFetch } = require('../utils/safeRemoteMediaFetch');
 const jimengCliCompatibility = require('../shared/jimengCliCompatibility.json');
+const { MIN_PROVIDER_MEDIA_TIMEOUT_MS } = require('./providerTimeoutPolicy');
 
 const JIMENG_CLI_SUPPORTED_VERSION = jimengCliCompatibility.supportedVersion;
 const JIMENG_CLI_SUPPORTED_RELEASE_DATE = jimengCliCompatibility.releaseDate;
@@ -22,7 +23,7 @@ function cleanExecutablePath(provider) {
 function pollSeconds(provider) {
   const n = Number(provider?.jimengConfig?.pollSeconds || 3600);
   const seconds = Number.isFinite(n) ? Math.round(n) : 3600;
-  return Math.max(0, Math.min(3600, seconds));
+  return Math.max(MIN_PROVIDER_MEDIA_TIMEOUT_MS / 1000, Math.min(3600, seconds));
 }
 
 function shQuote(value) {
@@ -664,8 +665,8 @@ async function defaultStoreOutput(value, kind, options = {}) {
         allowedKinds: [kind],
         trustedProviderOutput: true,
         maxBytes: kind === 'video' ? 1024 * 1024 * 1024 : 64 * 1024 * 1024,
-        deadlineMs: 5 * 60 * 1000,
-        idleTimeoutMs: 30 * 1000,
+        deadlineMs: MIN_PROVIDER_MEDIA_TIMEOUT_MS,
+        idleTimeoutMs: MIN_PROVIDER_MEDIA_TIMEOUT_MS,
         maxRedirects: 4,
         userAgent: 'T8-PenguinCanvas-JimengCLI/1.0',
       });

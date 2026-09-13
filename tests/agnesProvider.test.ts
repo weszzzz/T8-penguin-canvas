@@ -169,7 +169,7 @@ test('Agnes adapter converts video controls to width height and polls agnesapi',
   assert.match(calls[1].url, /^https:\/\/apihub\.agnes-ai\.com\/agnesapi\?video_id=vid-1&model_name=agnes-video-v2\.0$/);
 });
 
-test('Agnes chat uses the long Agnes timeout instead of the OpenAI compatible 8s default', async (t) => {
+test('Agnes chat uses the shared three-minute LLM cap instead of the OpenAI compatible 8s default', async (t) => {
   const agnes = adapters.getAdapterForProtocol('agnes');
   const provider = {
     id: 'agnes',
@@ -182,10 +182,10 @@ test('Agnes chat uses the long Agnes timeout instead of the OpenAI compatible 8s
   const originalSetTimeout = globalThis.setTimeout;
   const originalClearTimeout = globalThis.clearTimeout;
   let usedShortDefault = false;
-  let usedLongAgnesTimeout = false;
+  let usedThreeMinuteTimeout = false;
   (globalThis as any).setTimeout = ((callback: (...args: any[]) => void, ms?: number, ...args: any[]) => {
     if (ms === 8000) usedShortDefault = true;
-    if (Number(ms) >= 30 * 60 * 1000) usedLongAgnesTimeout = true;
+    if (Number(ms) === 3 * 60 * 1000) usedThreeMinuteTimeout = true;
     return originalSetTimeout(callback, ms as any, ...args);
   }) as any;
   (globalThis as any).clearTimeout = ((timer: any) => originalClearTimeout(timer)) as any;
@@ -204,7 +204,7 @@ test('Agnes chat uses the long Agnes timeout instead of the OpenAI compatible 8s
   assert.equal(result.ok, true);
   assert.equal(result.text, 'world');
   assert.equal(usedShortDefault, false);
-  assert.equal(usedLongAgnesTimeout, true);
+  assert.equal(usedThreeMinuteTimeout, true);
 });
 
 test('Agnes video sends local T8 reference images as base64 payloads for remote task workers', async (t) => {

@@ -4,6 +4,7 @@ import {
   VIDEO_EDIT_VISIBLE_CATALOG,
 } from './workbenchVisibleCatalog';
 import { INSPIRATION_VISIBLE_CATALOG } from './inspirationVisibleCatalog';
+import { generationHistoryZh, generationHistoryEn } from './generationHistoryCatalog';
 
 export const zhCN = {
   workbenches: {
@@ -80,6 +81,7 @@ export const zhCN = {
     canvasError: '画布渲染出错了，已被错误边界捕获',
   },
   canvas: {
+    generationHistory: generationHistoryZh,
     state: {
       noCanvasTitle: '🐧 贞贞的无限画布（企鹅共创版）', noCanvas: '请先在左侧创建或选择一个画布',
       loadFailed: '画布暂时无法加载', readOnlyUntilLoaded: '加载成功前画布保持只读，不会创建空白内容或发送保存请求。',
@@ -155,6 +157,11 @@ export const zhCN = {
       promptFallback: '备用：无上游连接时使用', localPrompt: '本地 Prompt（可选，优先取上游文本）', negativePromptOptional: '反向提示词（可选）', systemPromptOptional: 'System Prompt（可选）', optionalSystemInstruction: '可选系统指令',
       addImage: '添加图片', remove: '移除', ctrlDrag: '按住 Ctrl 拖拽到其他节点', enabled: '开启', disabled: '关闭', automatic: '自动', generate: '生成', generating: '生成中', stop: '停止', stopWithStatus: '停止（{{status}}）', missingBudgetKey: '尚未配置“贞贞的平价AI小屋 API Key”', missingProvider: '当前画布记录的扩展平台未启用或不存在，已临时回到默认来源。',
       seedRandom: 'Seed（-1 随机）', seedOmit: 'Seed（0=不传）', pollingMax: '轮询最大次数', pollingInterval: '轮询间隔（秒）',
+      previousTitle: '当前保留上一版结果',
+      previousPending: '新结果完成后才替换预览，等待期间仍可查看上一版。',
+      previousFailed: '本次生成未成功，上一版预览仍保留。',
+      previousIdle: '可修改设置后重新生成，上一版预览仍保留。',
+      previousHistoryHint: '其他已保存版本可从节点上方的“历史”查看。',
       gptImage25: {
         channel: '贞贞的AI工坊 · GPT Image 2.5',
         description: '无参考图为文生图；有参考图为编辑，按连接/上传顺序最多输入 14 张；单次可输出 1–10 张。',
@@ -299,7 +306,15 @@ export const zhCN = {
     },
     image: { title: '图像', promptTitle: '图像 Prompt', imageOnlyAria: '仅输出图片结果', imageOnly: '仅输出图片结果（不输出 Prompt）', resultAlt: '生成结果', generatedImage: '生成图像' },
     audio: {
-      title: '音频', titleWithProvider: '音频 · {{provider}}', sunoPlatform: 'Suno API 平台', workshopLegacy: '贞贞的AI工坊（原有）', mode: '模式', version: '版本', sunoActions: 'Suno 操作（31 项）', flowMusicActions: 'Lyria / Flow Music 操作（9 项）', generationVersion: '生成版本', defaultVersion: '默认版本',
+      sunoV6Hint: 'V6 / wild / mini：歌词最多 5000 字符，标签最多 1000 字符，歌曲最长 8 分钟（非固定时长）。旧版本请求由工坊转为 V6 基础版；旧画布选项保留。',
+      sunoV6PromptLimit: 'Suno V6 歌词 / 提示词最多 5000 字符（含上游输入）。',
+      sunoV6TagsLimit: 'Suno V6 风格标签最多 1000 字符。',
+      sunoV6UploadContract: 'V6 专用动作：版本仅支持 v6 / v6-wild / v6-mini；填写 custom_model_id 时不发送 version，并禁止同时填写 persona_id。',
+      sunoCustomModelName: '自定义模型名称', sunoCustomModelNamePlaceholder: '例如：V6 Studio Voice', sunoCreateModelReferences: '需要 6–24 段有序参考音频；当前 {{count}} 段。训练完成后 model_id 会显示在结果区。', sunoCreateModelReferenceCount: 'suno-create-model 需要 6–24 段有序参考音频；当前 {{count}} 段。', sunoCreateModelMaxReferences: 'suno-create-model 最多只能导入 24 段参考音频。', sunoCreateModelImported: '已按顺序导入 {{count}} 段模型参考音频', sunoCreateModelNameRequired: 'suno-create-model 需要填写自定义模型名称。',
+      sunoCustomModelIdOptional: 'custom_model_id（可选）', sunoCustomModelIdPlaceholder: 'create-model 返回的模型 UUID', sunoCustomModelIdHint: '使用自定义模型时会省略 version；custom_model_id 与 persona_id 互斥。', sunoCustomModelPersonaConflict: 'custom_model_id 与 persona_id 不能同时使用。',
+      sunoGptDescription: '灵感描述（必填，最多 3000 字符）', sunoGptDescriptionPlaceholder: '描述希望参考音频被改编成的歌曲', sunoCoverDescriptionRequired: 'upload-cover 在非自定义模式必须填写灵感描述。', sunoCoverPromptRequired: 'upload-cover 在自定义且非纯音乐模式必须填写歌词 / prompt。', sunoCoverPrompt: '自定义歌词 / Prompt', sunoExtendPrompt: '续写歌词 / Prompt（可选）', sunoUploadExtendFixedCustom: 'upload-extend 固定为自定义模式，不发送 custom、instrumental 或 gpt_description。',
+      sunoNegativeTags: '排除风格（negative_tags）', sunoNegativeTagsPlaceholder: '例如：harsh vocals, distortion', sunoStyleWeight: '风格权重', sunoWeirdness: '创意度', sunoAudioWeight: '音频权重', sunoAutoLyrics: '自动改写歌词', sunoMaxMode: 'Max 模式（双倍计费）', sunoPersonaIdOptional: 'persona_id（可选）', sunoPersonaIdPlaceholder: '留空则不使用 Persona', sunoTargetDuration: '目标时长（10–360 秒）', sunoVariety: '变化度', sunoExtendContinueMinimum: 'upload-extend 的 continue_at 必须至少为 1 秒。', sunoExtendSourceDurationHint: '提交前会读取源音频真实时长；续写起点必须严格小于源时长。', sunoSingleReferenceRequired: '{{action}} 必须且只能提供 1 段参考音频；当前 {{count}} 段。', sunoCreateModelUpstreamTitle: '上游素材 · 6–24 段有序训练音频', sunoSingleUpstreamTitle: '上游素材 · 仅 1 段参考音频', sunoRemoveReference: '移除这段参考音频', sunoImportModelReferences: '批量导入训练音频（6–24 段）', sunoImportSingleReference: '导入 1 段 Suno 参考音频',
+      title: '音频', titleWithProvider: '音频 · {{provider}}', sunoPlatform: 'Suno API 平台', workshopLegacy: '贞贞的AI工坊（原有）', mode: '模式', version: '版本', sunoActions: 'Suno 操作（34 项）', flowMusicActions: 'Lyria / Flow Music 操作（9 项）', generationVersion: '生成版本', defaultVersion: '默认版本',
       lyrics: '歌词', lyricsRequirement: '歌词（曲风提示词与歌词至少一个非空）', fullLyricsPlaceholder: '支持完整歌词与段落标签', songTitle: '标题', titleOptional: '标题（可选）', styleTags: '风格 Tags', styleOptional: '风格（可选）', customMode: '自定义模式', instrumental: '纯音乐', vocalGenderOptional: '人声性别（可选）', male: '男声', female: '女声',
       qwenModel: 'Qwen3-TTS 模型', minimaxModel: 'MiniMax 模型', murekaModel: 'Mureka 模型', voiceId: '音色 ID', voiceIdOptional: '音色 ID（可选）', language: '语言', expressionInstruction: '表达指令（中文或英文，可选）', expressionPlaceholder: '例如：温柔、自然、语速稍慢', optimizeInstruction: '由上游优化非空表达指令', optimizeLyrics: '自动生成/优化歌词',
       speechRate: '语速', volume: '音量', pitch: '音高', format: '格式', sampleRate: '采样率', bitrate: '码率', languageBoost: '语言增强', generationCount: '生成数量', promptTitle: '音频歌词 / 提示词', startTranscription: '开始转写', execute: '执行 {{action}}', createCloneVoice: '创建克隆音色', generateAudio: '生成音频', transcribing: '正在转写...', submitting: '提交任务...', polling: '轮询中 {{progress}}', transcriptResult: '转写结果', resultFiles: '结果文件', downloadFile: '下载文件 {{index}}',
@@ -658,6 +673,7 @@ export const enUS = {
     canvasError: 'Canvas rendering failed and was caught by the error boundary',
   },
   canvas: {
+    generationHistory: generationHistoryEn,
     state: {
       noCanvasTitle: "🐧 Zhenzhen's Infinite Canvas (Penguin Co-creation Edition)", noCanvas: 'Create or select a canvas from the sidebar.',
       loadFailed: 'Canvas could not be loaded', readOnlyUntilLoaded: 'The canvas remains read-only until loading succeeds. No blank content or save request will be created.',
@@ -733,6 +749,11 @@ export const enUS = {
       promptFallback: 'Fallback when no upstream input is connected', localPrompt: 'Local prompt (optional; upstream text takes priority)', negativePromptOptional: 'Negative prompt (optional)', systemPromptOptional: 'System prompt (optional)', optionalSystemInstruction: 'Optional system instruction',
       addImage: 'Add image', remove: 'Remove', ctrlDrag: 'Hold Ctrl and drag to another node', enabled: 'On', disabled: 'Off', automatic: 'Auto', generate: 'Generate', generating: 'Generating', stop: 'Stop', stopWithStatus: 'Stop ({{status}})', missingBudgetKey: 'The Zhenzhen Budget AI House API key is not configured.', missingProvider: 'The extended platform stored by this canvas is disabled or missing, so the default source is active temporarily.',
       seedRandom: 'Seed (-1 = random)', seedOmit: 'Seed (0 = omit)', pollingMax: 'Maximum polling attempts', pollingInterval: 'Polling interval (seconds)',
+      previousTitle: 'Previous result retained',
+      previousPending: 'The preview changes only when the new result is ready. You can still view the previous result while waiting.',
+      previousFailed: 'This generation did not succeed. The previous preview is still available.',
+      previousIdle: 'You can edit the settings and generate again. The previous preview is still available.',
+      previousHistoryHint: 'View other saved versions in History above the selected node.',
       gptImage25: {
         channel: 'Zhenzhen AI Workshop · GPT Image 2.5',
         description: 'No references generates from text; adding references switches to editing. Up to 14 ordered inputs and 1–10 outputs are supported.',
@@ -877,7 +898,15 @@ export const enUS = {
     },
     image: { title: 'Image', promptTitle: 'Image prompt', imageOnlyAria: 'Output images only', imageOnly: 'Output images only (omit the prompt)', resultAlt: 'Generated result', generatedImage: 'Generated image' },
     audio: {
-      title: 'Audio', titleWithProvider: 'Audio · {{provider}}', sunoPlatform: 'Suno API platform', workshopLegacy: 'Zhenzhen AI Workshop (legacy)', mode: 'Mode', version: 'Version', sunoActions: 'Suno actions (31)', flowMusicActions: 'Lyria / Flow Music actions (9)', generationVersion: 'Generation version', defaultVersion: 'Default version',
+      sunoV6Hint: 'V6 / wild / mini: up to 5,000 prompt characters, 1,000 tag characters and 8 minutes per song (not a fixed duration). Workshop redirects legacy models to V6 base; saved selections are preserved.',
+      sunoV6PromptLimit: 'Suno V6 lyrics / prompt may contain at most 5,000 characters, including upstream input.',
+      sunoV6TagsLimit: 'Suno V6 style tags may contain at most 1,000 characters.',
+      sunoV6UploadContract: 'V6-only actions support v6 / v6-wild / v6-mini. When custom_model_id is set, version is omitted and persona_id cannot be used.',
+      sunoCustomModelName: 'Custom model name', sunoCustomModelNamePlaceholder: 'For example: V6 Studio Voice', sunoCreateModelReferences: 'Requires 6–24 ordered audio references; {{count}} are selected. The completed model_id appears in the result panel.', sunoCreateModelReferenceCount: 'suno-create-model requires 6–24 ordered audio references; {{count}} are selected.', sunoCreateModelMaxReferences: 'suno-create-model accepts at most 24 imported audio references.', sunoCreateModelImported: 'Imported {{count}} model reference audios in order', sunoCreateModelNameRequired: 'suno-create-model requires a custom model name.',
+      sunoCustomModelIdOptional: 'custom_model_id (optional)', sunoCustomModelIdPlaceholder: 'Model UUID returned by create-model', sunoCustomModelIdHint: 'Using a custom model omits version. custom_model_id and persona_id are mutually exclusive.', sunoCustomModelPersonaConflict: 'custom_model_id and persona_id cannot be used together.',
+      sunoGptDescription: 'Inspiration description (required, max 3,000 characters)', sunoGptDescriptionPlaceholder: 'Describe how the reference audio should be reimagined', sunoCoverDescriptionRequired: 'upload-cover requires an inspiration description in non-custom mode.', sunoCoverPromptRequired: 'upload-cover requires lyrics / prompt when custom is on and instrumental is off.', sunoCoverPrompt: 'Custom lyrics / prompt', sunoExtendPrompt: 'Extension lyrics / prompt (optional)', sunoUploadExtendFixedCustom: 'upload-extend is always custom mode and never sends custom, instrumental, or gpt_description.',
+      sunoNegativeTags: 'Negative styles (negative_tags)', sunoNegativeTagsPlaceholder: 'For example: harsh vocals, distortion', sunoStyleWeight: 'Style weight', sunoWeirdness: 'Weirdness', sunoAudioWeight: 'Audio weight', sunoAutoLyrics: 'Rewrite lyrics automatically', sunoMaxMode: 'Max mode (double price)', sunoPersonaIdOptional: 'persona_id (optional)', sunoPersonaIdPlaceholder: 'Leave blank to omit Persona', sunoTargetDuration: 'Target duration (10–360 sec)', sunoVariety: 'Variety', sunoExtendContinueMinimum: 'upload-extend continue_at must be at least 1 second.', sunoExtendSourceDurationHint: 'The source duration is probed before submit; continue_at must be strictly shorter than the source.', sunoSingleReferenceRequired: '{{action}} requires exactly one reference audio; {{count}} are selected.', sunoCreateModelUpstreamTitle: 'Upstream · 6–24 ordered training audios', sunoSingleUpstreamTitle: 'Upstream · exactly one reference audio', sunoRemoveReference: 'Remove this reference audio', sunoImportModelReferences: 'Import training audios in bulk (6–24)', sunoImportSingleReference: 'Import one Suno reference audio',
+      title: 'Audio', titleWithProvider: 'Audio · {{provider}}', sunoPlatform: 'Suno API platform', workshopLegacy: 'Zhenzhen AI Workshop (legacy)', mode: 'Mode', version: 'Version', sunoActions: 'Suno actions (34)', flowMusicActions: 'Lyria / Flow Music actions (9)', generationVersion: 'Generation version', defaultVersion: 'Default version',
       lyrics: 'Lyrics', lyricsRequirement: 'Lyrics (style prompt or lyrics must be provided)', fullLyricsPlaceholder: 'Full lyrics and section tags are supported', songTitle: 'Title', titleOptional: 'Title (optional)', styleTags: 'Style tags', styleOptional: 'Style (optional)', customMode: 'Custom mode', instrumental: 'Instrumental', vocalGenderOptional: 'Vocal gender (optional)', male: 'Male', female: 'Female',
       qwenModel: 'Qwen3-TTS model', minimaxModel: 'MiniMax model', murekaModel: 'Mureka model', voiceId: 'Voice ID', voiceIdOptional: 'Voice ID (optional)', language: 'Language', expressionInstruction: 'Expression instruction (Chinese or English, optional)', expressionPlaceholder: 'For example: gentle, natural, and slightly slower', optimizeInstruction: 'Optimize a non-empty expression instruction from upstream', optimizeLyrics: 'Generate or optimize lyrics automatically',
       speechRate: 'Speech rate', volume: 'Volume', pitch: 'Pitch', format: 'Format', sampleRate: 'Sample rate', bitrate: 'Bitrate', languageBoost: 'Language boost', generationCount: 'Generation count', promptTitle: 'Audio lyrics / prompt', startTranscription: 'Start transcription', execute: 'Run {{action}}', createCloneVoice: 'Create cloned voice', generateAudio: 'Generate audio', transcribing: 'Transcribing...', submitting: 'Submitting task...', polling: 'Polling {{progress}}', transcriptResult: 'Transcription result', resultFiles: 'Result files', downloadFile: 'Download file {{index}}',

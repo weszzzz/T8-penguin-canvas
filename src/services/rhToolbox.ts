@@ -22,6 +22,7 @@ import {
   type RhToolboxOutputClassification,
   type RhToolboxTool,
 } from '../utils/rhToolbox';
+import { minimumProviderMediaPollCount } from '../utils/providerTimeoutPolicy';
 
 export type RhToolboxProgressStage =
   | 'prepare'
@@ -235,7 +236,10 @@ export async function runRhToolboxTool(options: RunRhToolboxToolOptions): Promis
     }
 
     const pollIntervalMs = Math.max(1000, tool.runtime?.pollIntervalMs || RH_TOOLBOX_DEFAULT_POLL_INTERVAL_MS);
-    const maxPolls = Math.max(1, tool.runtime?.maxPolls || RH_TOOLBOX_DEFAULT_MAX_POLLS);
+    const maxPolls = minimumProviderMediaPollCount(
+      pollIntervalMs,
+      tool.runtime?.maxPolls || RH_TOOLBOX_DEFAULT_MAX_POLLS,
+    );
     let lastRaw: any;
     let lastError = '';
 

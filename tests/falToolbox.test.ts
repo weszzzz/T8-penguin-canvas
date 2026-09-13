@@ -207,6 +207,18 @@ test('Fal toolbox manifest normalizes configured tools and builds generic payloa
   assert.equal((heygenPayload.payload as any).caption, true);
 });
 
+test('Fal toolbox custom runtime cannot shorten media polling below 15 minutes', async () => {
+  const { FAL_TOOLBOX_MANIFEST } = await loadFalToolboxManifest();
+  const { normalizeFalToolboxManifest } = await loadFalToolboxUtils();
+  const sourceTool = FAL_TOOLBOX_MANIFEST.tools[0];
+  const manifest = normalizeFalToolboxManifest({
+    ...FAL_TOOLBOX_MANIFEST,
+    tools: [{ ...sourceTool, runtime: { ...sourceTool.runtime, pollIntervalMs: 1000, maxPolls: 1 } }],
+  });
+  assert.equal(manifest.tools[0].runtime?.pollIntervalMs, 1000);
+  assert.equal(manifest.tools[0].runtime?.maxPolls, 900);
+});
+
 test('Zhenzhen FAL tools mirror ComfyUI payload contracts', async () => {
   const { FAL_TOOLBOX_MANIFEST } = await loadFalToolboxManifest();
   const {

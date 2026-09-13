@@ -656,6 +656,8 @@ function LocalizationMasterNode({ id, data, selected }: NodeProps) {
           }),
         });
         if (receipt.ready) {
+          // Installing the runtime is not another generation of retained media.
+          await reporter.output({ status: 'succeeded', outputCount: 0, assets: [] });
           base = commitProject(base, { runtimeReceipt: undefined, stage: base.stage === 'review' ? 'voices' : base.stage }, { status: 'success', error: '' });
           return;
         }

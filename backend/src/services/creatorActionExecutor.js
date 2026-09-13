@@ -10,6 +10,7 @@ const { readSceneProduction } = require('./creatorSceneProduction');
 const seedanceNz = require('../providers/seedanceNz');
 const creativeModelCatalog = require('../shared/creativeModelCatalog.json');
 const { safeRemoteMediaDownload } = require('../utils/safeRemoteMediaFetch');
+const { MIN_PROVIDER_MEDIA_TIMEOUT_MS } = require('../providers/providerTimeoutPolicy');
 
 const MAX_IMAGE_BYTES = 40 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 1024 * 1024 * 1024;
@@ -183,6 +184,7 @@ class CreatorActionExecutor {
     this.database = options.database;
     this.repository = options.repository;
     this.settingsProvider = typeof options.settingsProvider === 'function' ? options.settingsProvider : () => ({});
+    this.skillActionGuard = typeof options.skillActionGuard === 'function' ? options.skillActionGuard : null;
     this.provider = options.provider || seedanceNz;
     this.remoteMediaDownload = options.remoteMediaDownload || safeRemoteMediaDownload;
     this.assetIndexer = options.assetIndexer || new AssetIndexer(this.config, this.database);
@@ -190,7 +192,7 @@ class CreatorActionExecutor {
     this.active = new Map();
     this.continuations = new Map();
     this.pollIntervalMs = Math.max(100, Math.min(10_000, Number(options.pollIntervalMs) || 3_000));
-    this.timeoutMs = Math.max(30_000, Math.min(30 * 60_000, Number(options.timeoutMs) || 12 * 60_000));
+    this.timeoutMs = Math.max(MIN_PROVIDER_MEDIA_TIMEOUT_MS, Math.min(30 * 60_000, Number(options.timeoutMs) || MIN_PROVIDER_MEDIA_TIMEOUT_MS));
     const continuationDelays = options.continuationRetryDelaysMs === undefined
       ? [750, 2_000, 5_000]
       : options.continuationRetryDelaysMs;
@@ -198,6 +200,12 @@ class CreatorActionExecutor {
       .map((value) => Math.max(25, Math.min(60_000, Math.trunc(Number(value) || 0))))
       .filter(Boolean)
       .slice(0, 5);
+  }
+
+  _guardSkillAction(action, scope) {
+    if (!action.skillBinding) return;
+    if (!this.skillActionGuard) throw new CreatorActionExecutorError('CREATOR_SKILL_GUARD_REQUIRED', '技能执行校验暂不可用，未提交生成', 409);
+    this.skillActionGuard(action, scope || { projectId: action.skillBinding.projectId, canvasId: action.skillBinding.canvasId });
   }
 
   _injectFault(point, context = {}) {
@@ -260,6 +268,7 @@ class CreatorActionExecutor {
     if (action.status !== 'pending' && action.status !== 'failed') {
       throw new CreatorActionExecutorError('CREATOR_ACTION_NOT_CONFIRMABLE', '这个生成动作当前不能执行', 409);
     }
+    this._guardSkillAction(action, scope);
     let promise;
     promise = this.execute(sessionId, actionId, scope)
       .catch(() => null)
@@ -349,11 +358,11 @@ class CreatorActionExecutor {
           protocols: ['https:'],
           maxBytes: maximum,
           maxRedirects: 6,
-          deadlineMs: kind === 'image' ? 180_000 : 12 * 60_000,
-          idleTimeoutMs: 45_000,
+          deadlineMs: MIN_PROVIDER_MEDIA_TIMEOUT_MS,
+          idleTimeoutMs: MIN_PROVIDER_MEDIA_TIMEOUT_MS,
           accept: kind === 'image' ? 'image/*,*/*;q=0.2' : 'video/*,*/*;q=0.2',
           trustedProviderOutput: true,
-          trustedProviderFallbackDeadlineMs: kind === 'image' ? 120_000 : 8 * 60_000,
+          trustedProviderFallbackDeadlineMs: MIN_PROVIDER_MEDIA_TIMEOUT_MS,
         });
         const descriptor = fs.openSync(staging, 'r');
         const header = Buffer.alloc(16);
@@ -976,6 +985,10 @@ class CreatorActionExecutor {
   }
 
   async submit(action, apiKey, settings, inputPaths, modelEntry = exactCatalogModel(action.modelSnapshot)) {
+    // This is the last synchronous boundary before an upstream paid submit.
+    // Query/download recovery does not enter here and remains available when
+    // the original skill has since been removed or revoked.
+    this._guardSkillAction(action);
     const baseUrl = bounded(settings.zhenzhenSd2BaseUrl, 2_000) || undefined;
     const grouped = preflightActionReferences(action, modelEntry, inputPaths);
     if (action.type === 'image') {
@@ -1090,6 +1103,7 @@ class CreatorActionExecutor {
 
   async execute(sessionId, actionId, scope) {
     let action = this.repository.getAction(actionId, sessionId, scope);
+    this._guardSkillAction(action, scope);
     const snapshot = action.modelSnapshot;
     const modelEntry = exactCatalogModel(snapshot);
     if (snapshot.catalogDigest !== creativeModelCatalog.sourceDigest || !modelEntry) {

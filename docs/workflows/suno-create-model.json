@@ -1,0 +1,76 @@
+{
+  "schema": "t8-workflow-fragment",
+  "version": 1,
+  "title": "Suno V6 · suno-create-model",
+  "nodes": [
+    {
+      "id": "suno-create-model-action",
+      "type": "audio",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "data": {
+        "label": "创建自定义模型（先批量导入 6–24 段音频）",
+        "audioProviderMode": "suno",
+        "sunoPlatform": "seedance-nz",
+        "apiModel": "suno-create-model",
+        "reuseResult": false,
+        "sunoNzOperation": "suno-create-model",
+        "sunoNzModelName": "V6 Studio Voice",
+        "sunoNzLocalRefAudios": [],
+        "sunoNzLocalRefAudioNames": []
+      }
+    },
+    {
+      "id": "suno-create-model-output",
+      "type": "output",
+      "position": {
+        "x": 860,
+        "y": 40
+      },
+      "data": {
+        "label": "创建自定义模型（先批量导入 6–24 段音频） · 结果",
+        "outputType": "text"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "suno-create-model-edge",
+      "source": "suno-create-model-action",
+      "target": "suno-create-model-output"
+    }
+  ],
+  "nodeCount": 2,
+  "edgeCount": 1,
+  "nodeTypes": [
+    "audio",
+    "output"
+  ],
+  "topologyPreview": {
+    "nodes": [
+      {
+        "id": "suno-create-model-action",
+        "type": "audio",
+        "label": "创建自定义模型（先批量导入 6–24 段音频）",
+        "x": 8,
+        "y": 50
+      },
+      {
+        "id": "suno-create-model-output",
+        "type": "output",
+        "label": "创建自定义模型（先批量导入 6–24 段音频） · 结果",
+        "x": 92,
+        "y": 50
+      }
+    ],
+    "edges": [
+      {
+        "source": "suno-create-model-action",
+        "target": "suno-create-model-output"
+      }
+    ]
+  },
+  "savedAt": "2026-09-12T00:00:00.000Z"
+}

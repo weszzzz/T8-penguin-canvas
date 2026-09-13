@@ -260,6 +260,50 @@ test('cancelRun stops only tokens bound to that durable Run', async () => {
   assert.deepEqual(store.getState().cancelTargets, [runBus.createCanvasNodeExecutionKey(firstContext.canvasId, 'node-a')]);
 });
 
+test('inline cancellation binds exact canvas and token without retiring completion or cancelling peers', async () => {
+  const ctx = context('shared-run', ['node-a', 'node-b']);
+  const tokens = store.getState().triggerRunMany(['node-a', 'node-b'], 'batch', ctx);
+  const key = runBus.createCanvasNodeExecutionKey(ctx.canvasId, 'node-a');
+  const otherKey = runBus.createCanvasNodeExecutionKey('other-canvas', 'node-a');
+  const other = store.getState().triggerRun('node-a', 'single', { ...ctx, canvasId: 'other-canvas' });
+  const calls: string[] = [];
+  runBus.registerRunExecutionCancelHandler(key, tokens['node-a'], () => { calls.push('a'); });
+  runBus.registerRunExecutionCancelHandler('node-b', tokens['node-b'], () => { calls.push('b'); });
+  runBus.registerRunExecutionCancelHandler(otherKey, other, () => { calls.push('other'); });
+  assert.equal(await store.getState().cancelExecution(otherKey, tokens['node-a']), false);
+  const stopping = store.getState().cancelExecution(key, tokens['node-a']);
+  assert.equal(runBus.isRunExecutionCancelled(tokens['node-a']), true, 'cancellation identity is synchronous');
+  assert.equal(store.getState().executionTokens[key], tokens['node-a'], 'normal completion must wait for terminal persistence');
+  assert.equal(await stopping, true);
+  assert.deepEqual(calls, ['a']);
+  assert.equal(runBus.isRunExecutionCancelled(tokens['node-b']), false);
+  assert.equal(runBus.isRunExecutionCancelled(other), false);
+  assert.equal(await store.getState().cancelExecution(key, tokens['node-a']), false);
+  assert.equal(store.getState().markDone(key, tokens['node-a'], false, 'stopped'), true);
+  assert.equal(runBus.isStoppedRunCompletion(store.getState().lastDone, key, tokens['node-a']), true);
+});
+
+test('ordinary errors named stopped and stop persistence errors are not accepted stop completions', async () => {
+  const token = store.getState().triggerRun('node-a');
+  store.getState().markDone('node-a', token, false, 'stopped');
+  assert.equal(runBus.isStoppedRunCompletion(store.getState().lastDone, 'node-a', token), false);
+  const next = store.getState().triggerRun('node-a');
+  await store.getState().cancelExecution('node-a', next);
+  store.getState().markDone('node-a', next, false, 'terminal persistence unavailable');
+  assert.equal(runBus.isStoppedRunCompletion(store.getState().lastDone, 'node-a', next), false);
+});
+
+test('stale inline stop cannot cancel a replacement or a completed execution', async () => {
+  const ctx = context('run', ['node-a']);
+  const key = runBus.createCanvasNodeExecutionKey(ctx.canvasId, 'node-a');
+  const old = store.getState().triggerRun('node-a', 'single', ctx);
+  const fresh = store.getState().triggerRun('node-a', 'single', ctx);
+  assert.equal(await store.getState().cancelExecution(key, old), false);
+  assert.equal(runBus.isRunExecutionCancelled(fresh), false);
+  store.getState().markDone(key, fresh, true);
+  assert.equal(await store.getState().cancelExecution(key, fresh), false);
+});
+
 test('cancelAll awaits registered persistence and late handlers still see cancelled tokens', async () => {
   store.getState().setActiveRunContext(context('run-cancel'));
   const token = store.getState().triggerRun('node-a');

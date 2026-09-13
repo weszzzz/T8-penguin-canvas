@@ -1,10 +1,14 @@
 const openaiCompatible = require('./openaiCompatible');
 const { resolveMediaRef } = require('./mediaResolver');
 const { mergeProviderTrace, providerTrace } = require('./providerTrace');
+const {
+  normalizeProviderLlmTimeoutMs,
+  normalizeProviderMediaTimeoutMs,
+} = require('./providerTimeoutPolicy');
 
 const DEFAULT_MODEL = 'Tongyi-MAI/Z-Image-Turbo';
 const DEFAULT_CHAT_MODEL = 'Qwen/Qwen3-235B-A22B';
-const DEFAULT_CHAT_TIMEOUT_MS = 30 * 60 * 1000;
+const DEFAULT_CHAT_TIMEOUT_MS = 3 * 60 * 1000;
 const DEFAULT_IMAGE_TIMEOUT_MS = 60 * 60 * 1000;
 const DEFAULT_POLL_INTERVAL_MS = 1500;
 const MAX_LORAS_PER_REQUEST = 5;
@@ -174,7 +178,12 @@ async function generateChat(provider, input = {}, options = {}) {
   const result = await openaiCompatible.generateChat(
     chatProvider(provider),
     input,
-    { ...options, timeoutMs: Number(options.timeoutMs) || DEFAULT_CHAT_TIMEOUT_MS },
+    {
+      ...options,
+      timeoutMs: normalizeProviderLlmTimeoutMs(options.timeoutMs, {
+        fallback: DEFAULT_CHAT_TIMEOUT_MS,
+      }),
+    },
   );
   return {
     ...result,
@@ -253,7 +262,7 @@ async function generateImage(provider, input = {}, options = {}) {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
-      timeoutMs: options.submitTimeoutMs || timeoutMs,
+      timeoutMs: normalizeProviderMediaTimeoutMs(options.submitTimeoutMs, { fallback: timeoutMs }),
       fetchImpl,
     });
     const raw = await responseJson(submit);
@@ -287,7 +296,7 @@ async function generateImage(provider, input = {}, options = {}) {
       const poll = await openaiCompatible.fetchWithTimeout(`${apiRoot}/tasks/${encodeURIComponent(taskId)}`, {
         method: 'GET',
         headers: { ...headers, 'X-ModelScope-Task-Type': 'image_generation' },
-        timeoutMs: options.pollTimeoutMs || timeoutMs,
+        timeoutMs: normalizeProviderMediaTimeoutMs(options.pollTimeoutMs, { fallback: timeoutMs }),
         fetchImpl,
       });
       const data = await responseJson(poll);

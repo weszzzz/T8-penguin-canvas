@@ -116,11 +116,10 @@ function escapeText(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function getCaretPlainOffset(root: HTMLElement): number {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) return 0;
-  const range = selection.getRangeAt(0);
-  if (!root.contains(range.startContainer)) return 0;
+type EditorDomPoint = { node: Node; offset: number };
+
+function getPlainOffsetAt(root: HTMLElement, point: EditorDomPoint): number {
+  if (!root.contains(point.node)) return 0;
 
   const nodePlainLength = (node: Node): number => {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent?.length || 0;
@@ -137,11 +136,11 @@ function getCaretPlainOffset(root: HTMLElement): number {
   let found = false;
   const walk = (node: Node) => {
     if (found) return;
-    if (node === range.startContainer) {
+    if (node === point.node) {
       if (node.nodeType === Node.TEXT_NODE) {
-        offset += range.startOffset;
+        offset += point.offset;
       } else {
-        for (let i = 0; i < range.startOffset; i += 1) {
+        for (let i = 0; i < point.offset; i += 1) {
           const child = node.childNodes[i];
           if (child) offset += nodePlainLength(child);
         }
@@ -163,13 +162,30 @@ function getCaretPlainOffset(root: HTMLElement): number {
     }
     node.childNodes.forEach(walk);
   };
-  root.childNodes.forEach(walk);
+  // Ctrl+A commonly uses the editor element itself as a boundary. Starting
+  // with its children misreads root/0 as the end of the entire prompt.
+  walk(root);
   return offset;
 }
 
-function setCaretPlainOffset(root: HTMLElement, targetOffset: number) {
+function getCaretPlainOffset(root: HTMLElement): number {
   const selection = window.getSelection();
-  if (!selection) return;
+  if (!selection || !selection.rangeCount) return 0;
+  const range = selection.getRangeAt(0);
+  return getPlainOffsetAt(root, { node: range.startContainer, offset: range.startOffset });
+}
+
+function getOwnedSelectionOffsets(root: HTMLElement): { anchor: number; focus: number } | null {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount || !selection.anchorNode || !selection.focusNode
+    || !root.contains(selection.anchorNode) || !root.contains(selection.focusNode)) return null;
+  return {
+    anchor: getPlainOffsetAt(root, { node: selection.anchorNode, offset: selection.anchorOffset }),
+    focus: getPlainOffsetAt(root, { node: selection.focusNode, offset: selection.focusOffset }),
+  };
+}
+
+function pointAtPlainOffset(root: HTMLElement, targetOffset: number): EditorDomPoint {
   let offset = 0;
   let targetNode: Node | null = null;
   let targetNodeOffset = 0;
@@ -190,7 +206,8 @@ function setCaretPlainOffset(root: HTMLElement, targetOffset: number) {
       const len = node.dataset.mentionToken.length;
       if (offset + len >= targetOffset) {
         targetNode = node.parentNode || root;
-        targetNodeOffset = Array.prototype.indexOf.call((targetNode as Node).childNodes, node) + 1;
+        targetNodeOffset = Array.prototype.indexOf.call((targetNode as Node).childNodes, node)
+          + (targetOffset <= offset ? 0 : 1);
         return;
       }
       offset += len;
@@ -200,7 +217,8 @@ function setCaretPlainOffset(root: HTMLElement, targetOffset: number) {
       const len = 1;
       if (offset + len >= targetOffset) {
         targetNode = node.parentNode || root;
-        targetNodeOffset = Array.prototype.indexOf.call((targetNode as Node).childNodes, node) + 1;
+        targetNodeOffset = Array.prototype.indexOf.call((targetNode as Node).childNodes, node)
+          + (targetOffset <= offset ? 0 : 1);
         return;
       }
       offset += len;
@@ -214,8 +232,15 @@ function setCaretPlainOffset(root: HTMLElement, targetOffset: number) {
     targetNode = root;
     targetNodeOffset = root.childNodes.length;
   }
+  return { node: targetNode, offset: targetNodeOffset };
+}
+
+function setCaretPlainOffset(root: HTMLElement, targetOffset: number) {
+  const selection = window.getSelection();
+  if (!selection) return;
+  const point = pointAtPlainOffset(root, targetOffset);
   const range = document.createRange();
-  range.setStart(targetNode, targetNodeOffset);
+  range.setStart(point.node, point.offset);
   range.collapse(true);
   selection.removeAllRanges();
   selection.addRange(range);
@@ -421,7 +446,7 @@ const MentionPromptInput = ({
     const el = localRef.current;
     if (!el) return;
     if (composingRef.current) return;
-    const keepCaret = document.activeElement === el ? getCaretPlainOffset(el) : null;
+    const keepSelection = document.activeElement === el ? getOwnedSelectionOffsets(el) : null;
     if (el.innerHTML !== editorHtml) el.innerHTML = editorHtml;
     for (const item of inlineMentions) {
       const span = Array.from(el.querySelectorAll<HTMLElement>('[data-mention-id]'))
@@ -469,9 +494,16 @@ const MentionPromptInput = ({
       span.replaceChildren(content);
     }
     if (document.activeElement === el) {
-      const caret = pendingCaretRef.current ?? keepCaret;
+      const caret = pendingCaretRef.current;
       pendingCaretRef.current = null;
       if (caret !== null) setCaretPlainOffset(el, caret);
+      else if (keepSelection) {
+        // Reference/appearance updates must not turn Ctrl+A or a backwards
+        // selection into a caret. Only explicit insert/IME intents do that.
+        const anchor = pointAtPlainOffset(el, keepSelection.anchor);
+        const focus = pointAtPlainOffset(el, keepSelection.focus);
+        window.getSelection()?.setBaseAndExtent(anchor.node, anchor.offset, focus.node, focus.offset);
+      }
     }
   }, [editorHtml, inlineMentions, isDark, isPixel]);
 

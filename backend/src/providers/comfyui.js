@@ -7,6 +7,7 @@ const {
 const { isAllowedComfyuiUrl } = require('./comfyuiAccess');
 const { mergeProviderTrace, providerTrace } = require('./providerTrace');
 const { providerIdempotencyHeadersLike } = require('../services/providerSubmissionContext');
+const { normalizeProviderMediaTimeoutMs } = require('./providerTimeoutPolicy');
 
 const DEFAULT_TIMEOUT_MS = 5000;
 const GENERATION_TIMEOUT_MS = 60 * 60 * 1000;
@@ -229,7 +230,7 @@ async function uploadImageToComfy(baseUrl, imageRef, options = {}) {
     const resolved = await resolveMediaRef(imageRef, { target: 'url', baseUrl: mediaBaseUrl });
     const res = await fetchWithTimeout(resolved.url, {
       method: 'GET',
-      timeoutMs: options.timeoutMs || 30000,
+      timeoutMs: normalizeProviderMediaTimeoutMs(options.timeoutMs),
       fetchImpl: options.fetchImpl,
     });
     if (!res.ok) throw new Error(`ComfyUI 参考图下载失败：HTTP ${res.status}`);
@@ -247,7 +248,7 @@ async function uploadImageToComfy(baseUrl, imageRef, options = {}) {
   const uploadRes = await fetchWithTimeout(`${baseUrl}/upload/image`, {
     method: 'POST',
     body: form,
-    timeoutMs: options.timeoutMs || 30000,
+    timeoutMs: normalizeProviderMediaTimeoutMs(options.timeoutMs),
     fetchImpl: options.fetchImpl,
   });
   const raw = await responseJson(uploadRes);
@@ -853,7 +854,7 @@ async function pollHistory(baseUrl, promptId, options = {}) {
     if (i > 0 && interval > 0) await new Promise((resolve) => setTimeout(resolve, interval));
     const res = await fetchWithTimeout(`${baseUrl}/history/${encodeURIComponent(promptId)}`, {
       method: 'GET',
-      timeoutMs: options.timeoutMs || 30000,
+      timeoutMs: normalizeProviderMediaTimeoutMs(options.timeoutMs),
       fetchImpl: options.fetchImpl,
     });
     const raw = await responseJson(res);
@@ -915,7 +916,7 @@ async function generateImage(provider, input = {}, options = {}) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, client_id: input.clientId || `t8-${Date.now()}` }),
-      timeoutMs: options.timeoutMs || 30000,
+      timeoutMs: normalizeProviderMediaTimeoutMs(options.timeoutMs),
       fetchImpl: options.fetchImpl,
     });
     const raw = await responseJson(res);

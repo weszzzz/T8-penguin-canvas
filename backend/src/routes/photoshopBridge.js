@@ -9,6 +9,7 @@ const settingsRouter = require('./settings');
 const { maskAdvancedProviders, normalizeAdvancedProviders } = require('../providers/registry');
 const { generateImageWithProvider } = require('../providers/adapters');
 const { isLoopbackAddress, safeRemoteMediaFetch } = require('../utils/safeRemoteMediaFetch');
+const { MIN_PROVIDER_MEDIA_TIMEOUT_MS } = require('../providers/providerTimeoutPolicy');
 
 const router = express.Router();
 
@@ -486,8 +487,8 @@ async function saveOneMediaOutput(url, options = {}) {
       allowedKinds: ['image'],
       trustedProviderOutput: true,
       maxBytes: 64 * 1024 * 1024,
-      deadlineMs: 2 * 60 * 1000,
-      idleTimeoutMs: 30 * 1000,
+      deadlineMs: MIN_PROVIDER_MEDIA_TIMEOUT_MS,
+      idleTimeoutMs: MIN_PROVIDER_MEDIA_TIMEOUT_MS,
       maxRedirects: 4,
       userAgent: 'T8-PenguinCanvas-PhotoshopBridge/1.0',
     });

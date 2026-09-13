@@ -1,6 +1,6 @@
 {
   "schema": "t8-creative-runtime-catalog-v1",
-  "sourceDigest": "5fdfda3226a6fc1a0c47ffe6bcad969038c0eab5e901a25315a883e5211424c2",
+  "sourceDigest": "d996fe9f96ccb6d2d9adf88e772a81cf6d3b0c2f70bcc1636f55c6ff5710b1fa",
   "generatedFrom": [
     "src/providers/models.ts",
     "src/config/seedance.ts",
@@ -8886,6 +8886,25 @@
       }
     },
     {
+      "id": "audio:seedance-nz:suno-create-model",
+      "kind": "audio",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "suno-create-model",
+      "label": "创建自定义模型",
+      "family": "suno",
+      "resultKind": "model",
+      "parameters": {
+        "action": "create-model",
+        "requiredFields": [
+          "name",
+          "audio_urls"
+        ],
+        "referenceType": "model_audios",
+        "allowedVersions": []
+      }
+    },
+    {
       "id": "audio:seedance-nz:suno-create-voice",
       "kind": "audio",
       "provider": "seedance-nz",
@@ -9319,6 +9338,53 @@
       }
     },
     {
+      "id": "audio:seedance-nz:suno-upload-cover",
+      "kind": "audio",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "suno-upload-cover",
+      "label": "上传音频翻唱",
+      "family": "suno",
+      "resultKind": "audio",
+      "parameters": {
+        "action": "upload-cover",
+        "requiredFields": [
+          "audio_url"
+        ],
+        "referenceType": "url",
+        "allowedVersions": [
+          "v6",
+          "v6-wild",
+          "v6-mini"
+        ],
+        "defaultVersion": "v6"
+      }
+    },
+    {
+      "id": "audio:seedance-nz:suno-upload-extend",
+      "kind": "audio",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "suno-upload-extend",
+      "label": "上传音频续写",
+      "family": "suno",
+      "resultKind": "audio",
+      "parameters": {
+        "action": "upload-extend",
+        "requiredFields": [
+          "audio_url",
+          "continue_at"
+        ],
+        "referenceType": "url",
+        "allowedVersions": [
+          "v6",
+          "v6-wild",
+          "v6-mini"
+        ],
+        "defaultVersion": "v6"
+      }
+    },
+    {
       "id": "audio:seedance-nz:suno-upsample-tags",
       "kind": "audio",
       "provider": "seedance-nz",
@@ -9682,6 +9748,6 @@
     "image": 55,
     "video": 130,
     "audio": 17,
-    "actions": 58
+    "actions": 61
   }
 }

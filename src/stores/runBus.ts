@@ -76,6 +76,7 @@ interface RunBusState {
   markDone: (id: string, executionToken: string, ok: boolean, error?: string) => boolean;
   cancelAll: () => Promise<void>;
   cancelRun: (runId: string) => Promise<void>;
+  cancelExecution: (executionNodeId: string, executionToken: string) => Promise<boolean>;
   setBatchProgress: (total: number, done: number) => void;
   setActiveRun: (runId: string | null) => void;
   setActiveRunContext: (context: RunContext | null) => void;
@@ -210,6 +211,11 @@ export function getRunExecutionBinding(nodeId: string, executionToken: string): 
 
 export function isRunExecutionCancelled(executionToken: string) {
   return cancelledRunExecutionTokens.has(executionToken);
+}
+
+export function isStoppedRunCompletion(completion: LastDoneInfo | null, nodeId: string, token: string | null): boolean {
+  return matchesRunCompletion(completion, nodeId, token)
+    && !completion.ok && completion.error === 'stopped' && isRunExecutionCancelled(completion.executionToken);
 }
 
 export function registerRunExecutionCancelHandler(
@@ -387,6 +393,16 @@ export const useRunBusStore = create<RunBusState>((set, get) => ({
     if (acceptedEntries.length === 0) return;
     set(patch);
     await cancelRunExecutions(acceptedEntries);
+  },
+  cancelExecution: async (executionNodeId, executionToken) => {
+    // Inline stop must neither cancel sibling tokens nor publish completion
+    // before the hook persists its terminal evidence. A stale UI closure is inert.
+    const binding = getRunExecutionBinding(executionNodeId, executionToken);
+    if (binding?.nodeId !== executionNodeId
+      || get().executionTokens[executionNodeId] !== executionToken
+      || isRunExecutionCancelled(executionToken)) return false;
+    await cancelRunExecutions([[executionNodeId, executionToken]]);
+    return true;
   },
   setBatchProgress: (total, done) =>
     set({ batchTotal: total, batchDoneCount: done, mode: total > 0 ? 'batch' : 'idle' }),

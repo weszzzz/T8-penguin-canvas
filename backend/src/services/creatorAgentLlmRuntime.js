@@ -2,6 +2,10 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const { generateChatWithProvider } = require('../providers/adapters');
 const { normalizeAdvancedProviders } = require('../providers/registry');
+const {
+  DEFAULT_PROVIDER_LLM_TIMEOUT_MS,
+  normalizeProviderLlmTimeoutMs,
+} = require('../providers/providerTimeoutPolicy');
 const { createCreatorArtifactProposal } = require('./creatorAgentArtifacts');
 const { creatorDecisionPromptContract } = require('./creatorAgentDecisions');
 const {
@@ -1294,7 +1298,9 @@ function createCreatorAgentLlmRuntime(options = {}) {
           stream,
         }, {
           baseUrl: input.requestBaseUrl,
-          timeoutMs: Number(options.timeoutMs) || 120_000,
+          timeoutMs: normalizeProviderLlmTimeoutMs(options.timeoutMs, {
+            fallback: DEFAULT_PROVIDER_LLM_TIMEOUT_MS,
+          }),
           fetchImpl: options.fetchImpl,
           ffmpegPath: options.ffmpegPath,
           ...(stream && onDelta ? {

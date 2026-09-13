@@ -17,7 +17,10 @@ export function useOrderedMaterials<T extends Material>(
   materials: T[],
   order: string[] | undefined,
 ): T[] {
-  return useMemo(() => {
+  return useMemo(() => orderMaterials(materials, order), [materials, order]);
+}
+
+export function orderMaterials<T extends Material>(materials: T[], order: string[] | undefined): T[] {
     const arr = materials || [];
     if (!order || order.length === 0) return arr.slice();
     const map = new Map<string, T>();
@@ -35,5 +38,4 @@ export function useOrderedMaterials<T extends Material>(
       if (!used.has(m.id)) ordered.push(m);
     }
     return ordered;
-  }, [materials, order]);
 }

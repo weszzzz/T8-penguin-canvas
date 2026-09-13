@@ -182,7 +182,7 @@ test('core generation nodes use expanded prompt editing', () => {
   assert.match(audio, /title=\{translate\('nodes:audio\.promptTitle'\)\}/);
   assert.match(llm, /title=\{t\('llm\.systemPromptTitle'\)\}/);
   assert.match(llm, /title=\{t\('llm\.userInputTitle'\)\}/);
-  assert.match(panorama, /title="3D 全景提示词"/);
+  assert.match(panorama, /title=\{panoramaT\('promptTitle'\)\}/);
 });
 
 test('dynamic RH and ComfyUI text parameters use expanded prompt editing', () => {

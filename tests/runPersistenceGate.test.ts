@@ -4,6 +4,30 @@ import { readFileSync } from 'node:fs';
 
 const hook = readFileSync(new URL('../src/hooks/useRunTrigger.ts', import.meta.url), 'utf8');
 
+test('Canvas Run creation binds project, canvas and revision from the same authoritative snapshot', () => {
+  const canvas = readFileSync(new URL('../src/components/Canvas.tsx', import.meta.url), 'utf8');
+  const call = canvas.match(/await api\.createProjectRun\(\{([\s\S]*?)summary:/)?.[1];
+  assert.ok(call);
+  for (const field of ['projectId', 'canvasId']) assert.match(call, new RegExp(`${field}: persistenceSnapshot\\.${field}`));
+  assert.match(call, /canvasRevision: persistenceSnapshot\.revision/);
+});
+
+test('Run HTTP client preserves an explicit non-default project without changing the execution snapshot', async (t) => {
+  const { createProjectRun } = await import('../src/services/api.ts');
+  const input = { id: 'fixture-run', projectId: 'non-default-project', canvasId: 'fixture-canvas', canvasRevision: 7 };
+  const calls: unknown[] = [];
+  t.mock.method(globalThis, 'fetch', async (url: string, options: RequestInit) => {
+    calls.push({ url, method: options.method, body: JSON.parse(String(options.body)) });
+    return new Response(JSON.stringify({ success: true, data: { ...input, status: 'queued' } }), {
+      status: 201, headers: { 'content-type': 'application/json' },
+    });
+  });
+  const result = await createProjectRun(input);
+  assert.deepEqual(calls, [{ url: '/api/project-runs', method: 'POST', body: input }]);
+  assert.equal(result.projectId, input.projectId);
+  assert.equal(result.canvasRevision, input.canvasRevision);
+});
+
 function orderedIndex(source: string, patterns: RegExp[]) {
   let cursor = 0;
   return patterns.map((pattern) => {
@@ -25,7 +49,7 @@ test('Provider execution is impossible without a persisted Run, NodeRun, and Att
     /await updateProjectNodeRun\(/,
     /resolvePersistenceReady\(\);/,
     /await lifecycle\.reporter\.progress\(\{ phase: 'executing', progress: 0 \}\);/,
-    /await \(runFnRef\.current/,
+    /await \(\(historyExecution\?\.run \|\| runFnRef\.current\)/,
   ]);
 });
 

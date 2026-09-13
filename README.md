@@ -10,20 +10,20 @@ https://www.runninghub.cn/?inviteCode=rh-v1121
 My favorite girl Go YounJung
 # 🐧 贞贞的无限画布（企鹅共创版） · T8-penguin-canvas
 
-> AI 节点画布工作流工具 · Web + Electron 桌面端｜v3.1.5
+> AI 节点画布工作流工具 · Web + Electron 桌面端｜v3.1.8
 >
 > GitHub：<https://github.com/T8mars/T8-penguin-canvas>
 
-> 2026-09-09：v3.1.5 纳入图像节点 GPT2 TAB 的 GPT Image 2.5 Flare/Sunburst 六模型、平价AI小屋 Image G v2.5 Lowprice/Flare/Sunburst 三模型、视频节点 Hailuo TAB 的 `MiniMax-H3` V2 多模态能力，以及图像/视频节点 Vosr2 超分。相关模型均已按参考实现与官方文档真实提交、下载和媒体校验；外部协作、物理设备及 F8–F10 证据按 `owner-approved-post-release-v3.1.5` 后补且不视为通过。
+> 2026-09-13：v3.1.8 修复 VPN/TUN 环境下 Provider 已生成结果却被本机 Fake-IP 误判拦截，以及刷新或重启后终端日志归零。受信 Provider 域名结果交给 Electron/Chromium 的系统代理链处理，不再依赖固定 Fake-IP 网段；恢复日志保留 14 天并脱敏。外部/用户环境证据按 `owner-approved-post-release-v3.1.8` 后补且不视为通过。
 
 一个面向 AI 创作的 **节点式画布**：拖拽节点、连线编排、生成图像 / 视频 / 音频、调用 LLM、串接 RunningHub 工作流，叠加批量执行、智能对齐、打组、主题模板与终端日志。Web 浏览器和桌面端均可使用。
 
-![status](https://img.shields.io/badge/version-v3.1.5-brightgreen) ![node](https://img.shields.io/badge/node-83-blue) ![react](https://img.shields.io/badge/react-19-61dafb) ![electron](https://img.shields.io/badge/electron-33-47848f) ![license](https://img.shields.io/badge/license-MIT-yellow)
+![status](https://img.shields.io/badge/version-v3.1.8-brightgreen) ![node](https://img.shields.io/badge/node-83-blue) ![react](https://img.shields.io/badge/react-19-61dafb) ![electron](https://img.shields.io/badge/electron-33-47848f) ![license](https://img.shields.io/badge/license-MIT-yellow)
 
 ## 💻 桌面版下载
 
-- **Windows x64**：在 [v3.1.5 Release](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.5) 下载 `T8-PenguinCanvas-Setup-3.1.5.exe`。
-- **macOS Apple Silicon**：同一 Release 提供 `T8-PenguinCanvas-3.1.5-mac-arm64.dmg` 技术预览，支持 M1/M2/M3/M4 等 arm64 Mac，最低 macOS 12。当前包使用 ad-hoc 完整性签名，尚无 Apple Developer ID 签名和公证；首次打开请在 Finder 中右键应用并选择“打开”。Intel Mac 暂不支持。
+- **Windows x64**：在 [v3.1.8 Release](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.8) 下载 `T8-PenguinCanvas-Setup-3.1.8.exe`。
+- **macOS Apple Silicon**：在 [v3.1.8 Release](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.8) 下载 `T8-PenguinCanvas-3.1.8-mac-arm64.dmg`。支持 M1/M2/M3/M4 等 arm64 Mac，最低 macOS 12，使用 ad-hoc 完整性签名且尚无 Apple Developer ID 公证；首次打开请在 Finder 中右键应用并选择“打开”。Intel Mac 暂不支持。
 
 ---
 
@@ -43,6 +43,9 @@ My favorite girl Go YounJung
 ## ✨ 功能亮点
 
 - 🎨 **83 个节点**，覆盖文本 / 图像 / 视频 / 音频 / LLM / RunningHub / ComfyUI / 3D / 工具 / 辅助 / 工具箱 / 输出预览 / 上传素材 / 素材集 / 火山引擎素材库 / 批量打标 / 随机路由 / Story 全自动制片 / 剧本大师 / Creator Agent 作品化 / 多语言本地化大师 / MiniMax H3 / MiniMax Music3 / Seedance 2.0 提示词增强器 / MiniMax H3 官方提示词增强器 / Seedance 2.5 / FlashVSR 视频超分 / 白模预演 / MV 音乐大师
+- 🌐🧾 **[v3.1.8 VPN/TUN 与终端日志可靠性版](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.8)**：受信 Provider 的域名结果由 Electron/Chromium 完整接管 DNS、PAC、系统代理、TUN 与 VPN，不再因 IPv4/IPv6 Fake-IP 网段变化把已生成素材判为内网；系统通道失败时仍可对同一结果执行幂等 GET 回收。终端日志刷新或重启后恢复最近 14 天记录，持久副本自动脱敏并受数量限制。
+- ⏱️ **[v3.1.7 Provider 超时可靠性版](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.7)**：移除媒体生成通用代理的 90 秒提前终止，统一保护内置/扩展 Provider、RunningHub/FAL 工具箱、导演分镜与崩溃恢复等链路，当前和未来媒体模型生产等待不少于 15 分钟；LLM 独立限制为最长 3 分钟，避免文本请求无界占用。
+- 🗂️🎵 **[v3.1.6 生成历史、Creator Skill 与 Suno V6 版](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.6)**：生成历史新增不可变来源、参数快照、素材找回、放回画布与关闭保存保护；Creator 新增离线签名技能目录、导入/启停/固定版本与首批三项产品创作技能；工坊新增 Suno V6 / V6 Wild / V6 Mini，平价小屋新增 Create Model、Upload Cover、Upload Extend 三动作和四份无密钥工作流。旧默认、旧画布与原 Provider 协议保持兼容，仍未验收范围见 Release notes。
 - 🖼️🎬 **[v3.1.5 GPT Image 2.5、Image G v2.5、MiniMax-H3 V2 与 Vosr2 版](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.5)**：贞贞的AI工坊 GPT2 TAB 新增 Flare/Sunburst 标准、2K、4K 六模型，支持 1–10 张输出和最多 14 张有序参考图；平价AI小屋同 TAB 新增 Image G v2.5 Lowprice/Flare/Sunburst 三模型；Hailuo TAB 新增 `MiniMax-H3` V2 多模态视频及四份无凭据工作流；图像和视频节点新增 Vosr2 单素材超分，分别固定输出 4K 和 2K。全部新模型均完成真实 Provider 验收，旧默认值、协议和画布不迁移。
 - 🎬🧭 **[v3.1.4 Creator 逐场创作与 Hailuo H3 Max Turbo 版](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.4)**：Creator 输入框新增极简“逐场创作”入口，短想法与长剧本都能进入真实 LLM 驱动的逐场高质量链，并保留人物、地点、关系、离场状态与全剧风格连续性；启动阶段按权威画布就绪状态解锁节点，5000 条画布仍完整保留并按 50 条分页加载，后台轮询有界退避。Hailuo TAB 新增 `hailuo-h3-max-turbo-t2v` 与 `hailuo-h3-max-turbo-i2v` 两个真实跑通模型和无凭据工作流。默认渠道、MiniMax Music3、多语言本地化大师与全部旧画布能力保持不变。
 - 💬🎬 **[v3.1.3 Creator 首次启动与 Hailuo H3 Max 版](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.1.3)**：Creator Agent 只在当前画布权威 revision 与 ReactFlow 均加载完成后启动，补齐对话级草稿、连续创作、文档引用、历史定位和 Creator 专用 API 设置键盘交互；Hailuo TAB 新增 `hailuo-h3-max-t2v` 与 `hailuo-h3-max-i2v` 两个实测模型及无凭据工作流。默认渠道、MiniMax Music3、多语言本地化大师和全部旧画布能力保持不变。

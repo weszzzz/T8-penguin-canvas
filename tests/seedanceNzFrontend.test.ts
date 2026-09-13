@@ -42,16 +42,24 @@ test('SD2 node exposes built-in provider choices and preserves provider during p
   assert.match(generation, /taskProvider=\$\{encodeURIComponent\(taskProvider\)\}/);
 });
 
-test('audio node exposes the official 31-action Suno platform without replacing legacy Suno', () => {
+test('audio node exposes the official 34-action Suno platform without replacing legacy Suno', () => {
   const audioNode = read('../src/components/nodes/AudioNode.tsx');
   const i18n = read('../src/i18n/resources.ts');
   const generation = read('../src/services/generation.ts');
   const proxy = read('../backend/src/routes/proxy.js');
 
-  assert.equal(SUNO_NZ_ACTIONS.length, 31);
-  assert.equal(new Set(SUNO_NZ_ACTIONS.map((item) => item.value)).size, 31);
+  assert.equal(SUNO_NZ_ACTIONS.length, 34);
+  assert.equal(new Set(SUNO_NZ_ACTIONS.map((item) => item.value)).size, 34);
   assert.equal(SUNO_NZ_ACTIONS[0].value, 'suno-generation');
   assert.equal(SUNO_NZ_ACTIONS.at(-1)?.value, 'suno-add-stem');
+  assert.deepEqual(
+    SUNO_NZ_ACTIONS.slice(1, 4).map((item) => [item.value, item.action, item.resultFamily, item.referenceType]),
+    [
+      ['suno-create-model', 'create-model', 'model', 'model_audios'],
+      ['suno-upload-cover', 'upload-cover', 'audio', 'url'],
+      ['suno-upload-extend', 'upload-extend', 'audio', 'url'],
+    ],
+  );
   assert.match(audioNode, /translate\('nodes:audio\.workshopLegacy'\)/);
   assert.match(audioNode, /translate\('nodes:generation\.budgetHouse'\)/);
   assert.match(i18n, /workshopLegacy: '贞贞的AI工坊（原有）'/);
@@ -59,6 +67,15 @@ test('audio node exposes the official 31-action Suno platform without replacing 
   assert.match(audioNode, /SUNO_NZ_ACTIONS\.map/);
   assert.match(audioNode, /submitAudio\(\{/);
   assert.match(audioNode, /submitSunoNz\(\{/);
+  assert.match(audioNode, /sunoNzLocalRefAudios/);
+  assert.match(audioNode, /multiple=\{isSunoNzCreateModel\}/);
+  assert.match(audioNode, /sunoNzCustomModelId/);
+  assert.match(audioNode, /sunoNzGptDescription/);
+  assert.match(audioNode, /sunoNzStyleWeight/);
+  assert.match(audioNode, /sunoNzWeirdness/);
+  assert.match(audioNode, /sunoNzAudioWeight/);
+  assert.match(audioNode, /sunoNzTargetDurationSeconds/);
+  assert.match(audioNode, /suno-upload-extend[^]*continue_at/);
   assert.match(generation, /\/api\/proxy\/audio\/suno-nz\/submit/);
   assert.match(generation, /\/api\/proxy\/audio\/suno-nz\/status\//);
   assert.match(proxy, /router\.post\('\/audio\/suno-nz\/submit'/);

@@ -11,6 +11,7 @@ import {
   type FalToolboxRunPayload,
   type FalToolboxTool,
 } from '../utils/falToolbox';
+import { minimumProviderMediaPollCount } from '../utils/providerTimeoutPolicy';
 import {
   providerSubmissionHeaders,
   type ProviderSubmissionTransport,
@@ -216,7 +217,10 @@ export async function runFalToolboxTool(options: RunFalToolboxToolOptions): Prom
     throw new Error('FAL 未返回 request_id');
   }
   const pollIntervalMs = Math.max(1000, tool.runtime?.pollIntervalMs || 3000);
-  const maxPolls = Math.max(1, tool.runtime?.maxPolls || 360);
+  const maxPolls = minimumProviderMediaPollCount(
+    pollIntervalMs,
+    tool.runtime?.maxPolls || 360,
+  );
   let lastRaw: any = submitted.raw || submitted;
   let transientPollErrors = 0;
 

@@ -30,12 +30,13 @@ import '@xyflow/react/dist/style.css';
 import { Play, Copy, CopyPlus, Trash2, FolderPlus, PackagePlus, Library, Download, Workflow, Send as SendIcon, Sparkles } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useCanvasStore } from '../stores/canvas';
+import { waitForCanvasCloseSave } from '../utils/canvasCloseSave';
 import { useApiKeysStore } from '../stores/apiKeys';
 import { useThemeStore } from '../stores/theme';
 import { useShortcutStore } from '../stores/shortcuts';
 import { trackAchievementEvent, useAchievementStore } from '../stores/achievements';
 import { getTemplateMode, resolveThemeTemplate } from '../theme/defaultTemplates';
-import { createCanvasNodeExecutionKey, matchesRunCompletion, registerRunNodeExecutionContexts, useRunBusStore, type RunNodeExecutionContext } from '../stores/runBus';
+import { createCanvasNodeExecutionKey, isStoppedRunCompletion, matchesRunCompletion, registerRunNodeExecutionContexts, useRunBusStore, type RunNodeExecutionContext } from '../stores/runBus';
 import { useGroupBusStore, GROUP_COLORS, DEFAULT_GROUP_NAME } from '../stores/groupBus';
 import { useRadialMenuStore } from '../stores/radialMenu';
 import { useCanvasPerformanceStore } from '../stores/performance';
@@ -175,7 +176,7 @@ import {
   normalizeVideoEditClips,
   type VideoEditClip,
 } from '../utils/videoEdit';
-import { buildGenerationHistoryDataKey, collectGenerationHistory, countGenerationHistoryItems } from '../utils/generationHistory';
+import { buildGenerationHistoryDataKey, collectGenerationHistory } from '../utils/generationHistory';
 import {
   analyzeSubflowBoundary,
   detachSubflowInstance,
@@ -222,6 +223,12 @@ import { logBus } from '../stores/logs';
 import CanvasToolbar from './CanvasToolbar';
 import ProjectWorkbench from './ProjectWorkbench';
 import GenerationHistoryPanel from './GenerationHistoryPanel';
+import { createGenerationHistoryPlacementPatch, prepareGenerationHistoryPlacement } from '../utils/generationHistoryPlacement';
+import { matchesGenerationHistorySource } from '../utils/generationHistorySource';
+import { createHistorySettingsPatch, prepareHistorySettingsDraft } from '../utils/generationHistorySettings';
+import { createHistoryInputDraftPatch, prepareHistoryInputDraft, HistoryReferenceRecoveryRequired } from '../utils/generationHistoryInputDraft';
+import { assertHistoryRecoveryMayContinue } from '../utils/historyRecoveryFailure';
+import type { GenerationHistorySourceIdentity } from '../types/generationHistory';
 import TerminalPanel from './TerminalPanel';
 import CreatorAgentPanel from './CreatorAgentEntry';
 import StartupPosterCarousel from './StartupPosterCarousel';
@@ -4164,6 +4171,8 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
   const runReplayRuntimeRef = useRef(runReplayRuntime);
   runReplayRuntimeRef.current = runReplayRuntime;
   const [generationHistoryOpen, setGenerationHistoryOpen] = useState(false);
+  const [generationHistorySource, setGenerationHistorySource] = useState<{ nodeId: string; nodeEntityUid: string } | undefined>();
+  const [durableHistoryCount, setDurableHistoryCount] = useState<{ canvasId: string; count: number } | null>(null);
   const [projectWorkbenchOpen, setProjectWorkbenchOpen] = useState(false);
   const [workflowDoctorHighlights, setWorkflowDoctorHighlights] = useState<WorkflowDoctorCanvasHighlight[]>([]);
   const workflowDoctorHighlightMap = useMemo(
@@ -4175,7 +4184,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
   }, []);
   const [canvasPatchConflictMessage, setCanvasPatchConflictMessage] = useState('');
   const generationHistoryDataKey = useMemo(() => buildGenerationHistoryDataKey(nodes), [nodes]);
-  const generationHistoryCount = useMemo(() => countGenerationHistoryItems(nodes), [generationHistoryDataKey]);
+  const generationHistoryCount = durableHistoryCount?.canvasId === activeId ? durableHistoryCount.count : 0;
   const generationHistoryItems = useMemo(
     () => (generationHistoryOpen ? collectGenerationHistory(nodes) : []),
     [generationHistoryDataKey, generationHistoryOpen],
@@ -4286,6 +4295,8 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
   const canvasMutationQueuesRef = useRef(persistenceRuntime.canvasMutationQueues);
   const patchPreviewBaselinesRef = useRef<Map<string, { canvasId: string; revision: number; snapshot: string; mutationEpoch: number }>>(new Map());
   const handledBrowserHandoffsRef = useRef(new Set<string>());
+  const pendingHistoryPlacementsRef = useRef(new Map<string, { patch: CanvasPatch; previewDigest: string; snapshot: string }>());
+  const pendingHistoryInputDraftsRef = useRef(new Map<string, { patch: CanvasPatch; previewDigest: string; snapshot: string }>());
   const nextNodeSerialIdRef = useRef(1);
   const radialMenuRef = useRef<RadialMenuSession | null>(null);
   const radialPressRef = useRef<RadialPressState | null>(null);
@@ -4303,6 +4314,17 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
   loadedRef.current = loaded;
   loadedCanvasIdRef.current = loadedCanvasId;
   const lastDone = useRunBusStore((s) => s.lastDone);
+  useEffect(() => { setGenerationHistorySource(undefined); }, [activeId]);
+  useEffect(() => {
+    if (!activeProjectId || !activeId || !loaded || loadedCanvasId !== activeId) return;
+    const abort = new AbortController();
+    const timer = window.setTimeout(() => {
+      api.listGenerationHistory({ projectId: activeProjectId, canvasId: activeId, limit: 1 }, { signal: abort.signal })
+        .then(page => { if (!abort.signal.aborted) setDurableHistoryCount({ canvasId: activeId, count: page.counts.all }); })
+        .catch(() => { /* Drawer displays the actionable error when opened; no background toast storm. */ });
+    }, 500);
+    return () => { window.clearTimeout(timer); abort.abort(); };
+  }, [activeId, activeProjectId, loaded, loadedCanvasId, lastDone?.ts]);
   const lastAchievementDoneTsRef = useRef(0);
 
   useEffect(() => {
@@ -5738,6 +5760,83 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
     saveTimersByCanvasRef.current.set(canvasIdForSave, timer);
     pendingSaveFlushersByCanvasRef.current.set(canvasIdForSave, flushPendingAutosave);
   }, [nodes, edges, creativeDesk, farmCanvas, activeId, loaded, loadedCanvasId, getViewport, dragSaveTick, enqueueCanvasMutation, setCanvasRevision]);
+
+  useEffect(() => {
+    const subscribe = window.t8pc?.onCanvasCloseRequest;
+    if (!subscribe) return;
+    let disposed = false;
+    let releasePreviousHold: (() => void) | null = null;
+    const unsubscribe = subscribe(async (cancelled) => {
+      releasePreviousHold?.();
+      const root = document.getElementById('root');
+      const wasInert = root?.inert ?? false;
+      (document.activeElement as HTMLElement | null)?.blur?.();
+      if (root) root.inert = true;
+      const notice = document.createElement('div');
+      notice.setAttribute('role', 'status');
+      notice.textContent = t('generationHistory.savingBeforeClose');
+      Object.assign(notice.style, {
+        position: 'fixed', inset: '0', zIndex: '2147483647', display: 'grid',
+        placeItems: 'center', background: 'var(--bg-primary, #fff)',
+        color: 'var(--text-primary, #111827)', fontSize: '16px',
+      });
+      document.body.appendChild(notice);
+      let released = false;
+      let cancellationWatch: number | undefined;
+      const restore = () => {
+        if (released) return;
+        released = true;
+        window.clearInterval(cancellationWatch);
+        if (root) root.inert = wasInert;
+        notice.remove();
+      };
+      releasePreviousHold = restore;
+      // Also release the hold if the main-process deadline wins an IPC race
+      // just after the renderer produced its receipt.
+      cancellationWatch = window.setInterval(() => {
+        if (!disposed && !cancelled()) return;
+        restore();
+      }, 50);
+      let accepted = false;
+      try {
+        flushCanvasViewportStorage();
+        const result = await waitForCanvasCloseSave({
+          cancelled: () => disposed || cancelled(),
+          read: () => {
+            const bus = useRunBusStore.getState();
+            if (activeCanvasRunsRef.current.size || Object.keys(bus.executionTokens).length) {
+              return { dirty: true, queued: false, blocked: 'running' };
+            }
+            if ([...pendingSaveByCanvasRef.current.values()].some((pending) => pending.conflicted)) {
+              return { dirty: true, queued: false, blocked: 'conflict' };
+            }
+            const canvasId = useCanvasStore.getState().activeId;
+            const current = canvasId && loadedRef.current && loadedCanvasIdRef.current === canvasId
+              ? persistableCanvasPatchStateFromParts(nodesRef.current, edgesRef.current,
+                creativeDeskRef.current, farmCanvasRef.current, nextNodeSerialIdRef.current)
+              : null;
+            return {
+              dirty: pendingSaveByCanvasRef.current.size > 0
+                || !!(current && lastSavedByCanvasRef.current.get(canvasId!) !== current.snapshot),
+              queued: canvasMutationQueuesRef.current.size > 0 || saveTimersByCanvasRef.current.size > 0,
+            };
+          },
+          flush: () => {
+            const flushers = [...pendingSaveFlushersByCanvasRef.current.values()];
+            for (const flush of flushers) flush();
+            // A just-blurred input may not have scheduled its effect yet.
+            if (!flushers.length && !canvasMutationQueuesRef.current.size) setDragSaveTick((tick) => tick + 1);
+          },
+        });
+        accepted = result.ok && !disposed && !cancelled();
+        return accepted ? result : { ok: false, reason: result.reason || 'save' };
+      } finally {
+        // On success keep input frozen until main closes this exact window.
+        if (!accepted) restore();
+      }
+    });
+    return () => { disposed = true; unsubscribe(); releasePreviousHold?.(); };
+  }, [flushCanvasViewportStorage, t]);
 
   const getCreativeDeskCenter = useCallback(() => {
     const flowEl = document.querySelector('.react-flow') as HTMLElement | null;
@@ -9293,6 +9392,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
   // 普通粘贴: 仅复制选中节点 + 其内部边(与原逻辑一致)
   // withLinks=true: Ctrl+Shift+V 额外复制原节点的外部入边/出边 —— 将新节点与原画布上还存在的邻居连接
   const handlePaste = useCallback((withLinks = false, placementMode: ClipboardPastePlacementMode = 'pointer') => {
+    if (document.getElementById('root')?.inert) return false;
     const cb = clipboardRef.current as (typeof clipboardRef.current & {
       incomingEdges?: Edge[];
       outgoingEdges?: Edge[];
@@ -10040,6 +10140,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       let runContext: RunContext | null = null;
       let runId: string | null = null;
       let failedCount = 0;
+      let stoppedCount = 0;
       let executionStarted = false;
       const proposedRunId = `run-${typeof globalThis.crypto?.randomUUID === 'function'
         ? globalThis.crypto.randomUUID()
@@ -10110,6 +10211,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
           try {
             run = await api.createProjectRun({
               id: proposedRunId,
+              projectId: persistenceSnapshot.projectId,
               canvasId: persistenceSnapshot.canvasId,
               canvasRevision: persistenceSnapshot.revision,
               status: 'queued',
@@ -10249,10 +10351,10 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
           if (runControl.cancelled) break;
           const id = order[i];
           const executionNodeId = createCanvasNodeExecutionKey(runContext?.canvasId || launchCanvasId, id);
-          const doneResult = await new Promise<{ ok: boolean; error?: string }>((resolve) => {
+          const doneResult = await new Promise<{ ok: boolean; error?: string; stopped?: boolean }>((resolve) => {
             let done = false;
             let executionToken: string | null = null;
-            const finish = (result: { ok: boolean; error?: string }) => {
+            const finish = (result: { ok: boolean; error?: string; stopped?: boolean }) => {
               if (done) return;
               done = true;
               unsub();
@@ -10261,7 +10363,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
             };
             const unsub = useRunBusStore.subscribe((state) => {
               if (runControl.cancelled) finish({ ok: false, error: 'stopped' });
-              else if (matchesRunCompletion(state.lastDone, executionNodeId, executionToken)) finish({ ok: state.lastDone.ok, error: state.lastDone.error });
+              else if (matchesRunCompletion(state.lastDone, executionNodeId, executionToken)) finish({ ok: state.lastDone.ok, error: state.lastDone.error, stopped: isStoppedRunCompletion(state.lastDone, executionNodeId, executionToken) });
               else if (executionToken && state.executionTokens[executionNodeId] !== executionToken) finish({ ok: false, error: 'superseded' });
             });
             // 安全超时 60 分钟，避免图像/视频/SD2.0/音频长轮询被批量运行提前截断。
@@ -10274,10 +10376,13 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
             releaseLaunch();
             const current = useRunBusStore.getState();
             if (runControl.cancelled) finish({ ok: false, error: 'stopped' });
-            else if (matchesRunCompletion(current.lastDone, executionNodeId, executionToken)) finish({ ok: current.lastDone.ok, error: current.lastDone.error });
+            else if (matchesRunCompletion(current.lastDone, executionNodeId, executionToken)) finish({ ok: current.lastDone.ok, error: current.lastDone.error, stopped: isStoppedRunCompletion(current.lastDone, executionNodeId, executionToken) });
             else if (current.executionTokens[executionNodeId] !== executionToken) finish({ ok: false, error: 'superseded' });
           });
-          if (!doneResult.ok) failedCount += 1;
+          if (!doneResult.ok) {
+            if (doneResult.stopped) stoppedCount += 1;
+            else failedCount += 1;
+          }
           if (order.length > 1) setBatchProgress(order.length, i + 1);
         }
         return order.length;
@@ -10286,7 +10391,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
         throw error;
       } finally {
         stopRunIntentCancellationMonitor();
-        let status: ProjectRunTerminalStatus = runControl.cancelled ? 'stopped' : failedCount > 0 ? 'failed' : 'succeeded';
+        let status: ProjectRunTerminalStatus = runControl.cancelled ? 'stopped' : failedCount > 0 ? 'failed' : stoppedCount > 0 ? 'stopped' : 'succeeded';
         let finalizationError: unknown = null;
         if (runControl.cancelled) {
           try {
@@ -10319,6 +10424,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
                 nodeCount: order.length,
                 authorizedNodeCount: authorizedNodeIds.length,
                 failedCount,
+                stoppedCount,
                 replayMode: options.replayMode || null,
                 replaySourceRunId: options.replaySourceRunId || null,
                 replaySourceAttemptId: options.replaySourceAttemptId || null,
@@ -13616,6 +13722,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
   // ===== 外部素材粘贴: Ctrl+V 图像/视频/音频直接生成上传素材节点 =====
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
+      if (document.getElementById('root')?.inert) return;
       if (!activeId || isTextEditingTarget(e.target)) return;
       if (document.querySelector('.img-edit-overlay')) return;
       const files = collectCanvasMediaFiles(e.clipboardData);
@@ -13702,11 +13809,13 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
     });
   }, [activeId, loaded, loadedCanvasId]);
 
-  const focusGenerationHistoryNode = useCallback((nodeId: string) => {
+  const focusGenerationHistoryNode = useCallback((nodeId: string, expected?: GenerationHistorySourceIdentity) => {
     if (!loaded || loadedCanvasId !== activeId) return;
     const target = nodesRef.current.find((node) => node.id === nodeId);
-    if (!target) {
-      logBus.warn('历史记录的来源节点已经不存在', '历史记录');
+    if (!target || (expected && !matchesGenerationHistorySource(target, nodeId, expected, {
+      projectId: activeProjectIdRef.current, canvasId: useCanvasStore.getState().activeId,
+    }))) {
+      logBus.warn('历史记录的来源节点已不存在或画布已切换，未跳转', '历史记录');
       return;
     }
     setNodes((prev) => prev.map((node) => ({ ...node, selected: node.id === nodeId })));
@@ -13762,6 +13871,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       if (internalPasteTimerRef.current) window.clearTimeout(internalPasteTimerRef.current);
       internalPasteTimerRef.current = window.setTimeout(() => {
         internalPasteTimerRef.current = null;
+        if (document.getElementById('root')?.inert) return;
         const lastExternalPaste = lastExternalMediaPasteRef.current;
         if (
           lastExternalPaste
@@ -13773,6 +13883,13 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       return true;
     };
     const onClipboardKeyCapture = (e: KeyboardEvent) => {
+      if (document.getElementById('root')?.inert) {
+        // Returning alone still lets ReactFlow's document key listener delete
+        // selected nodes. Stop the event before it reaches any lower listener.
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return;
+      }
       if (document.querySelector('[data-canvas-floating-ui="image-detail-viewer"]')) return;
       if (isEditingEvent(e)) return;
       if (matchesAnyShortcut(shortcuts['canvas.copy'], e)) {
@@ -13792,6 +13909,9 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       }
     };
     const onKey = (e: KeyboardEvent) => {
+      // Native close blurs the editor before waiting for its save. Window
+      // shortcuts still receive body-targeted events while the root is inert.
+      if (document.getElementById('root')?.inert) return;
       if (document.querySelector('[data-canvas-floating-ui="image-detail-viewer"]')) return;
       if (clipboardHandledEvents.has(e)) return;
       // 当焦点在表单元素中时不拦截
@@ -14621,7 +14741,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
         onToggleOutputMaterialPersistence={toggleOutputMaterialPersistence}
         historyCount={generationHistoryCount}
         historyOpen={generationHistoryOpen}
-        onToggleHistory={() => setGenerationHistoryOpen((value) => !value)}
+        onToggleHistory={() => { setGenerationHistorySource(undefined); setGenerationHistoryOpen((value) => !value); }}
         onOpenVibeXWorkbench={handleOpenVibeXWorkbench}
         onCreateVibeXNode={handleCreateVibeXNode}
         onCreateGenerationTarget={handleCreateGenerationTarget}
@@ -14713,8 +14833,159 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
         )}
       </CanvasToolbar>
       <GenerationHistoryPanel
+        key={activeId || 'no-canvas'}
         open={generationHistoryOpen}
         items={generationHistoryItems}
+        projectId={activeProjectId}
+        canvasId={loaded && loadedCanvasId === activeId ? activeId : null}
+        refreshKey={`${generationHistoryDataKey}:${lastDone?.ts || 0}`}
+        nodeId={generationHistorySource?.nodeId}
+        nodeEntityUid={generationHistorySource?.nodeEntityUid}
+        onClearNodeFilter={() => setGenerationHistorySource(undefined)}
+        onPrepareSettings={async (group) => {
+          const targetCanvas = activeId, targetProject = activeProjectId;
+          if (!loaded || !targetCanvas || !targetProject || loadedCanvasId !== targetCanvas) throw new Error('请等待画布加载完成');
+          const reviewSnapshot = currentPersistableCanvas().snapshot;
+          const assertReviewCurrent = () => {
+            if (activeProjectIdRef.current !== targetProject || useCanvasStore.getState().activeId !== targetCanvas
+              || loadedCanvasIdRef.current !== targetCanvas || currentPersistableCanvas().snapshot !== reviewSnapshot) {
+              throw new Error('画布或草稿已变化，请重新读取历史设置并确认');
+            }
+            const running = useRunBusStore.getState().runningIds;
+            if (running.includes(group.nodeId || '') || running.includes(createCanvasNodeExecutionKey(targetCanvas, group.nodeId || ''))) {
+              throw new Error('节点正在运行，请结束后再填回设置');
+            }
+          };
+          const page = await api.listGenerationHistory({ projectId: targetProject, canvasId: targetCanvas, groupId: group.id, includeInput: true });
+          assertReviewCurrent();
+          if (page.groups.length !== 1 || page.groups[0].id !== group.id) throw new Error('历史记录已变化，请刷新后重试');
+          const draft = prepareHistorySettingsDraft(page.groups[0].inputArchive, group,
+            nodesRef.current.find(node => node.id === group.nodeId), {
+              projectId: targetProject, canvasId: targetCanvas, currentEdges: edgesRef.current,
+            });
+          // The same approved patch is retried after an uncertain HTTP response.
+          let pending: { patch: CanvasPatch; previewDigest: string; snapshot: string } | undefined;
+          return { ...draft, referenceWarning: draft.referenceWarning || edgesRef.current.some(edge => edge.target === group.nodeId),
+            apply: async () => enqueueCanvasMutation(targetCanvas, async () => {
+              assertReviewCurrent();
+              if (!pending) {
+                const baseline = await ensureCanvasPatchBaseline(targetCanvas);
+                assertReviewCurrent();
+                const patch = createHistorySettingsPatch(draft, { id: crypto.randomUUID(), projectId: targetProject, canvasId: targetCanvas, baseRevision: baseline.revision });
+                const preview = await api.previewCanvasPatch(targetCanvas, patch);
+                assertReviewCurrent();
+                if (graphMutationEpochRef.current !== baseline.mutationEpoch) throw new Error('画布已变化，请重新确认');
+                pending = { patch, previewDigest: preview.previewDigest, snapshot: baseline.snapshot };
+              }
+              const result = await api.applyCanvasPatch(targetCanvas, pending.patch, pending.previewDigest);
+              const document = result.duplicate ? await fetchAuthoritativeCanvasPatchDocument(targetCanvas) : result.document;
+              commitAuthoritativeCanvasPatchDocument(targetCanvas, document, { expectedLocalSnapshot: pending.snapshot, patchId: pending.patch.id });
+            }),
+          };
+        }}
+        onPrepareInputDraft={async group => {
+          const targetCanvas = activeId, targetProject = activeProjectId;
+          if (!loaded || !targetCanvas || !targetProject || loadedCanvasId !== targetCanvas) throw new Error('请等待画布加载完成');
+          const reviewSnapshot = currentPersistableCanvas().snapshot;
+          const assertCurrent = () => {
+            if (activeProjectIdRef.current !== targetProject || useCanvasStore.getState().activeId !== targetCanvas
+              || loadedCanvasIdRef.current !== targetCanvas || currentPersistableCanvas().snapshot !== reviewSnapshot) {
+              throw new Error('画布或草稿已变化，请重新读取历史输入并确认');
+            }
+          };
+          const page = await api.listGenerationHistory({ projectId: targetProject, canvasId: targetCanvas, groupId: group.id, includeInput: true });
+          assertCurrent();
+          if (page.groups.length !== 1 || page.groups[0].id !== group.id) throw new Error('历史记录已变化，请刷新后重试');
+          const draft = await prepareHistoryInputDraft(page.groups[0].inputArchive, group, { projectId: targetProject, canvasId: targetCanvas }, {
+            assertCurrent, getAsset: api.getProjectAsset, recoveredReferences: page.groups[0].referenceRecoveries,
+            request: (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(30000) }),
+          }).catch(error => {
+            if (error instanceof HistoryReferenceRecoveryRequired) error.recover = async (file, signal) => {
+              assertCurrent();
+              const body = new FormData(); body.append('file', file);
+              const query = new URLSearchParams({ projectId: targetProject, canvasId: targetCanvas,
+                ...error.target, referenceIndex: String(error.target.referenceIndex) });
+              const response = await fetch(`/api/project-runs/generation-history/recover?${query}`, {
+                method: 'POST', body, credentials: 'same-origin', signal: AbortSignal.any([signal, AbortSignal.timeout(300000)]),
+              });
+              const result = await response.json();
+              assertCurrent();
+              assertHistoryRecoveryMayContinue(result);
+              if (!response.ok || !result.success || !result.data?.assetId) throw new Error(result.error || '参考文件找回失败，请重试');
+            };
+            throw error;
+          });
+          const draftKey = JSON.stringify([targetProject, targetCanvas, group.id]);
+          let pending = pendingHistoryInputDraftsRef.current.get(draftKey);
+          return { ...draft, apply: async () => enqueueCanvasMutation(targetCanvas, async () => {
+            assertCurrent();
+            if (!pending) {
+              // Confirmation is not permission to substitute changed files.
+              for (const reference of draft.references) {
+                const response = await fetch(reference.url, { method: 'HEAD', cache: 'no-store', credentials: 'same-origin', redirect: 'error', signal: AbortSignal.timeout(30000) });
+                assertCurrent();
+                if (!response.ok) throw new Error(`${reference.label} 文件已变化或不可用，请重新检查`);
+              }
+              const baseline = await ensureCanvasPatchBaseline(targetCanvas);
+              assertCurrent();
+              const center = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+              const position = placeSingleNode(center.x - 140, center.y - 100, draft.nodeType, nodesRef.current, { source: 'placement:history-input' });
+              const patch = createHistoryInputDraftPatch(draft, { id: crypto.randomUUID(), projectId: targetProject, canvasId: targetCanvas, baseRevision: baseline.revision, position });
+              const preview = await api.previewCanvasPatch(targetCanvas, patch);
+              assertCurrent();
+              if (graphMutationEpochRef.current !== baseline.mutationEpoch) throw new Error('画布已变化，请重新确认');
+              pending = { patch, previewDigest: preview.previewDigest, snapshot: baseline.snapshot };
+              pendingHistoryInputDraftsRef.current.set(draftKey, pending);
+            }
+            const result = await api.applyCanvasPatch(targetCanvas, pending.patch, pending.previewDigest);
+            const document = result.duplicate ? await fetchAuthoritativeCanvasPatchDocument(targetCanvas) : result.document;
+            commitAuthoritativeCanvasPatchDocument(targetCanvas, document, { expectedLocalSnapshot: pending.snapshot, patchId: pending.patch.id });
+            pendingHistoryInputDraftsRef.current.delete(draftKey);
+          }) };
+        }}
+        generationCount={durableHistoryCount?.canvasId === activeId ? durableHistoryCount.count : 0}
+        onCount={(count) => {
+          if (activeId) setDurableHistoryCount(previous => previous?.canvasId === activeId && previous.count === count ? previous : { canvasId: activeId, count });
+        }}
+        onPlace={async (output) => {
+          const targetCanvas = activeId;
+          const targetProject = activeProjectId;
+          if (!loaded || !targetCanvas || !targetProject || loadedCanvasId !== targetCanvas) throw new Error('请等待画布加载完成');
+          await enqueueCanvasMutation(targetCanvas, async () => {
+            const isCurrentScope = () => activeProjectIdRef.current === targetProject
+              && useCanvasStore.getState().activeId === targetCanvas && loadedCanvasIdRef.current === targetCanvas;
+            if (!isCurrentScope()) throw new Error('画布已切换，请重新选择素材');
+            const placementKey = JSON.stringify([targetProject, targetCanvas, output.assetId, output.contentHash]);
+            const commitPlacement = async (attempt: { patch: CanvasPatch; previewDigest: string; snapshot: string }) => {
+              const result = await api.applyCanvasPatch(targetCanvas, attempt.patch, attempt.previewDigest);
+              const document = result.duplicate ? await fetchAuthoritativeCanvasPatchDocument(targetCanvas) : result.document;
+              commitAuthoritativeCanvasPatchDocument(targetCanvas, document, {
+                expectedLocalSnapshot: attempt.snapshot, patchId: attempt.patch.id,
+              });
+              pendingHistoryPlacementsRef.current.delete(placementKey);
+            };
+            // A lost HTTP acknowledgement must retry the same patch identity,
+            // not create another node. The backend owns idempotent replay.
+            const pending = pendingHistoryPlacementsRef.current.get(placementKey);
+            if (pending) { await commitPlacement(pending); return; }
+            const baseline = await ensureCanvasPatchBaseline(targetCanvas);
+            const asset = await prepareGenerationHistoryPlacement(output, targetProject, {
+              isCurrentScope, getAsset: api.getProjectAsset, request: (url, init) => fetch(url, init),
+            });
+            const center = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+            const position = placeSingleNode(center.x - 140, center.y - 100, 'upload', nodesRef.current, { source: 'placement:history' });
+            const patch = createGenerationHistoryPlacementPatch(asset, {
+              projectId: targetProject, canvasId: targetCanvas, baseRevision: baseline.revision,
+              position, id: crypto.randomUUID(),
+            });
+            const preview = await api.previewCanvasPatch(targetCanvas, patch);
+            if (!isCurrentScope() || graphMutationEpochRef.current !== baseline.mutationEpoch
+              || currentPersistableCanvas().snapshot !== baseline.snapshot) throw new Error('画布已变化，请重新选择素材');
+            const attempt = { patch, previewDigest: preview.previewDigest, snapshot: baseline.snapshot };
+            pendingHistoryPlacementsRef.current.set(placementKey, attempt);
+            await commitPlacement(attempt);
+          });
+        }}
         onClose={() => setGenerationHistoryOpen(false)}
         onFocusNode={focusGenerationHistoryNode}
       />
@@ -15203,6 +15474,8 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
         )}
         {/* 选中可执行节点时的浮动操作栏 (执行 / 中止 / 关闭) */}
         <NodeActionBar
+          historyProjectId={loaded && loadedCanvasId === activeId ? activeProjectId : null}
+          onOpenHistory={(nodeId, nodeEntityUid) => { setGenerationHistorySource({ nodeId, nodeEntityUid }); setGenerationHistoryOpen(true); }}
           onRunNode={(nodeId) => { void handleRunGroup([nodeId]); }}
           onStopRun={handleCancelRun}
         />

@@ -52,6 +52,7 @@ import {
 import { collectMaterialSetBucketsFromData, valueOfMaterialSetItem } from '../../utils/materialSet';
 import { selectSourceHandleData } from '../../utils/sourceHandleData';
 import { shouldCollectNodeTextOutput } from '../../utils/imageNodeOutputMode';
+import { getVideoOutputPrompt } from '../../utils/videoOutputPrompt';
 import {
   CREATIVE_TARGET_NODE_TYPE,
   buildAnnotationEditRequest,
@@ -246,10 +247,12 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
           ud.outputText || '',
           ud.reply || '',
           ud.prompt || '',
+          ud.lastPrompt || '',
           ud.text || '',
           ud.imageOnlyOutput === false ? 'image-text-output' : 'image-only-output',
           ud.imageUrl || '',
           ud.videoUrl || '',
+          Array.isArray(ud.videoUrls) ? ud.videoUrls.join(',') : '',
           ud.audioUrl || '',
           ud.audioUrl_1 || '', // Suno 双轨副轨; 漏写会导致只显示第 1 首
           ud.modelUrl || '',
@@ -361,7 +364,7 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
           } else {
             pushUniqueText(out.texts, ud.outputText);
             pushUniqueText(out.texts, ud.reply);
-            pushUniqueText(out.texts, ud.prompt);
+            pushUniqueText(out.texts, getVideoOutputPrompt((n as any)?.type, ud)?.prompt ?? ud.prompt);
             pushUniqueText(out.texts, ud.text);
           }
         }
@@ -582,7 +585,11 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
   const mediaPromptByUrl = useMemo(() => {
     const map = new Map<string, { prompt: string; negative: string }>();
     const clean = (value: any) => (typeof value === 'string' ? value.trim() : '');
-    const readPrompt = (ud: any) => clean(ud?.lastPrompt) || clean(ud?.prompt) || clean(ud?.outputText) || clean(ud?.text) || clean(ud?.reply);
+    const readPrompt = (ud: any, nodeType?: unknown) => {
+      const videoPrompt = getVideoOutputPrompt(nodeType, ud);
+      if (videoPrompt) return clean(videoPrompt.prompt);
+      return clean(ud?.lastPrompt) || clean(ud?.prompt) || clean(ud?.outputText) || clean(ud?.text) || clean(ud?.reply);
+    };
     const readNegative = (ud: any) => clean(ud?.negativePrompt) || clean(ud?.negative) || clean(ud?.providerParams?.negativePrompt) || clean(ud?.providerParams?.negative);
     const add = (value: any, prompt: string, negative: string) => {
       const url = clean(value);
@@ -596,9 +603,9 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
     const list = Array.isArray(upstreamNodes) ? upstreamNodes : [];
     for (const node of list) {
       const ud: any = (node as any)?.data || {};
-      const prompt = readPrompt(ud);
+      const prompt = readPrompt(ud, (node as any)?.type);
       const negative = readNegative(ud);
-      if (!prompt) continue;
+      if (!prompt && !getVideoOutputPrompt((node as any)?.type, ud)) continue;
       add(ud.imageUrl, prompt, negative);
       addArray(ud.imageUrls, prompt, negative);
       addArray(ud.urls, prompt, negative);
@@ -1758,7 +1765,7 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
                       data-resource-title={u.split('/').pop()}
                       data-prompt-template-kind="image"
                       data-prompt-template-category="image-reference-edit"
-                      data-prompt-template-prompt={mediaPromptByUrl.get(u)?.prompt || displayText}
+                      data-prompt-template-prompt={mediaPromptByUrl.get(u)?.prompt ?? displayText}
                       data-prompt-template-negative={mediaPromptByUrl.get(u)?.negative || ''}
                       onMouseDown={(e) => {
                         if (imageLongEdge.limit === 0 || imageLongEdge.ready) {
@@ -1828,7 +1835,7 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
                   data-resource-title={u.split('/').pop()}
                   data-prompt-template-kind="video"
                   data-prompt-template-category="video-image-to-video"
-                  data-prompt-template-prompt={mediaPromptByUrl.get(u)?.prompt || displayText}
+                  data-prompt-template-prompt={mediaPromptByUrl.get(u)?.prompt ?? displayText}
                   data-prompt-template-negative={mediaPromptByUrl.get(u)?.negative || ''}
                   onLoadedMetadata={(event) => {
                     rememberVideoFrameTime(`${i}:${u}`, event.currentTarget.currentTime);
@@ -1929,7 +1936,7 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
                   data-resource-title={u.split('/').pop()}
                   data-prompt-template-kind="video"
                   data-prompt-template-category="video-music-audio"
-                  data-prompt-template-prompt={mediaPromptByUrl.get(u)?.prompt || displayText}
+                  data-prompt-template-prompt={mediaPromptByUrl.get(u)?.prompt ?? displayText}
                   data-prompt-template-negative={mediaPromptByUrl.get(u)?.negative || ''}
                   onMouseDown={(e) =>
                     beginMaterialDrag(e, { kind: 'audio', url: u, sourceNodeId: id })

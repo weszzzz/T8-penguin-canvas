@@ -1,4 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import GenerationHistoryRecords from './GenerationHistoryRecords';
+import GenerationHistoryRecovery from './GenerationHistoryRecovery';
+import type { GenerationHistoryGroup, GenerationHistoryOutput, GenerationHistorySourceIdentity, HistorySettingsReview } from '../types/generationHistory';
 import {
   Box,
   Crosshair,
@@ -11,7 +15,6 @@ import {
   X,
 } from 'lucide-react';
 import {
-  GENERATION_HISTORY_KIND_LABELS,
   GENERATION_HISTORY_KIND_ORDER,
   GENERATION_HISTORY_LIMITS,
   countGenerationHistoryByKind,
@@ -24,7 +27,18 @@ interface GenerationHistoryPanelProps {
   open: boolean;
   items: GenerationHistoryItem[];
   onClose: () => void;
-  onFocusNode: (nodeId: string) => void;
+  onFocusNode: (nodeId: string, expected?: GenerationHistorySourceIdentity) => void;
+  projectId: string | null;
+  canvasId: string | null;
+  refreshKey: string;
+  nodeId?: string;
+  nodeEntityUid?: string;
+  onClearNodeFilter: () => void;
+  onPlace: (output: GenerationHistoryOutput) => Promise<void>;
+  onPrepareSettings?: (group: GenerationHistoryGroup) => Promise<HistorySettingsReview>;
+  onPrepareInputDraft?: (group: GenerationHistoryGroup) => Promise<HistorySettingsReview>;
+  onCount: (count: number) => void;
+  generationCount: number;
 }
 
 function HistoryKindIcon({ kind, size = 15 }: { kind: GenerationHistoryTab; size?: number }) {
@@ -67,12 +81,12 @@ function renderPreview(item: GenerationHistoryItem) {
     );
   }
   if (item.kind === 'text') {
-    return <p className="t8-generation-history-text">{item.textPreview}</p>;
+    return <p className="t8-generation-history-text" data-i18n-skip>{item.textPreview}</p>;
   }
   return (
     <div className="t8-generation-history-file">
       <HistoryKindIcon kind={item.kind} size={18} />
-      <span>{item.fileName || item.title}</span>
+      <span data-i18n-skip>{item.fileName || item.title}</span>
     </div>
   );
 }
@@ -82,7 +96,14 @@ export default function GenerationHistoryPanel({
   items,
   onClose,
   onFocusNode,
+  projectId, canvasId, refreshKey, nodeId, nodeEntityUid, onClearNodeFilter, onPlace, onPrepareSettings, onPrepareInputDraft, onCount, generationCount,
 }: GenerationHistoryPanelProps) {
+  const { t } = useTranslation('canvas');
+  const [source, setSource] = useState<'generated' | 'current'>('generated');
+  const [recoveryEpoch, setRecoveryEpoch] = useState(0);
+  const nodeScopeKey = JSON.stringify([nodeId, nodeEntityUid]);
+  const [filteredCount, setFilteredCount] = useState<{ key: string; count: number } | null>(null);
+  useEffect(() => { if (open) setSource('generated'); }, [open, nodeId, nodeEntityUid, canvasId]);
   const [activeKind, setActiveKind] = useState<GenerationHistoryTab>('all');
   const [visibleLimit, setVisibleLimit] = useState(GENERATION_HISTORY_LIMITS.visiblePageSize);
   const [panelPosition, setPanelPosition] = useState({ top: 64, right: 12, maxHeight: 620 });
@@ -134,7 +155,7 @@ export default function GenerationHistoryPanel({
       className="t8-generation-history-panel nodrag nopan"
       data-canvas-floating-ui="generation-history"
       role="dialog"
-      aria-label="历史记录"
+      aria-label={t('generationHistory.title')}
       style={{
         top: panelPosition.top,
         right: panelPosition.right,
@@ -145,15 +166,27 @@ export default function GenerationHistoryPanel({
     >
       <header className="t8-generation-history-header">
         <div>
-          <span>历史记录</span>
-          <strong>{counts.all}</strong>
+          <span>{t('generationHistory.title')}</span>
+          <strong>{source === 'generated' ? (nodeId ? (filteredCount?.key === nodeScopeKey ? filteredCount.count : '—') : generationCount) : counts.all}</strong>
         </div>
-        <button type="button" onClick={onClose} aria-label="关闭历史记录" title="关闭">
+        <button type="button" onClick={onClose} aria-label={t('generationHistory.close')} title={t('generationHistory.close')}>
           <X size={15} />
         </button>
       </header>
 
-      <nav className="t8-generation-history-tabs" aria-label="历史记录分类">
+      <nav className="t8-generation-history-tabs" aria-label={t('generationHistory.source')}>
+        <button type="button" aria-pressed={source === 'generated'} onClick={() => setSource('generated')}>{t('generationHistory.generated')}</button>
+        <button type="button" aria-pressed={source === 'current'} onClick={() => setSource('current')}>{t('generationHistory.current')}</button>
+      </nav>
+      {nodeId && source === 'generated' && <div className="t8-generation-history-actions"><span>{t('generationHistory.onlyNode')}</span><button type="button" onClick={onClearNodeFilter}>{t('generationHistory.wholeCanvas')}</button></div>}
+      {source === 'generated' && projectId && canvasId && <GenerationHistoryRecovery key={`${projectId}:${canvasId}`} projectId={projectId} canvasId={canvasId} onRecovered={() => { setRecoveryEpoch(value => value + 1); onClearNodeFilter(); }} />}
+      {source === 'generated' ? (projectId && canvasId
+        ? <GenerationHistoryRecords key={`${projectId}:${canvasId}:${nodeScopeKey}`} projectId={projectId} canvasId={canvasId} nodeId={nodeId} nodeEntityUid={nodeEntityUid} refreshKey={`${refreshKey}:${recoveryEpoch}`} onFocusNode={onFocusNode} onPlace={onPlace} onPrepareSettings={onPrepareSettings} onPrepareInputDraft={onPrepareInputDraft} onCount={count => {
+          if (nodeId) setFilteredCount(previous => previous?.key === nodeScopeKey && previous.count === count ? previous : { key: nodeScopeKey, count });
+          else onCount(count);
+        }} />
+        : <p role="status">{t('generationHistory.canvasLoading')}</p>) : <>
+      <nav className="t8-generation-history-tabs" aria-label={t('generationHistory.categories')}>
         {tabs.map((kind) => (
           <button
             key={kind}
@@ -162,10 +195,10 @@ export default function GenerationHistoryPanel({
             data-history-kind={kind}
             onClick={() => setActiveKind(kind)}
             aria-pressed={activeKind === kind}
-            title={GENERATION_HISTORY_KIND_LABELS[kind]}
+            title={t(`generationHistory.${kind}`)}
           >
             <HistoryKindIcon kind={kind} size={14} />
-            <span>{GENERATION_HISTORY_KIND_LABELS[kind]}</span>
+            <span>{t(`generationHistory.${kind}`)}</span>
             <b>{counts[kind]}</b>
           </button>
         ))}
@@ -176,22 +209,22 @@ export default function GenerationHistoryPanel({
           <article key={item.id} className="t8-generation-history-item" data-history-kind={item.kind as GenerationHistoryKind}>
             <div className="t8-generation-history-preview">{renderPreview(item)}</div>
             <div className="t8-generation-history-meta">
-              <div className="t8-generation-history-title" title={item.title}>
+              <div className="t8-generation-history-title" title={item.title} data-i18n-skip>
                 <HistoryKindIcon kind={item.kind} size={13} />
                 <span>{item.title}</span>
               </div>
-              <div className="t8-generation-history-source" title={item.subtitle}>
+              <div className="t8-generation-history-source" title={item.subtitle} data-i18n-skip>
                 {item.subtitle}
               </div>
               <div className="t8-generation-history-actions">
-                <button type="button" onClick={() => onFocusNode(item.nodeId)} title="定位来源节点">
+                <button type="button" onClick={() => onFocusNode(item.nodeId)} title={t('generationHistory.locateSource')}>
                   <Crosshair size={12} />
-                  <span>定位</span>
+                  <span>{t('generationHistory.locate')}</span>
                 </button>
                 {item.url && (
-                  <a href={item.url} target="_blank" rel="noreferrer" title="打开素材">
+                  <a href={item.url} target="_blank" rel="noreferrer" title={t('generationHistory.openAsset')}>
                     <ExternalLink size={12} />
-                    <span>打开</span>
+                    <span>{t('generationHistory.open')}</span>
                   </a>
                 )}
               </div>
@@ -201,7 +234,7 @@ export default function GenerationHistoryPanel({
         {visibleItems.length === 0 && (
           <div className="t8-generation-history-empty">
             <History size={18} />
-            <span>暂无记录</span>
+            <span>{t('generationHistory.emptyCurrent')}</span>
           </div>
         )}
       </div>
@@ -212,9 +245,10 @@ export default function GenerationHistoryPanel({
           className="t8-generation-history-more"
           onClick={() => setVisibleLimit((value) => value + GENERATION_HISTORY_LIMITS.visiblePageSize)}
         >
-          显示更多
+          {t('generationHistory.moreCurrent')}
         </button>
       )}
+      </>}
     </aside>
   );
 }

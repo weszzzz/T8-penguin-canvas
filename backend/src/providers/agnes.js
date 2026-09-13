@@ -2,9 +2,13 @@ const { normalizeT8LocalMediaRef, resolveMediaRef } = require('./mediaResolver')
 const openaiCompatible = require('./openaiCompatible');
 const { mergeProviderTrace, providerTrace } = require('./providerTrace');
 const { providerIdempotencyHeadersLike } = require('../services/providerSubmissionContext');
+const {
+  normalizeProviderLlmTimeoutMs,
+  normalizeProviderMediaTimeoutMs,
+} = require('./providerTimeoutPolicy');
 
 const DEFAULT_TIMEOUT_MS = 60 * 60 * 1000;
-const DEFAULT_CHAT_TIMEOUT_MS = 30 * 60 * 1000;
+const DEFAULT_CHAT_TIMEOUT_MS = 3 * 60 * 1000;
 const DEFAULT_BASE_URL = 'https://apihub.agnes-ai.com/v1';
 const DEFAULT_IMAGE_MODEL = 'agnes-image-2.1-flash';
 const DEFAULT_VIDEO_MODEL = 'agnes-video-v2.0';
@@ -277,7 +281,9 @@ async function generateChat(provider, input = {}, options = {}) {
     },
   }, input, {
     ...options,
-    timeoutMs: Number(options.timeoutMs) || DEFAULT_CHAT_TIMEOUT_MS,
+    timeoutMs: normalizeProviderLlmTimeoutMs(options.timeoutMs, {
+      fallback: DEFAULT_CHAT_TIMEOUT_MS,
+    }),
   });
 }
 
@@ -288,6 +294,7 @@ async function generateImage(provider, input = {}, options = {}) {
   if (!prompt) {
     return { ok: false, code: 'missing_prompt', providerId: provider.id, protocol: provider.protocol, error: '请输入 Agnes 图像提示词。' };
   }
+  const timeoutMs = normalizeProviderMediaTimeoutMs(options.timeoutMs, { fallback: DEFAULT_TIMEOUT_MS });
 
   let model;
   try {
@@ -335,7 +342,7 @@ async function generateImage(provider, input = {}, options = {}) {
       method: 'POST',
       headers: bearerHeaders(provider),
       body: JSON.stringify(body),
-      timeoutMs: options.timeoutMs,
+      timeoutMs,
       fetchImpl: options.fetchImpl,
     });
     const raw = await responseJson(res);
@@ -417,6 +424,8 @@ async function generateVideo(provider, input = {}, options = {}) {
   if (!prompt) {
     return { ok: false, code: 'missing_prompt', providerId: provider.id, protocol: provider.protocol, error: '请输入 Agnes 视频提示词。' };
   }
+  const timeoutMs = normalizeProviderMediaTimeoutMs(options.timeoutMs, { fallback: DEFAULT_TIMEOUT_MS });
+  const generationOptions = { ...options, timeoutMs };
 
   let model;
   let trace = {};
@@ -457,7 +466,7 @@ async function generateVideo(provider, input = {}, options = {}) {
       method: 'POST',
       headers: bearerHeaders(provider),
       body: JSON.stringify(body),
-      timeoutMs: options.timeoutMs,
+      timeoutMs,
       fetchImpl: options.fetchImpl,
     });
     const raw = await responseJson(res);
@@ -478,7 +487,7 @@ async function generateVideo(provider, input = {}, options = {}) {
     const taskId = extractTaskId(raw);
     let finalRaw = raw;
     if (!videoUrls.length && taskId) {
-      const polled = await waitForAgnesVideoTask(provider, taskId, model, options);
+      const polled = await waitForAgnesVideoTask(provider, taskId, model, generationOptions);
       trace = mergeProviderTrace(trace, polled);
       finalRaw = polled.raw;
       videoUrls = polled.videoUrls;

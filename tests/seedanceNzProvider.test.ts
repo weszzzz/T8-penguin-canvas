@@ -43,6 +43,7 @@ test('seedance.nz provider boundary forwards options.signal and aborts a hanging
     baseUrl: 'https://api.seedance.nz',
     signal: controller.signal,
     providerDeadlineMs: 5_000,
+    allowShortProviderTimeoutsForTests: true,
     fetchImpl: (_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
       observedSignal = init?.signal as AbortSignal | undefined;
       if (init?.signal?.aborted) {
@@ -58,13 +59,15 @@ test('seedance.nz provider boundary forwards options.signal and aborts a hanging
   assert.equal(observedSignal?.aborted, true);
 });
 
-test('seedance.nz Suno catalog is an explicit 31-action whitelist', () => {
+test('seedance.nz Suno catalog is an explicit 34-action whitelist', () => {
   const operations = Object.keys(seedanceNz.SUNO_ACTION_SPECS);
-  assert.equal(operations.length, 31);
+  assert.equal(operations.length, 34);
   assert.equal(operations[0], 'suno-generation');
   assert.equal(operations.at(-1), 'suno-add-stem');
   assert.equal(seedanceNz.SUNO_ACTION_SPECS['suno-generation'].action, '');
   assert.equal(seedanceNz.SUNO_ACTION_SPECS['suno-generate-mp4'].action, 'generate-mp4');
+  assert.equal(seedanceNz.SUNO_ACTION_SPECS['suno-create-model'].resultFamily, 'model');
+  assert.deepEqual(seedanceNz.SUNO_V6_VERSIONS, ['v6', 'v6-wild', 'v6-mini']);
   assert.deepEqual(seedanceNz.SUNO_VERSIONS, ['v3.5', 'v4', 'v4.5', 'v4.5+', 'v4.5-all', 'v5', 'v5.5']);
 });
 
@@ -78,6 +81,17 @@ test('seedance.nz builds every documented Suno action with model=suno and only i
     style: 'cinematic electronic',
     vocal_gender: 'f',
     tags: 'cinematic, electronic',
+    custom_model_id: '',
+    gpt_description: 'Turn the source into a cinematic instrumental',
+    negative_tags: 'harsh vocals',
+    style_weight: 0.5,
+    weirdness: 0.5,
+    audio_weight: 0.5,
+    auto_lyrics: false,
+    persona_id: '',
+    variety: 'normal',
+    max_mode: false,
+    audio_format: 'mp3',
     audioFilePath: TINY_MP3,
     audio_url: TINY_MP3,
     audio_urls: [TINY_MP3],
@@ -99,10 +113,24 @@ test('seedance.nz builds every documented Suno action with model=suno and only i
 
   for (const operation of Object.keys(seedanceNz.SUNO_ACTION_SPECS)) {
     seedanceNz.resetCachesForTests();
+    const request = { operation, ...common } as any;
+    if (operation === 'suno-create-model') {
+      request.audio_urls = Array.from({ length: 6 }, () => TINY_MP3);
+      request.name = 'V6 Custom Model';
+    }
+    if (operation === 'suno-upload-cover' || operation === 'suno-upload-extend') {
+      request.version = 'v6-mini';
+      request.vocal_gender = 'Female';
+      request.audio_urls = undefined;
+      request.audioUrls = undefined;
+      request.audioFilePath = undefined;
+      request.duration_s = 10;
+      request.continue_at = 2;
+    }
     const built = await seedanceNz.buildSunoMusicPayload(
-      { operation, ...common },
+      request,
       'test-key',
-      { fetchImpl, uploadIntervalMs: 0 },
+      { fetchImpl, uploadIntervalMs: 0, sunoAudioDurationProbe: async () => 12 },
     );
     const spec = seedanceNz.SUNO_ACTION_SPECS[operation];
     assert.equal(built.operation, operation);
@@ -139,6 +167,185 @@ test('seedance.nz rejects unknown Suno routes and invalid action contracts befor
       end_s: 2,
     }, 'test-key'),
     /end_s 必须大于 start_s/,
+  );
+});
+
+test('seedance.nz builds create-model with 6-24 ordered uploads and extracts the completed model_id', async () => {
+  seedanceNz.resetCachesForTests();
+  let uploadIndex = 0;
+  const fetchImpl = async (url: string) => {
+    assert.match(url, /\/v1\/files\/upload$/);
+    uploadIndex += 1;
+    return jsonResponse({ url: `https://cdn.example.com/model-reference-${uploadIndex}.wav` });
+  };
+  const built = await seedanceNz.buildSunoMusicPayload({
+    operation: 'suno-create-model',
+    name: 'V6 Studio Voice',
+    audio_urls: Array.from({ length: 6 }, (_, index) => `data:audio/wav;base64,${Buffer.from(`audio-${index}`).toString('base64')}`),
+  }, 'test-key', { fetchImpl, uploadIntervalMs: 0, uploadCacheTtlMs: 0 });
+  assert.equal(built.action, 'create-model');
+  assert.equal(built.resultFamily, 'model');
+  assert.deepEqual(built.payload, {
+    model: 'suno',
+    name: 'V6 Studio Voice',
+    audio_urls: Array.from({ length: 6 }, (_, index) => `https://cdn.example.com/model-reference-${index + 1}.wav`),
+  });
+
+  const queried = await seedanceNz.querySunoMusicTask('model_task_1', 'test-key', {
+    resultFamily: 'model',
+    fetchImpl: async () => jsonResponse({
+      data: { task_id: 'model_task_1', status: 'completed', result: { model_id: '11111111-2222-4333-8444-555555555555' } },
+    }),
+  });
+  assert.equal(queried.status, 'succeeded');
+  assert.equal(queried.resultFamily, 'model');
+  assert.equal(queried.text, '11111111-2222-4333-8444-555555555555');
+  assert.deepEqual(queried.artifacts, []);
+});
+
+test('seedance.nz enforces upload-cover modes and V6 custom-model exclusivity', async () => {
+  const uploaded = async () => jsonResponse({ url: 'https://cdn.example.com/source.wav' });
+  const descriptionMode = await seedanceNz.buildSunoMusicPayload({
+    operation: 'suno-upload-cover',
+    version: 'v6-mini',
+    audio_url: TINY_MP3,
+    custom: false,
+    instrumental: false,
+    gpt_description: 'Rewrite this as a calm cinematic instrumental',
+    prompt: 'must be omitted',
+    tags: 'must be omitted',
+    title: 'must be omitted',
+    negative_tags: 'must be omitted',
+    style_weight: 0.9,
+    weirdness: 0.8,
+    audio_weight: 0.7,
+    auto_lyrics: true,
+    persona_id: 'must-be-omitted',
+    duration_s: 120,
+    variety: 'normal',
+    max_mode: true,
+    audio_format: 'mp3',
+    vocal_gender: 'Female',
+  }, 'test-key', { fetchImpl: uploaded, uploadIntervalMs: 0, uploadCacheTtlMs: 0 });
+  assert.deepEqual(descriptionMode.payload, {
+    model: 'suno',
+    version: 'v6-mini',
+    custom: false,
+    instrumental: false,
+    gpt_description: 'Rewrite this as a calm cinematic instrumental',
+    vocal_gender: 'Female',
+    variety: 'normal',
+    audio_format: 'mp3',
+    audio_url: 'https://cdn.example.com/source.wav',
+  });
+
+  const customMode = await seedanceNz.buildSunoMusicPayload({
+    operation: 'suno-upload-cover',
+    version: 'v6-wild',
+    custom_model_id: '11111111-2222-4333-8444-555555555555',
+    audio_url: TINY_MP3,
+    custom: true,
+    instrumental: false,
+    gpt_description: 'must be omitted',
+    prompt: '[Verse]\nFollow the light',
+    tags: 'cinematic, electronic',
+    title: 'Follow the Light',
+    negative_tags: 'harsh vocals',
+    style_weight: 0,
+    weirdness: 0.25,
+    audio_weight: 1,
+    auto_lyrics: false,
+    duration_s: 60,
+    variety: 'high',
+    max_mode: true,
+    audio_format: 'wav',
+    vocal_gender: 'Female',
+  }, 'test-key', { fetchImpl: uploaded, uploadIntervalMs: 0, uploadCacheTtlMs: 0 });
+  assert.equal(customMode.payload.version, undefined);
+  assert.equal(customMode.payload.persona_id, undefined);
+  assert.equal(customMode.payload.gpt_description, undefined);
+  assert.equal(customMode.payload.custom_model_id, '11111111-2222-4333-8444-555555555555');
+  assert.equal(customMode.payload.style_weight, 0);
+  assert.equal(customMode.payload.audio_weight, 1);
+  assert.equal(customMode.payload.duration_s, 60);
+});
+
+test('seedance.nz upload-extend omits cover mode fields and probes the real source duration', async () => {
+  let durationProbes = 0;
+  const built = await seedanceNz.buildSunoMusicPayload({
+    operation: 'suno-upload-extend',
+    version: 'v6-wild',
+    audio_url: TINY_MP3,
+    continue_at: 2,
+    duration_s: 20,
+    custom: true,
+    instrumental: true,
+    gpt_description: 'must never be sent',
+    prompt: 'Continue with a restrained piano outro',
+    tags: 'cinematic piano',
+    title: 'Outro',
+    style_weight: 0.4,
+    weirdness: 0.2,
+    audio_weight: 0.8,
+    auto_lyrics: false,
+    persona_id: 'persona-1',
+    variety: 'extra',
+    max_mode: true,
+    audio_format: 'm4a',
+  }, 'test-key', {
+    fetchImpl: async () => jsonResponse({ url: 'https://cdn.example.com/source.wav' }),
+    uploadIntervalMs: 0,
+    uploadCacheTtlMs: 0,
+    sunoAudioDurationProbe: async () => { durationProbes += 1; return 12; },
+  });
+  assert.equal(durationProbes, 1);
+  assert.equal(built.payload.custom, undefined);
+  assert.equal(built.payload.instrumental, undefined);
+  assert.equal(built.payload.gpt_description, undefined);
+  assert.equal(built.payload.continue_at, 2);
+  assert.equal(built.payload.duration_s, 20);
+  assert.equal(built.payload.audio_url, 'https://cdn.example.com/source.wav');
+
+  let uploadCalls = 0;
+  await assert.rejects(
+    seedanceNz.buildSunoMusicPayload({
+      operation: 'suno-upload-extend',
+      version: 'v6',
+      audio_url: TINY_MP3,
+      continue_at: 12,
+      duration_s: 10,
+    }, 'test-key', {
+      fetchImpl: async () => { uploadCalls += 1; return jsonResponse({ url: 'https://cdn.example.com/never.wav' }); },
+      uploadIntervalMs: 0,
+      uploadCacheTtlMs: 0,
+      sunoAudioDurationProbe: async () => 12,
+    }),
+    /continue_at 必须小于源音频实际时长/,
+  );
+  assert.equal(uploadCalls, 0, 'invalid continue_at must fail before Provider upload');
+});
+
+test('seedance.nz rejects invalid Suno V6 action fields before Provider upload', async () => {
+  const noFetch = async () => { throw new Error('fetch must not run'); };
+  await assert.rejects(
+    seedanceNz.buildSunoMusicPayload({ operation: 'suno-create-model', name: 'Too Few', audio_urls: Array(5).fill(TINY_MP3) }, 'test-key', { fetchImpl: noFetch }),
+    /6-24/,
+  );
+  await assert.rejects(
+    seedanceNz.buildSunoMusicPayload({ operation: 'suno-upload-cover', version: 'v6', custom_model_id: 'model-1', persona_id: 'persona-1', audio_url: TINY_MP3, custom: false, gpt_description: 'calm' }, 'test-key', { fetchImpl: noFetch }),
+    /不能同时使用/,
+  );
+  await assert.rejects(
+    seedanceNz.buildSunoMusicPayload({ operation: 'suno-upload-cover', version: 'v6', audio_url: TINY_MP3, custom: false, gpt_description: '字'.repeat(3001) }, 'test-key', { fetchImpl: noFetch }),
+    /最多 3000/,
+  );
+  await assert.rejects(
+    seedanceNz.buildSunoMusicPayload({ operation: 'suno-upload-cover', version: 'v6', audio_url: TINY_MP3, custom: true, instrumental: false, prompt: 'ok', style_weight: 1.01 }, 'test-key', { fetchImpl: noFetch }),
+    /0-1/,
+  );
+  await assert.rejects(
+    seedanceNz.buildSunoMusicPayload({ operation: 'suno-upload-extend', version: 'v6', audio_url: TINY_MP3, continue_at: 0 }, 'test-key', { fetchImpl: noFetch }),
+    /大于等于 1/,
   );
 });
 
@@ -2296,6 +2503,7 @@ test('seedance.nz enforces idle timeout while streaming and cancels the provider
     {
       providerDeadlineMs: 250,
       providerIdleTimeoutMs: 25,
+      allowShortProviderTimeoutsForTests: true,
       fetchImpl: async () => new Response(body, { status: 200 }),
     },
   ));
@@ -2314,6 +2522,7 @@ test('seedance.nz bounds response-header wait even when fetch ignores AbortSigna
     'test-key',
     {
       providerDeadlineMs: 30,
+      allowShortProviderTimeoutsForTests: true,
       fetchImpl: async (_url: string, init?: RequestInit) => {
         signal = init?.signal || undefined;
         return await new Promise<Response>(() => {});
@@ -2327,13 +2536,14 @@ test('seedance.nz bounds response-header wait even when fetch ignores AbortSigna
   assert.ok(Date.now() - startedAt < 500);
 });
 
-test('seedance.nz gives media uploads a 120s deadline and 30s idle boundary by default', () => {
+test('seedance.nz gives Provider calls and media uploads the shared 15-minute floor by default', () => {
   const source = readFileSync(
     new URL('../backend/src/providers/seedanceNz.js', import.meta.url),
     'utf8',
   );
-  assert.match(source, /DEFAULT_PROVIDER_UPLOAD_DEADLINE_MS\s*=\s*120\s*\*\s*1000/);
-  assert.match(source, /DEFAULT_PROVIDER_UPLOAD_IDLE_TIMEOUT_MS\s*=\s*30\s*\*\s*1000/);
+  assert.match(source, /DEFAULT_PROVIDER_DEADLINE_MS\s*=\s*MIN_PROVIDER_MEDIA_TIMEOUT_MS/);
+  assert.match(source, /DEFAULT_PROVIDER_UPLOAD_DEADLINE_MS\s*=\s*MIN_PROVIDER_MEDIA_TIMEOUT_MS/);
+  assert.match(source, /DEFAULT_PROVIDER_UPLOAD_IDLE_TIMEOUT_MS\s*=\s*MIN_PROVIDER_MEDIA_TIMEOUT_MS/);
   assert.match(source, /providerUploadDeadlineMs\s*\?\?\s*options\.providerDeadlineMs/);
   assert.match(source, /providerUploadIdleTimeoutMs\s*\?\?\s*options\.providerIdleTimeoutMs/);
 });
@@ -2351,6 +2561,7 @@ test('seedance.nz never replays an upload whose timeout leaves acceptance ambigu
       uploadIntervalMs: 0,
       providerDeadlineMs: 10,
       providerUploadDeadlineMs: 45,
+      allowShortProviderTimeoutsForTests: true,
       fetchImpl: async (_url: string, init?: RequestInit) => {
         providerCalls += 1;
         signal = init?.signal || undefined;

@@ -166,7 +166,7 @@ test('Canvas, schema, workflow and no-retry profile are wired without credential
   const workflowRaw = readFileSync(new URL('../docs/workflows/minimax-music3-prompt-enhancer.json', import.meta.url), 'utf8');
   const workflow = JSON.parse(workflowRaw);
   assert.match(node, /requestProfile: 'minimax-music3-prompt-enhancer'/);
-  assert.match(node, /timeoutMs: 5 \* 60_000/);
+  assert.match(node, /timeoutMs: 3 \* 60_000/);
   assert.match(node, /createMusic3ChildAttempt/);
   assert.match(node, /subflowOutputs/);
   assert.match(canvas, /'minimax-music3-prompt-enhancer': MiniMaxMusic3PromptEnhancerNode/);

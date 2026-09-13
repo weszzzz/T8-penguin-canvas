@@ -218,7 +218,18 @@ export function useUpstreamMaterials(nodeId: string): UpstreamMaterials {
     return map;
   }, [conns]);
 
-  return useMemo<UpstreamMaterials>(() => {
+  return useMemo(() => collectUpstreamMaterials(upstreamNodes, handleMap, targetHandleMap, currentNodeData),
+    [upstreamNodes, handleMap, targetHandleMap, currentNodeData]);
+}
+
+// Shared by the live hook and explicit history input restoration. Keep port,
+// collection, deduplication and loop-input semantics in this single collector.
+export function collectUpstreamMaterials(
+  upstreamNodes: Array<{ id: string; type?: string; data: Record<string, unknown> }>,
+  handleMap: Map<string, Set<string | null>>,
+  targetHandleMap: Map<string, Set<string>>,
+  currentNodeData: Array<{ data: Record<string, unknown> }>,
+): UpstreamMaterials {
     const texts: Material[] = [];
     const images: Material[] = [];
     const videos: Material[] = [];
@@ -454,7 +465,6 @@ export function useUpstreamMaterials(nodeId: string): UpstreamMaterials {
       videos: asMaterials('video', customInput.videos),
       audios: asMaterials('audio', customInput.audios),
     };
-  }, [upstreamNodes, handleMap, targetHandleMap, currentNodeData]);
 }
 
 /**

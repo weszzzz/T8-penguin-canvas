@@ -1,0 +1,92 @@
+{
+  "schema": "t8-workflow-fragment",
+  "version": 1,
+  "title": "Suno V6 · suno-upload-cover · custom mode",
+  "nodes": [
+    {
+      "id": "suno-upload-cover-custom-action",
+      "type": "audio",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "data": {
+        "label": "上传音频翻唱 · 自定义模式（先导入 1 段音频）",
+        "audioProviderMode": "suno",
+        "sunoPlatform": "seedance-nz",
+        "apiModel": "suno-upload-cover",
+        "reuseResult": false,
+        "sunoNzOperation": "suno-upload-cover",
+        "sunoNzVersion": "v6-mini",
+        "sunoNzCustomModelId": "",
+        "sunoCustom": true,
+        "sunoInstrumental": false,
+        "prompt": "[Verse]\n雨落在未寄出的信上\n\n[Chorus]\n天亮以后我们重新出发",
+        "tags": "cinematic pop, warm piano, restrained electronic rhythm",
+        "title": "天亮以后",
+        "sunoNzNegativeTags": "harsh vocals, distortion",
+        "sunoNzStyleWeight": 0.5,
+        "sunoNzWeirdness": 0.5,
+        "sunoNzAudioWeight": 0.5,
+        "sunoNzAutoLyrics": false,
+        "sunoNzVocalGender": "Female",
+        "sunoNzPersonaId": "",
+        "sunoNzTargetDurationSeconds": 30,
+        "sunoNzVariety": "normal",
+        "sunoNzMaxMode": false,
+        "sunoNzAudioFormat": "mp3",
+        "localRefAudio": ""
+      }
+    },
+    {
+      "id": "suno-upload-cover-custom-output",
+      "type": "output",
+      "position": {
+        "x": 860,
+        "y": 40
+      },
+      "data": {
+        "label": "上传音频翻唱 · 自定义模式（先导入 1 段音频） · 结果",
+        "outputType": "audio"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "suno-upload-cover-custom-edge",
+      "source": "suno-upload-cover-custom-action",
+      "target": "suno-upload-cover-custom-output"
+    }
+  ],
+  "nodeCount": 2,
+  "edgeCount": 1,
+  "nodeTypes": [
+    "audio",
+    "output"
+  ],
+  "topologyPreview": {
+    "nodes": [
+      {
+        "id": "suno-upload-cover-custom-action",
+        "type": "audio",
+        "label": "上传音频翻唱 · 自定义模式（先导入 1 段音频）",
+        "x": 8,
+        "y": 50
+      },
+      {
+        "id": "suno-upload-cover-custom-output",
+        "type": "output",
+        "label": "上传音频翻唱 · 自定义模式（先导入 1 段音频） · 结果",
+        "x": 92,
+        "y": 50
+      }
+    ],
+    "edges": [
+      {
+        "source": "suno-upload-cover-custom-action",
+        "target": "suno-upload-cover-custom-output"
+      }
+    ]
+  },
+  "savedAt": "2026-09-12T00:00:00.000Z"
+}

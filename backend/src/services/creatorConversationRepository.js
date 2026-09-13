@@ -19,6 +19,8 @@ const {
   sceneScopeKey,
 } = require('./creatorLongScriptWork');
 const { sceneProductionScopeKey } = require('./creatorSceneProduction');
+const { normalizeSkillSelection, normalizeSkillBinding, normalizeSkillOutput, assertBindingScope,
+  validateSkillAction } = require('./creatorSkillRuntime');
 
 const CREATOR_CONVERSATION_SCHEMA = 't8-creator-conversation-v2';
 const CREATOR_PHASES = new Set(['idea', 'script', 'assets', 'shots', 'candidates', 'delivery']);
@@ -50,7 +52,7 @@ function creatorCreationMode(value) {
   return bounded(value, 24).toLowerCase() === 'scene' ? 'scene' : 'auto';
 }
 
-function creatorMessageRequestDigest(body, attachments, selectedNodes, creationMode, includeMode = true) {
+function creatorMessageRequestDigest(body, attachments, selectedNodes, creationMode, includeMode = true, skill = null) {
   return digest({
     body,
     attachments: attachments.map((item) => ({
@@ -58,6 +60,7 @@ function creatorMessageRequestDigest(body, attachments, selectedNodes, creationM
     })),
     selectedNodes,
     ...(includeMode ? { creationMode: creatorCreationMode(creationMode) } : {}),
+    ...(skill ? { skill: normalizeSkillSelection(skill) } : {}),
   });
 }
 
@@ -606,6 +609,11 @@ class CreatorConversationRepository {
     if (!messageColumns.has('selected_nodes_json')) {
       this.db.exec("ALTER TABLE creator_messages ADD COLUMN selected_nodes_json TEXT NOT NULL DEFAULT '[]'");
     }
+    if (!messageColumns.has('skill_binding_json')) this.db.exec('ALTER TABLE creator_messages ADD COLUMN skill_binding_json TEXT');
+    if (!messageColumns.has('skill_output_json')) this.db.exec('ALTER TABLE creator_messages ADD COLUMN skill_output_json TEXT');
+    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_creator_messages_skill_task
+      ON creator_messages(session_id, json_extract(skill_binding_json, '$.selection.taskId'), sequence)
+      WHERE skill_binding_json IS NOT NULL AND role = 'user'`);
     const actionColumns = new Set(this.db.prepare('PRAGMA table_info(creator_actions)').all().map((row) => row.name));
     if (!actionColumns.has('work_binding_json')) {
       this.db.exec('ALTER TABLE creator_actions ADD COLUMN work_binding_json TEXT');
@@ -613,6 +621,7 @@ class CreatorConversationRepository {
     if (!actionColumns.has('shots_json')) {
       this.db.exec("ALTER TABLE creator_actions ADD COLUMN shots_json TEXT NOT NULL DEFAULT '[]'");
     }
+    if (!actionColumns.has('skill_binding_json')) this.db.exec('ALTER TABLE creator_actions ADD COLUMN skill_binding_json TEXT');
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_creator_messages_reply
       ON creator_messages(session_id, reply_to_message_id)
       WHERE reply_to_message_id IS NOT NULL;`);
@@ -630,6 +639,8 @@ class CreatorConversationRepository {
       ...(input.action ? { action: input.action } : {}),
       ...(input.conversationContext ? { conversationContext: input.conversationContext } : {}),
       ...(input.workMutation ? { workMutation: input.workMutation } : {}),
+      ...(input.skillBinding ? { skillBinding: normalizeSkillBinding(input.skillBinding) } : {}),
+      ...(input.skillOutput ? { skillOutput: normalizeSkillOutput(input.skillOutput, input.skillBinding) } : {}),
     };
   }
 
@@ -793,6 +804,8 @@ class CreatorConversationRepository {
       responseId: row.response_id || null,
       replyToMessageId: row.reply_to_message_id || null,
       selectedNodes: selectedNodeRefs(parseJson(row.selected_nodes_json, [])),
+      ...(row.skill_binding_json ? { skillBinding: normalizeSkillBinding(JSON.parse(row.skill_binding_json)) } : {}),
+      ...(row.skill_output_json ? { skillOutput: JSON.parse(row.skill_output_json) } : {}),
       errorCode: row.error_code || null,
       createdAt: Number(row.created_at),
       updatedAt: Number(row.updated_at),
@@ -831,6 +844,7 @@ class CreatorConversationRepository {
       modelSnapshot: parseJson(row.model_snapshot_json, {}),
       inputAssetIds: parseJson(row.input_asset_ids_json, []),
       workBinding: sceneActionWorkBinding(parseJson(row.work_binding_json, null)),
+      ...(row.skill_binding_json ? { skillBinding: normalizeSkillBinding(JSON.parse(row.skill_binding_json)) } : {}),
       shots: actionShots(parseJson(row.shots_json, []), row.type).map((shot) => ({
         ...shot,
         resultAssets: this._decorateCandidateAssets(row.session_id, row.id, shot.resultAssets),
@@ -1317,6 +1331,22 @@ class CreatorConversationRepository {
     };
   }
 
+  getSkillTaskBinding(id, selection, scope = {}) {
+    const row = this._requireConversation(id, scope);
+    const skill = normalizeSkillSelection(selection);
+    if (!skill) return null;
+    const existing = this.db.prepare(`SELECT skill_binding_json FROM creator_messages
+      WHERE session_id = ? AND role = 'user' AND skill_binding_json IS NOT NULL
+        AND json_extract(skill_binding_json, '$.selection.taskId') = ?
+      ORDER BY sequence DESC LIMIT 1`).get(row.id, skill.taskId);
+    if (!existing) return null;
+    const binding = normalizeSkillBinding(JSON.parse(existing.skill_binding_json));
+    if (binding.selection.id !== skill.id || binding.selection.packageDigest !== skill.packageDigest) {
+      throw new CreatorConversationError('CREATOR_SKILL_TASK_CONFLICT', '这次创作已固定另一个技能版本，请另起新任务', 409);
+    }
+    return binding;
+  }
+
   appendUserMessage(id, input = {}) {
     const row = this._requireConversation(id, input);
     const body = bounded(input.body, 30_000);
@@ -1324,8 +1354,10 @@ class CreatorConversationRepository {
     const clientRequestId = requiredId(input.clientRequestId, '请求 ID');
     const normalizedMedia = mediaRefs(input.attachments);
     const normalizedSelectedNodes = selectedNodeRefs(input.selectedNodes);
+    const skillBinding = assertBindingScope(input.skillBinding, { projectId: row.project_id, canvasId: row.canvas_id });
+    if (skillBinding) this.getSkillTaskBinding(id, skillBinding.selection, input);
     const requestDigest = creatorMessageRequestDigest(
-      body, normalizedMedia, normalizedSelectedNodes, input.creationMode,
+      body, normalizedMedia, normalizedSelectedNodes, input.creationMode, true, skillBinding?.selection,
     );
     const existing = this.db.prepare(`SELECT * FROM creator_messages
       WHERE session_id = ? AND client_request_id = ?`).get(row.id, clientRequestId);
@@ -1341,10 +1373,10 @@ class CreatorConversationRepository {
       const sequence = this._nextSequence(row.id, now);
       this.db.prepare(`INSERT INTO creator_messages(
         id, session_id, sequence, role, body, status, suggestions_json, media_json,
-        selected_nodes_json, client_request_id, request_digest, created_at, updated_at
-      ) VALUES (?, ?, ?, 'user', ?, 'completed', '[]', ?, ?, ?, ?, ?, ?)`)
+        selected_nodes_json, client_request_id, request_digest, created_at, updated_at, skill_binding_json
+      ) VALUES (?, ?, ?, 'user', ?, 'completed', '[]', ?, ?, ?, ?, ?, ?, ?)`)
         .run(messageId, row.id, sequence, body, JSON.stringify(normalizedMedia), JSON.stringify(normalizedSelectedNodes),
-          clientRequestId, requestDigest, now, now);
+          clientRequestId, requestDigest, now, now, skillBinding ? JSON.stringify(skillBinding) : null);
       this._recordChange(row.id, sequence, 'message', messageId);
       if (row.title === '未命名创作') {
         const title = bounded(body.replace(/\s+/gu, ' '), 34);
@@ -1364,7 +1396,7 @@ class CreatorConversationRepository {
     const normalizedMedia = mediaRefs(input.attachments);
     const normalizedSelectedNodes = selectedNodeRefs(input.selectedNodes);
     const requestDigest = creatorMessageRequestDigest(
-      body, normalizedMedia, normalizedSelectedNodes, input.creationMode,
+      body, normalizedMedia, normalizedSelectedNodes, input.creationMode, true, input.skill || input.skillBinding?.selection,
     );
     const existing = this.db.prepare(`SELECT * FROM creator_messages
       WHERE session_id = ? AND client_request_id = ?`).get(row.id, clientRequestId);
@@ -1385,10 +1417,10 @@ class CreatorConversationRepository {
     const normalizedMedia = mediaRefs(parseJson(existing.media_json, []));
     const normalizedSelectedNodes = selectedNodeRefs(parseJson(existing.selected_nodes_json, []));
     const modernDigest = creatorMessageRequestDigest(
-      body, normalizedMedia, normalizedSelectedNodes, input.creationMode,
+      body, normalizedMedia, normalizedSelectedNodes, input.creationMode, true, input.skill,
     );
     const legacyDigest = creatorMessageRequestDigest(
-      body, normalizedMedia, normalizedSelectedNodes, input.creationMode, false,
+      body, normalizedMedia, normalizedSelectedNodes, input.creationMode, false, input.skill,
     );
     if (existing.body !== body
       || (existing.request_digest !== modernDigest && existing.request_digest !== legacyDigest)) {
@@ -1423,10 +1455,12 @@ class CreatorConversationRepository {
     const responseId = requiredId(input.responseId || `response-${crypto.randomUUID()}`, '回复 ID');
     const replyToMessageId = input.replyToMessageId
       ? requiredId(input.replyToMessageId, '用户消息 ID') : null;
+    let replySkillBinding = null;
     if (replyToMessageId) {
-      const user = this.db.prepare(`SELECT id FROM creator_messages
+      const user = this.db.prepare(`SELECT id, skill_binding_json FROM creator_messages
         WHERE id = ? AND session_id = ? AND role = 'user'`).get(replyToMessageId, row.id);
       if (!user) throw new CreatorConversationError('CREATOR_MESSAGE_NOT_FOUND', '用户消息不存在', 404);
+      replySkillBinding = user.skill_binding_json || null;
     }
     const now = Date.now();
     const messageId = `msg-${crypto.randomUUID()}`;
@@ -1448,10 +1482,10 @@ class CreatorConversationRepository {
       inserted = true;
       this.db.prepare(`INSERT INTO creator_messages(
         id, session_id, sequence, role, body, status, suggestions_json, media_json,
-        response_id, reply_to_message_id, model_snapshot_digest, created_at, updated_at
-      ) VALUES (?, ?, ?, 'assistant', '', 'streaming', '[]', '[]', ?, ?, ?, ?, ?)`)
+        response_id, reply_to_message_id, model_snapshot_digest, created_at, updated_at, skill_binding_json
+      ) VALUES (?, ?, ?, 'assistant', '', 'streaming', '[]', '[]', ?, ?, ?, ?, ?, ?)`)
         .run(messageId, row.id, sequence, responseId, replyToMessageId,
-          bounded(input.modelSnapshotDigest, 128) || null, now, now);
+          bounded(input.modelSnapshotDigest, 128) || null, now, now, replySkillBinding);
       this._recordChange(row.id, sequence, 'message', messageId);
       return this.db.prepare('SELECT * FROM creator_messages WHERE id = ?').get(messageId);
     });
@@ -1482,8 +1516,16 @@ class CreatorConversationRepository {
       }
       const changeSequence = this._nextSequence(row.id, now);
       eventSequence = changeSequence;
-      this.db.prepare(`UPDATE creator_messages SET body = ?, status = 'completed', suggestions_json = ?, action_id = ?, updated_at = ? WHERE id = ?`)
-        .run(body, JSON.stringify(normalizedSuggestions), actionId, now, current.id);
+      const fixedSkill = current.skill_binding_json ? normalizeSkillBinding(JSON.parse(current.skill_binding_json)) : null;
+      if ((fixedSkill?.bindingDigest || null) !== (input.skillBinding?.bindingDigest || null)) {
+        throw new CreatorConversationError('CREATOR_SKILL_BINDING_CONFLICT', '技能回复不属于原始固定任务', 409);
+      }
+      if ((input.action?.skillBinding?.bindingDigest || null) !== (input.action ? fixedSkill?.bindingDigest || null : null)) {
+        throw new CreatorConversationError('CREATOR_SKILL_BINDING_CONFLICT', '技能动作与当前回复不一致', 409);
+      }
+      const skillOutput = normalizeSkillOutput(input.skillOutput, fixedSkill);
+      this.db.prepare(`UPDATE creator_messages SET body = ?, status = 'completed', suggestions_json = ?, action_id = ?, updated_at = ?, skill_output_json = ? WHERE id = ?`)
+        .run(body, JSON.stringify(normalizedSuggestions), actionId, now, skillOutput ? JSON.stringify(skillOutput) : null, current.id);
       this._injectFault('assistant-response-updated', { sessionId: row.id, responseId });
       this._recordChange(row.id, changeSequence, 'message', current.id);
       if (input.action) this._createActionInTransaction(row.id, input.action, now);
@@ -1578,11 +1620,15 @@ class CreatorConversationRepository {
     const inputAssetIds = [...new Set((Array.isArray(input.inputAssetIds) ? input.inputAssetIds : [])
       .map((item) => requiredId(item, '输入素材 ID')))].slice(0, 12);
     const workBinding = sceneActionWorkBinding(input.workBinding);
+    const conversation = this._conversation(sessionId);
+    const skillBinding = assertBindingScope(input.skillBinding, { projectId: conversation.project_id, canvasId: conversation.canvas_id });
+    validateSkillAction(skillBinding, input);
     const shots = actionShots(input.shots, type);
     const resultAssets = mediaRefs(input.resultAssets, 48);
     const requestDigest = digest({
       type, prompt, parameters, snapshot, inputAssetIds, workBinding,
       shots: immutableShotSpecs(shots),
+      ...(skillBinding ? { skillBinding } : {}),
     });
     const existing = this.db.prepare('SELECT * FROM creator_actions WHERE id = ?').get(id);
     if (existing) {
@@ -1598,12 +1644,12 @@ class CreatorConversationRepository {
     this.db.prepare(`INSERT INTO creator_actions(
       id, session_id, sequence, type, prompt, parameters_json, request_digest,
       model_snapshot_json, model_snapshot_digest, input_asset_ids_json, work_binding_json, shots_json, status,
-      result_assets_json, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`)
+      result_assets_json, created_at, updated_at, skill_binding_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`)
       .run(id, sessionId, sequence, type, prompt, JSON.stringify(parameters), requestDigest,
         JSON.stringify(snapshot), digest(snapshot), JSON.stringify(inputAssetIds),
         workBinding ? JSON.stringify(workBinding) : null, JSON.stringify(shots),
-        JSON.stringify(resultAssets), now, now);
+        JSON.stringify(resultAssets), now, now, skillBinding ? JSON.stringify(skillBinding) : null);
     this._recordChange(sessionId, sequence, 'action', id);
     return this.db.prepare('SELECT * FROM creator_actions WHERE id = ?').get(id);
   }
@@ -1869,6 +1915,7 @@ class CreatorConversationRepository {
         modelSnapshot: parseJson(source.model_snapshot_json, {}),
         inputAssetIds: parseJson(source.input_asset_ids_json, []),
         workBinding: parseJson(source.work_binding_json, null),
+        skillBinding: source.skill_binding_json ? normalizeSkillBinding(JSON.parse(source.skill_binding_json)) : null,
         shots: retryShots,
         resultAssets: preservedAssets,
       }, now);

@@ -14,7 +14,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNodes, useViewport, useReactFlow, type Node } from '@xyflow/react';
-import { Play, Square, X } from 'lucide-react';
+import { History, Play, Square, X } from 'lucide-react';
 import { useThemeStore } from '../stores/theme';
 import { createCanvasNodeExecutionKey, useRunBusStore } from '../stores/runBus';
 import { useCanvasStore } from '../stores/canvas';
@@ -27,6 +27,8 @@ import {
   resolveNodeActionBarGeometryFromRects,
 } from '../utils/nodeActionBarGeometry';
 import { EXECUTABLE_NODE_TYPES } from '../config/executableNodeTypes';
+import { useGenerationHistory } from '../hooks/useGenerationHistory';
+import { useTranslation } from 'react-i18next';
 
 const ACTION_COLORS: Record<string, { run: string; stop: string; close: string }> = {
   tech: { run: '#22c55e', stop: '#f97316', close: '#ef4444' },
@@ -44,9 +46,12 @@ const ACTION_COLORS: Record<string, { run: string; stop: string; close: string }
 interface NodeActionBarProps {
   onRunNode: (nodeId: string) => void | Promise<void>;
   onStopRun: () => void;
+  onOpenHistory?: (nodeId: string, nodeEntityUid: string) => void;
+  historyProjectId?: string | null;
 }
 
-const NodeActionBar = ({ onRunNode, onStopRun }: NodeActionBarProps) => {
+const NodeActionBar = ({ onRunNode, onStopRun, onOpenHistory, historyProjectId }: NodeActionBarProps) => {
+  const { t } = useTranslation('canvas');
   const nodes = useNodes();
   const { x: vx, y: vy, zoom } = useViewport();
   const { setNodes } = useReactFlow();
@@ -96,6 +101,11 @@ const NodeActionBar = ({ onRunNode, onStopRun }: NodeActionBarProps) => {
     }
     return null;
   }, [nodes]);
+
+  const historyDoneAt = useRunBusStore(state => state.lastDone?.ts || 0);
+  const selectedHistoryUid = (selectedExe as (Node & { entityUid?: string }) | null)?.entityUid;
+  const nodeHistory = useGenerationHistory(onOpenHistory && historyProjectId && activeCanvasId && selectedExe && selectedHistoryUid
+    ? { projectId: historyProjectId, canvasId: activeCanvasId, nodeId: selectedExe.id, nodeEntityUid: selectedHistoryUid, limit: 1 } : null, String(historyDoneAt));
 
   const selectedData = (selectedExe?.data || {}) as any;
   const selectedRhDuckData = selectedExe?.data as any;
@@ -487,6 +497,7 @@ const NodeActionBar = ({ onRunNode, onStopRun }: NodeActionBarProps) => {
           </button>
         )}
 
+        {onOpenHistory && <button type="button" disabled={!selectedHistoryUid} onClick={() => { if (selectedHistoryUid) onOpenHistory(selectedExe.id, selectedHistoryUid); }} title={t(selectedHistoryUid ? 'generationHistory.nodeTitle' : 'generationHistory.nodeUnverified')} style={{ ...mkBtn('run'), background: isPixel ? '#FFFFFF' : 'transparent', color: isPixel ? '#1A1410' : isDark ? '#e2e8f0' : '#334155' }}><History size={12} /><span>{nodeHistory.page ? t('generationHistory.nodeHistoryCount', { total: nodeHistory.page.total }) : t('generationHistory.nodeHistory')}</span></button>}
         {/* 取消选中 (关闭操作栏) */}
         <button
           type="button"

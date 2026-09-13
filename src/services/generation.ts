@@ -1936,6 +1936,17 @@ export interface SunoNzSubmitRequest {
   style?: string;
   vocal_gender?: string;
   tags?: string;
+  custom_model_id?: string;
+  gpt_description?: string;
+  negative_tags?: string;
+  style_weight?: number;
+  weirdness?: number;
+  audio_weight?: number;
+  auto_lyrics?: boolean;
+  persona_id?: string;
+  variety?: 'off' | 'normal' | 'high' | 'extra' | 'max';
+  max_mode?: boolean;
+  audio_format?: 'mp3' | 'm4a' | 'wav';
   audioFilePath?: string;
   audio_url?: string;
   audio_urls?: string[];

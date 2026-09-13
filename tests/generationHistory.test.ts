@@ -131,9 +131,13 @@ test('generation history shortcut and drawer are wired through toolbar, canvas, 
   assert.match(toolbar, /historyCount:\s*number/);
   assert.match(toolbar, /onToggleHistory:\s*\(\)\s*=>\s*void/);
   assert.match(toolbar, /aria-pressed=\{historyOpen\}/);
-  assert.match(toolbar, /历史记录/);
+  assert.match(toolbar, /t\('toolbar\.history'\)/);
+  assert.match(read('../src/i18n/resources.ts'), /history: '历史记录'/);
+  assert.match(read('../src/i18n/resources.ts'), /history: 'Generation history'/);
 
-  assert.match(canvas, /countGenerationHistoryItems\(nodes\)/);
+  assert.match(canvas, /api\.listGenerationHistory\(/);
+  assert.match(canvas, /page\.counts\.all/);
+  assert.doesNotMatch(canvas, /countGenerationHistoryItems\(nodes\)/);
   assert.match(canvas, /generationHistoryOpen \? collectGenerationHistory\(nodes\) : \[\]/);
   assert.match(canvas, /historyCount=\{generationHistoryCount\}/);
   assert.match(canvas, /const generationHistoryForExport = collectGenerationHistory\(nodesRef\.current\)/);
@@ -145,7 +149,9 @@ test('generation history shortcut and drawer are wired through toolbar, canvas, 
   assert.match(panel, /GENERATION_HISTORY_KIND_ORDER/);
   assert.match(panel, /loading="lazy"/);
   assert.match(panel, /visibleLimit/);
-  assert.match(panel, /显示更多/);
+  assert.match(panel, /t\('generationHistory.moreCurrent'\)/);
+  assert.match(panel, /GenerationHistoryRecords/);
+  assert.match(panel, /t\('generationHistory.current'\)/);
 
   assert.match(css, /Generation history drawer v1/);
   assert.match(css, /\.t8-generation-history-panel/);

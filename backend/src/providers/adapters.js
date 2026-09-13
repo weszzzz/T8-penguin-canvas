@@ -4,6 +4,10 @@ const volcengine = require('./volcengine');
 const agnes = require('./agnes');
 const comfyui = require('./comfyui');
 const jimengCli = require('./jimengCli');
+const {
+  providerLlmGenerationOptions,
+  providerMediaGenerationOptions,
+} = require('./providerTimeoutPolicy');
 
 const ADAPTERS = {
   'openai-compatible': openaiCompatible,
@@ -43,7 +47,7 @@ async function generateImageWithProvider(provider, input = {}, options = {}) {
       error: '该扩展平台暂不支持图像生成。',
     };
   }
-  return adapter.generateImage(provider, input, options);
+  return adapter.generateImage(provider, input, providerMediaGenerationOptions(options));
 }
 
 async function generateChatWithProvider(provider, input = {}, options = {}) {
@@ -57,7 +61,7 @@ async function generateChatWithProvider(provider, input = {}, options = {}) {
       error: '该扩展平台暂不支持 LLM 调用。',
     };
   }
-  return adapter.generateChat(provider, input, options);
+  return adapter.generateChat(provider, input, providerLlmGenerationOptions(options));
 }
 
 async function generateVideoWithProvider(provider, input = {}, options = {}) {
@@ -71,7 +75,7 @@ async function generateVideoWithProvider(provider, input = {}, options = {}) {
       error: '该扩展平台暂不支持视频生成。',
     };
   }
-  return adapter.generateVideo(provider, input, options);
+  return adapter.generateVideo(provider, input, providerMediaGenerationOptions(options));
 }
 
 module.exports = {

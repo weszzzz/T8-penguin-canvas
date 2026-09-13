@@ -8,6 +8,7 @@ import { requestCanvasNodeRun } from '../../utils/canvasRunRequest';
 import { PORT_COLOR } from '../../config/portTypes';
 import * as api from '../../services/api';
 import type { CloudUploadTargetConfig } from '../../types/canvas';
+import type { RunNodeLifecycleReporter } from '../../types/project';
 import {
   buildVolcengineAssetsNodeOutput,
   normalizeVolcengineAssetImportJob,
@@ -162,7 +163,7 @@ const VolcengineAssetsNode = ({ id, data, selected }: NodeProps) => {
     return [...updates.values()];
   }, [importJobs, loadAssets, profileId]);
 
-  const refreshAll = useCallback(async () => {
+  const refreshAll = useCallback(async (reporter: RunNodeLifecycleReporter) => {
     setBusy(true);
     setError('');
     try {
@@ -171,6 +172,9 @@ const VolcengineAssetsNode = ({ id, data, selected }: NodeProps) => {
       await loadGroups();
       await loadAssets();
       await loadImportJobs(projectName || status.project);
+      // Refreshing the catalog produces no new work. Preserve the selected
+      // outputs for downstream nodes without archiving them as a fresh batch.
+      await reporter.output({ status: 'succeeded', outputCount: 0, assets: [] });
       update({ volcengineAssetsStatus: 'ready', status: 'success', error: '' });
     } catch (reason: any) {
       const message = reason?.message || t('volcengineAssets.errors.refresh');

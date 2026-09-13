@@ -17,6 +17,7 @@ const {
   resolveMediaRef,
 } = require('../providers/mediaResolver');
 const { isLoopbackAddress, safeRemoteMediaFetch } = require('../utils/safeRemoteMediaFetch');
+const { MIN_PROVIDER_MEDIA_TIMEOUT_MS } = require('../providers/providerTimeoutPolicy');
 
 const router = express.Router();
 router.use((req, res, next) => {
@@ -175,8 +176,8 @@ async function saveOneMediaOutput(url, kind = 'image', options = {}) {
       allowedKinds: [kind],
       trustedProviderOutput: true,
       maxBytes: kind === 'video' ? 1024 * 1024 * 1024 : kind === 'audio' ? 256 * 1024 * 1024 : 64 * 1024 * 1024,
-      deadlineMs: 5 * 60 * 1000,
-      idleTimeoutMs: 30 * 1000,
+      deadlineMs: MIN_PROVIDER_MEDIA_TIMEOUT_MS,
+      idleTimeoutMs: MIN_PROVIDER_MEDIA_TIMEOUT_MS,
       maxRedirects: 4,
       userAgent: 'T8-PenguinCanvas-ExternalProvider/1.0',
       signal: options.signal,

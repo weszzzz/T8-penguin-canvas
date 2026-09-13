@@ -381,6 +381,32 @@ test('a failed install commit restores an explicitly removed source and rolls ba
   assert.equal(fs.existsSync(store.resolvePath(expectedHash)), false);
 });
 
+test('committed callback errors preserve verified blobs and never roll back a completed source move', async t => {
+  const {root,sources,store}=fixture(t);
+  for (const removeSource of [false,true]) for (const reused of [false,true]) {
+    const content=Buffer.from(`committed-error-${removeSource}-${reused}`),expectedHash=sha256(content);
+    const source=writeSource(sources,`${removeSource}-${reused}.bin`,content);
+    if(reused) await store.installVerifiedFile(source,{expectedHash});
+    const failure=Object.assign(new Error('acknowledgement-failed'),{committed:true,retryable:false});
+    let calls=0;
+    await assert.rejects(store.installVerifiedFile(source,{expectedHash,removeSource,onInstalled:()=>{calls++;throw failure;}}),error=>error===failure);
+    assert.equal(calls,1);assert.deepEqual(fs.readFileSync(store.resolvePath(expectedHash)),content);
+    assert.equal(fs.existsSync(source),!removeSource);
+    assert.deepEqual(ownedTransientFiles(root),[]);
+  }
+});
+
+test('noncommitted and string-valued commit flags still restore the source and remove only the new blob', async t => {
+  const {sources,store}=fixture(t);
+  for (const committed of [false,'true']) {
+    const content=Buffer.from(`not-committed-${committed}`),expectedHash=sha256(content);
+    const source=writeSource(sources,`${committed}.bin`,content);
+    const failure=Object.assign(new Error('transaction-failed'),{committed});
+    await assert.rejects(store.installVerifiedFile(source,{expectedHash,removeSource:true,onInstalled:()=>{throw failure;}}),error=>error===failure);
+    assert.deepEqual(fs.readFileSync(source),content);assert.equal(fs.existsSync(store.resolvePath(expectedHash)),false);
+  }
+});
+
 test('removeSource is post-install only and the config factory is stable per private root', async (t) => {
   const { directory, sources } = fixture(t);
   const data = path.join(directory, 'data');

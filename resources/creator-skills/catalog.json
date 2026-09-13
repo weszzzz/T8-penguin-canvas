@@ -1,0 +1,25 @@
+{
+  "revision": 1,
+  "skills": [
+    {
+      "id": "product-image-direction", "title": "商品主视觉", "version": "1.0.0", "kind": "image", "adapterId": "image-v1",
+      "description": "从一张商品图出发，设计一张主体清晰、材质可信的广告创意图。",
+      "presentation": { "titleEn": "Product hero image", "descriptionEn": "Turn one product reference into a focused advertising image with believable materials.", "inputZh": "一张商品图 + 你的用途", "inputEn": "One product image + intended use", "outputZh": "一张创意图；产品与文字需核对", "outputEn": "One creative image; review the product and text" },
+      "contract": { "schema": "t8-creator-skill-contract-v1", "referenceKind": "image", "minReferences": 1, "maxReferences": 1, "maxOutputs": 1, "maxShots": 1, "checks": ["product-identity", "requested-text", "requested-scope"] },
+      "quality": { "status": "unverified" }, "maintenance": { "owner": "T8-penguin-canvas", "license": "MIT", "lastValidatedAt": null }
+    },
+    {
+      "id": "product-motion-shot", "title": "商品动态镜头", "version": "1.0.0", "kind": "video", "adapterId": "video-v1",
+      "description": "让一张商品图成为一段连续镜头，保持主体并安排清楚的运动起止。",
+      "presentation": { "titleEn": "Product motion shot", "descriptionEn": "Make one continuous product shot with a clear camera move and consistent identity.", "inputZh": "一张商品图 + 想表现的动作", "inputEn": "One product image + desired motion", "outputZh": "一段连续视频；不含额外剪辑配音", "outputEn": "One continuous video; no separate editing or voiceover" },
+      "contract": { "schema": "t8-creator-skill-contract-v1", "referenceKind": "image", "minReferences": 1, "maxReferences": 1, "maxOutputs": 1, "maxShots": 1, "checks": ["product-continuity", "motion-continuity", "complete-video"] },
+      "quality": { "status": "unverified" }, "maintenance": { "owner": "T8-penguin-canvas", "license": "MIT", "lastValidatedAt": null }
+    },
+    {
+      "id": "product-prompt-brief", "title": "商品提示词整理", "version": "1.0.0", "kind": "text", "adapterId": "text-v1",
+      "description": "把零散信息整理成完整、可修改的图片提示词，不直接生成媒体。",
+      "presentation": { "titleEn": "Product prompt brief", "descriptionEn": "Shape scattered product facts into a complete editable image prompt, without generating media.", "inputZh": "商品事实或原有提示词；图片可选", "inputEn": "Product facts or an existing prompt; image optional", "outputZh": "完整提示词 + 最多三个核对点", "outputEn": "A complete prompt + up to three checks" },
+      "quality": { "status": "unverified" }, "maintenance": { "owner": "T8-penguin-canvas", "license": "MIT", "lastValidatedAt": null }
+    }
+  ]
+}

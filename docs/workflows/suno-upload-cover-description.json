@@ -1,0 +1,81 @@
+{
+  "schema": "t8-workflow-fragment",
+  "version": 1,
+  "title": "Suno V6 · suno-upload-cover · description mode",
+  "nodes": [
+    {
+      "id": "suno-upload-cover-description-action",
+      "type": "audio",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "data": {
+        "label": "上传音频翻唱 · 灵感描述模式（先导入 1 段音频）",
+        "audioProviderMode": "suno",
+        "sunoPlatform": "seedance-nz",
+        "apiModel": "suno-upload-cover",
+        "reuseResult": false,
+        "sunoNzOperation": "suno-upload-cover",
+        "sunoNzVersion": "v6-mini",
+        "sunoCustom": false,
+        "sunoInstrumental": false,
+        "sunoNzGptDescription": "将参考音频改编为克制、温暖的电影感器乐版本",
+        "sunoNzVocalGender": "",
+        "sunoNzVariety": "normal",
+        "sunoNzAudioFormat": "mp3",
+        "localRefAudio": ""
+      }
+    },
+    {
+      "id": "suno-upload-cover-description-output",
+      "type": "output",
+      "position": {
+        "x": 860,
+        "y": 40
+      },
+      "data": {
+        "label": "上传音频翻唱 · 灵感描述模式（先导入 1 段音频） · 结果",
+        "outputType": "audio"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "suno-upload-cover-description-edge",
+      "source": "suno-upload-cover-description-action",
+      "target": "suno-upload-cover-description-output"
+    }
+  ],
+  "nodeCount": 2,
+  "edgeCount": 1,
+  "nodeTypes": [
+    "audio",
+    "output"
+  ],
+  "topologyPreview": {
+    "nodes": [
+      {
+        "id": "suno-upload-cover-description-action",
+        "type": "audio",
+        "label": "上传音频翻唱 · 灵感描述模式（先导入 1 段音频）",
+        "x": 8,
+        "y": 50
+      },
+      {
+        "id": "suno-upload-cover-description-output",
+        "type": "output",
+        "label": "上传音频翻唱 · 灵感描述模式（先导入 1 段音频） · 结果",
+        "x": 92,
+        "y": 50
+      }
+    ],
+    "edges": [
+      {
+        "source": "suno-upload-cover-description-action",
+        "target": "suno-upload-cover-description-output"
+      }
+    ]
+  },
+  "savedAt": "2026-09-12T00:00:00.000Z"
+}

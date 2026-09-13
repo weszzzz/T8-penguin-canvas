@@ -7,7 +7,7 @@ test('frontend stores credential-free recovery recipes for supported provider po
     provider: 'runninghub', model: 'webapp-1', taskId: 'rh-task', site: 'intl', pollLimit: 20,
   }), {
     version: 1, kind: 'runninghub', taskId: 'rh-task', model: 'webapp-1', site: 'intl',
-    pollIntervalMs: 3000, maxPolls: 20,
+    pollIntervalMs: 3000, maxPolls: 300,
   });
   assert.equal(inferRunRecoveryDescriptor({
     provider: 'seedance-nz', model: 'wan-2.7-spicy-i2v', taskId: 'wan-task',

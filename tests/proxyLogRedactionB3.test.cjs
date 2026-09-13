@@ -277,7 +277,11 @@ test('B3 Provider JSON parsing enforces byte and structure budgets', async () =>
     proxyRouter._test.parseJsonResponse(new Response(stalledBody, {
       status: 200,
       headers: { 'content-type': 'application/json' },
-    }), 'stalled fixture', { deadlineMs: 120, idleTimeoutMs: 40 }),
+    }), 'stalled fixture', {
+      deadlineMs: 120,
+      idleTimeoutMs: 40,
+      allowShortProviderTimeoutsForTests: true,
+    }),
     (error) => error?.code === 'provider_response_timeout',
   );
   assert.ok(Date.now() - startedAt < 1_000, 'stalled Provider body must release the route within its deadline');
@@ -289,7 +293,11 @@ test('B3 Provider JSON parsing enforces byte and structure budgets', async () =>
       body: stalledNodeBody,
       status: 200,
       headers: { get: () => null },
-    }, 'stalled Node stream fixture', { deadlineMs: 120, idleTimeoutMs: 40 }),
+    }, 'stalled Node stream fixture', {
+      deadlineMs: 120,
+      idleTimeoutMs: 40,
+      allowShortProviderTimeoutsForTests: true,
+    }),
     (error) => error?.code === 'provider_response_timeout',
   );
   assert.equal(stalledNodeBody.destroyed, true);
