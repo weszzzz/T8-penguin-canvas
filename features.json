@@ -1,10 +1,21 @@
 {
   "$schema": "本文件为 T8-penguin-canvas 节点清单防丢失锁,任何节点删减都需要在 roadmap.md 中说明并更新本文件。",
-  "version": "3.2.3",
+  "version": "3.2.4",
+  "electronReleaseV324": {
+    "status": "released-dual-platform-verified",
+    "sourceCommit": "ecbb4312a55c1bf386f8850c0170117a3b037012",
+    "macWorkflow": "https://github.com/T8mars/T8-penguin-canvas/actions/runs/36971772927",
+    "version": "3.2.4",
+    "tag": "v3.2.4",
+    "latest": true,
+    "evidence": "docs/release-v3.2.4.md",
+    "postReleaseEvidence": "owner-approved-post-release-v3.2.4",
+    "macBoundary": "same-tag-unsigned-preview; defer-only-if-github-quota-insufficient"
+  },
   "electronReleaseV323": {
     "status": "released-dual-platform-verified",
     "sourceCommit": "1d5fc6774bfaa1e332d36be92eec9826e0e2cadc",
-    "latest": true,
+    "latest": false,
     "macWorkflow": "https://github.com/T8mars/T8-penguin-canvas/actions/runs/36759071469",
     "version": "3.2.3",
     "tag": "v3.2.3",
@@ -27,7 +38,7 @@
     "summary": "磁盘容量错误显示实际盘符、需要及剩余 GiB；Electron 设置与画布加载失败页可选择其他盘，重启后离线复制校验并切换数据目录，保留原数据。",
     "evidence": "docs/desktop-data-storage.md"
   },
-  "lastUpdated": "2026-10-01-v3.2.3-dual-platform-released-verified",
+  "lastUpdated": "2026-10-02-v3.2.4-dual-platform-released-verified",
   "electronReleaseV322": {
     "status": "released-dual-platform-verified",
     "sourceCommit": "beadec0a151cd03048b96d0f0e6c4eb1a45c0399",
@@ -15883,6 +15894,18 @@
       "The explicit recovery fixture proves the older canvas is restored only after exact confirmation, the ACK advances rather than regresses, corrupted-primary evidence remains present, and a modified authorization is rejected. All database fixtures lived only in system temporary directories and were removed after testing."
     ],
     "boundary": "Released in v3.2.1. It cannot reconstruct writes whose only durable SQLite pages/WAL were already lost; it provides a safe in-app choice to restore the newest fully verified canonical backup while preserving evidence. UUID-mismatched or otherwise unverifiable backups remain blocked and require an operator recovery flow. Affected-user old databases and installed-upgrade evidence remain deferred, not passed."
+  },
+  "seedreamFlash20261002": {
+    "status": "released-v3.2.4-live-verified",
+    "date": "2026-10-02",
+    "releaseIncluded": true,
+    "provider": "seedance-nz",
+    "tabs": ["Seedream", "Seedream分层"],
+    "models": ["seedream-v5-flash-t2i", "seedream-v5-flash-i2i", "seedream-v5-flash-layer-decomposition", "dola-seedream-5.0-flash-t2i", "dola-seedream-5.0-flash-i2i", "dola-seedream-5.0-flash-layer-decomposition"],
+    "summary": "Flash families in existing tabs; shared exact runtime identity, 5000-character prompts, 1.5k, 30 MiB references and complete ordered layer outputs. Pro defaults/limits retained; trusted COS GET recovery added.",
+    "details": "docs/seedream-v5-flash.md",
+    "verification": {"live": "6/6 succeeded, HTTP 200; 13/13 outputs downloaded, fully decoded and visually inspected; read-only official COS alias has identical SHA-256", "offline": "263/263 targeted and adjacent tests; type-check, i18n, capability sync and context checks passed", "report": "local-private/seedream-flash-live-20261002/report.json", "tests": "local-private/seedream-flash-live-20261002/final-tests.log"},
+    "boundary": "Released in v3.2.4 from fixed source; dual-platform artifacts and update manifests fully download-verified. Installed-user and F8-F10 evidence deferred, not passed. Credentials and live identities remain private."
   },
   "qwen21AnimateMotionTransfer20260922": {
     "status": "released-v3.2.0-live-verified",
