@@ -40,7 +40,7 @@ jobs:
           git lfs install --local
           git config merge.keep-local.driver true
           git remote add upstream https://github.com/T8mars/T8-penguin-canvas.git
-          git fetch --no-tags upstream main
+          node scripts/fetch-upstream.cjs upstream main
 
           if git merge-base --is-ancestor upstream/main HEAD; then
             echo "Upstream is already included at $(git rev-parse --short HEAD)."
@@ -126,7 +126,7 @@ jobs:
           set -euo pipefail
           git config merge.keep-local.driver true
           git remote add upstream https://github.com/T8mars/T8-penguin-canvas.git
-          git fetch --no-tags upstream main
+          node scripts/fetch-upstream.cjs upstream main
           git merge --no-commit --no-ff upstream/main || true
           test -n "$(git diff --name-only --diff-filter=U)"
 

@@ -67,6 +67,7 @@ npm run worktree:development
 - 拉取和依赖更新前先检查 `git status --short --branch`。
 - 不用目录复制同步源码，不在历史 integration 与当前仓库同时改同一功能。
 - build、打包、版本升级、tag 和发布仍需单独明确授权；每日上游同步在门禁通过后可自动提交并推送 `origin/main`。
+- 上游抓取统一使用 `npm run upstream:fetch`。macOS 未显式设置代理时会读取系统代理（`scutil --proxy`）；显式 `HTTP(S)_PROXY` 优先。`.git/FETCH_HEAD` 权限问题会以 `UPSTREAM_FETCH_PERMISSION` 失败关闭，不会误判为网络失败。
 
 ### 跨平台同步
 
