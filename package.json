@@ -45,6 +45,8 @@
     "feature-sync:generate": "node tools/zcanvas-cli/scripts/generateCreativeCapabilityArtifacts.cjs",
     "feature-sync:check": "node tools/zcanvas-cli/scripts/generateCreativeCapabilityArtifacts.cjs --check",
     "upstream:fetch": "node scripts/fetch-upstream.cjs upstream main",
+    "sync:gates": "node scripts/run-sync-gates.cjs",
+    "sync:upstream": "node scripts/upstream-sync.cjs",
     "i18n:check": "tsx scripts/check-i18n.ts",
     "i18n:baseline": "tsx scripts/check-i18n.ts --write-baseline",
     "performance:fixture:check": "tsx --test tests/canvasPerformance.test.ts",

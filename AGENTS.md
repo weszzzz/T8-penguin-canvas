@@ -11,7 +11,7 @@
 - 用户说“拉取最新代码”时，默认目标是可信上游 `upstream/main`，不是读写远端 `origin/main`。
 - 上游同步在工作树干净、无冲突且门禁通过时直接完成合并提交，不为正常流程请求确认；只有冲突、保护文件漂移、权限/网络异常、测试失败或其他无法安全判断的问题才询问用户。
 
-涉及上游同步、fork 合并、LFS 保护或合并冲突时，额外阅读全局技能 `~/.agents/skills/upstream-sync-merge/SKILL.md`。
+涉及上游同步、fork 合并、LFS 保护或合并冲突时，额外阅读全局技能 `~/.agents/skills/upstream-sync-merge/SKILL.md`。日常同步可运行 `npm run sync:upstream`（`--dry-run` 只做预检与抓取分析，`--no-push` 停在合并提交），门禁可运行 `npm run sync:gates` 并读取其结果 JSON。
 
 ## 当前权威开发路径
 
@@ -29,7 +29,7 @@
 
 - 禁止 `reset`、`clean`、checkout 覆盖、整树复制、整树 ours/theirs 或任何丢弃本地修改的操作。
 - 不得编辑或暂存源/core 工作树中的 `tools/ffmpeg-runtime/ffmpeg.exe`（143,314,432 bytes，SHA-256 `754A10CE2FC4A8C974FF492B351F58C02D35124D1D602FCF30F561FB1BD0F579`）。
-- 不得编辑或暂存源/core 工作树中的 `tools/remove-ai-watermarks-runtime/README.md`（2,298 bytes，SHA-256 `04F13F0ADBB8593372FB9DDFA297A0DFB90D9EAD0325DE0CD340FCFE8B7CED56`）。
+- 不得编辑或暂存源/core 工作树中的 `tools/remove-ai-watermarks-runtime/README.md`（跟踪 blob `f64781939c1f664ce6449003b7f4705e6dbe01d0`，LF 工作树 2,272 bytes、SHA-256 `92e545427585fc2b0b8bab611154b300f0077bb969de458b72a82dd2199f562d`；历史记录的 2,298 bytes/`04F13F0A…` 与三方 blob 都不符，属过期基线，校验以 HEAD/base/上游三处 blob 一致为准）。
 - 不得读取 retained/historical 项目数据库；数据库测试只能创建在系统临时目录并在测试后清理。
 - 用户明确要求的日常开发可在 core 内修改、测试并按精确文件范围提交；版本升级、生产 build/打包、tag 和 GitHub Release 仍须单独明确授权。每日上游同步在门禁通过后可自动提交并推送 `origin/main`；未来正式包只构建一次。
 
