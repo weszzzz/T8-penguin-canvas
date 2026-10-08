@@ -39,6 +39,7 @@ const {
 
 const APP_VERSION = require('../package.json').version;
 const { createDataStorage } = require('./dataStorage.cjs');
+const { createStartupDiagnostics, installStartupConsoleCapture, registerStartupDiagnosticsIpc } = require('./startupDiagnostics.cjs');
 let desktopDataStorage = null;
 let dataStorageRestartPending = false;
 const ELECTRON_BACKEND_SHUTDOWN_DEADLINE_MS = 15_000;
@@ -53,6 +54,16 @@ const MAIN_WINDOW_STARTUP_BACKEND_URL = 'https://t8pc.startup.local/backend';
 const electronStartupStartedAt = Date.now();
 const ELECTRON_SINGLE_INSTANCE_OWNER = app.requestSingleInstanceLock();
 if (!ELECTRON_SINGLE_INSTANCE_OWNER) app.quit();
+let startupDiagnostics;
+try {
+  startupDiagnostics = createStartupDiagnostics({
+    directory: ELECTRON_SINGLE_INSTANCE_OWNER ? path.join(app.getPath('userData'), 'logs', 'startup') : undefined,
+    version: APP_VERSION,
+  });
+} catch {
+  startupDiagnostics = createStartupDiagnostics({ version: APP_VERSION });
+}
+if (ELECTRON_SINGLE_INSTANCE_OWNER) installStartupConsoleCapture(startupDiagnostics);
 
 // 允许在 Linux/某些机型上规避 GPU 沙盒导致的启动延迟
 app.commandLine.appendSwitch('disable-features', 'OutOfBlinkCors');
@@ -144,6 +155,8 @@ let electronQuitFinalizationPromise = null;
 let collaborationManagementToken = '';
 let logBuffer = [];
 let autoUpdater = null;
+let updaterInstallPromise = null;
+let updaterInstallQueued = false;
 let initialUpdateCheckStarted = false;
 let vibeXFrameUiPatchTimer = null;
 let updaterState = {
@@ -1906,9 +1919,15 @@ function ensureAutoUpdater() {
     autoUpdater.on('error', (error) => {
       const message = normalizeError(error);
       dbgLog(`[updater] error: ${message}`);
+      const installFailed = updaterInstallQueued;
+      updaterInstallQueued = false;
+      if (installFailed) {
+        electronQuitRequested = false;
+        if (!mainWindow || mainWindow.isDestroyed()) setImmediate(() => app.quit());
+      }
       emitUpdaterStatus({
         status: 'error',
-        messageKey: 'updater.failed',
+        messageKey: installFailed ? 'updater.installFailedRestart' : 'updater.failed',
         messageParams: {},
         error: message,
         progress: null,
@@ -1930,6 +1949,8 @@ function ensureAutoUpdater() {
 }
 
 async function checkForUpdatesByUser() {
+  if (updaterInstallPromise || updaterInstallQueued) return updaterInstallBusyResult();
+  if (backendShutdownPromise) return updaterInstallFailure('UPDATER_RESTART_REQUIRED', 'updater.installFailedRestart');
   const ready = ensureAutoUpdater();
   if (!ready.ok) {
     return {
@@ -1963,6 +1984,8 @@ async function checkForUpdatesByUser() {
 }
 
 async function downloadAvailableUpdate() {
+  if (updaterInstallPromise || updaterInstallQueued) return updaterInstallBusyResult();
+  if (backendShutdownPromise) return updaterInstallFailure('UPDATER_RESTART_REQUIRED', 'updater.installFailedRestart');
   const ready = ensureAutoUpdater();
   if (!ready.ok) {
     return {
@@ -1995,7 +2018,30 @@ async function downloadAvailableUpdate() {
   }
 }
 
+function updaterInstallBusyResult() {
+  return {
+    success: false, code: 'UPDATER_INSTALL_BUSY', messageKey: 'updater.preparingInstall',
+    params: {}, message: electronT('updater.preparingInstall'), status: updaterState,
+  };
+}
+
+function updaterInstallFailure(code, messageKey, error = null) {
+  return {
+    success: false, code, messageKey, params: {}, message: electronT(messageKey),
+    status: emitUpdaterStatus({ status: 'error', messageKey, messageParams: {}, error, progress: null }),
+  };
+}
+
 function installDownloadedUpdate() {
+  if (updaterInstallPromise) return updaterInstallPromise;
+  if (updaterInstallQueued) return { success: true, status: updaterState };
+  if (!ELECTRON_SINGLE_INSTANCE_OWNER || electronQuitRequested || electronQuitFinalizationPromise || dataStorageRestartPending) {
+    return updaterInstallBusyResult();
+  }
+  // A partially stopped backend cannot be turned back into an editable canvas.
+  if (backendShutdownPromise) {
+    return updaterInstallFailure('UPDATER_RESTART_REQUIRED', 'updater.installFailedRestart');
+  }
   const ready = ensureAutoUpdater();
   if (!ready.ok) {
     return {
@@ -2022,20 +2068,54 @@ function installDownloadedUpdate() {
       status: emitUpdaterStatus({ messageKey: 'updater.notDownloaded', messageParams: {} }),
     };
   }
-  // Windows keeps the NSIS installer visible. macOS installs the signed ZIP
-  // through Squirrel.Mac and restarts without a separate NSIS-style wizard.
-  const isMac = process.platform === 'darwin';
-  setImmediate(() => ready.updater.quitAndInstall(isMac, true));
-  return {
-    success: true,
-    status: emitUpdaterStatus({
+  // BaseUpdater launches NSIS BEFORE app.quit(). Do not let its process check
+  // race the renderer's save receipt or the backend's storage-close lifecycle.
+  let backendStopping = false;
+  updaterInstallPromise = (async () => {
+    emitUpdaterStatus({ status: 'preparing-install', messageKey: 'updater.preparingInstall', messageParams: {}, error: null });
+    if (mainWindowCloseGate && !(await mainWindowCloseGate.request())) {
+      electronQuitRequested = false;
+      return updaterInstallFailure('UPDATER_CANVAS_CLOSE_BLOCKED', 'updater.closeBlocked');
+    }
+    electronQuitRequested = true;
+    backendStopping = true;
+    const outcome = await shutdownBackendForElectron('ELECTRON_UPDATE');
+    if (outcome?.timedOut) {
+      return updaterInstallFailure('UPDATER_SHUTDOWN_TIMEOUT', 'updater.installFailedRestart');
+    }
+    electronQuitReady = true;
+    updaterInstallQueued = true;
+    // Windows remains visible; Mac keeps the native Squirrel restart flow.
+    const isMac = process.platform === 'darwin';
+    const status = emitUpdaterStatus({
       status: 'installing',
-      messageKey: isMac
-        ? 'updater.installingMac'
-        : 'updater.installingWindows',
-      messageParams: {},
-    }),
-  };
+      messageKey: isMac ? 'updater.installingMac' : 'updater.installingWindows',
+      messageParams: {}, error: null,
+    });
+    setImmediate(() => {
+      if (!updaterInstallQueued) return;
+      try { ready.updater.quitAndInstall(isMac, true); }
+      catch (error) {
+        updaterInstallQueued = false;
+        electronQuitRequested = false;
+        updaterInstallFailure('UPDATER_INSTALL_FAILED', 'updater.installFailedRestart', normalizeError(error));
+        if (!mainWindow || mainWindow.isDestroyed()) setImmediate(() => app.quit());
+      }
+    });
+    return { success: true, status };
+  })().catch((error) => {
+    if (!backendStopping) mainWindowCloseGate?.cancelApproval();
+    return updaterInstallFailure('UPDATER_INSTALL_PREPARATION_FAILED',
+      backendStopping ? 'updater.installFailedRestart' : 'updater.closeBlocked', normalizeError(error));
+  }).finally(() => {
+    updaterInstallPromise = null;
+    if (!updaterInstallQueued) {
+      electronQuitRequested = false;
+      // A concurrently closed window must not leave an invisible app behind.
+      if (!mainWindow || mainWindow.isDestroyed()) setImmediate(() => app.quit());
+    }
+  });
+  return updaterInstallPromise;
 }
 
 function startInitialUpdateCheck() {
@@ -2643,6 +2723,12 @@ ipcMain.handle('t8pc:get-info', () => ({
   updater: updaterState,
 }));
 
+registerStartupDiagnosticsIpc({
+  ipcMain, getWindow: () => mainWindow, assertTrusted: assertTrustedMainRenderer,
+  dialog, diagnostics: startupDiagnostics,
+  title: () => getElectronLocale() === 'en-US' ? 'Save startup log' : '保存启动日志',
+});
+
 ipcMain.handle('t8pc:storage:status', (event) => {
   assertTrustedMainRenderer(event);
   if (event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error('Storage settings require the main frame');
@@ -2874,6 +2960,7 @@ app.on('before-quit', (event) => {
   if (!ELECTRON_SINGLE_INSTANCE_OWNER) return;
   if (electronQuitReady) return;
   event.preventDefault();
+  if (updaterInstallPromise || updaterInstallQueued) return;
   if (!electronQuitFinalizationPromise) {
     electronQuitFinalizationPromise = (async () => {
       if (mainWindowCloseGate && !(await mainWindowCloseGate.request())) {

@@ -18,6 +18,7 @@ type T8UpdaterStatusCode =
   | 'available'
   | 'downloading'
   | 'downloaded'
+  | 'preparing-install'
   | 'installing'
   | 'error';
 
@@ -318,6 +319,10 @@ interface T8AgentControlCanvasMutation {
 
 interface Window {
   t8pc?: {
+    startupDiagnostics?: {
+      record: (event: { component: 'renderer'; phase: string; elapsedMs: number; phaseMs?: number; delayMs?: number }) => void;
+      save: () => Promise<{ success: boolean; canceled?: boolean; code?: string }>;
+    };
     storage?: {
       status: () => Promise<{ enabled: boolean; path?: string; freeBytes?: number; reserveBytes?: number }>;
       chooseAndRestart: () => Promise<{ success: boolean; canceled?: boolean; error?: string }>;
