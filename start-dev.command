@@ -46,13 +46,13 @@ wait_for_url() {
   local attempts=0
   while (( attempts < 60 )); do
     if curl --silent --fail --max-time 1 "$url" >/dev/null 2>&1; then
-      echo "[就绪] $label：$url"
+      echo "[就绪] ${label}：$url"
       return 0
     fi
     sleep 1
     (( attempts += 1 ))
   done
-  echo "[失败] $label启动超时：$url"
+  echo "[失败] ${label}启动超时：$url"
   return 1
 }
 
