@@ -74,6 +74,28 @@ export function captureGenerationHistoryInput(nodes: Node[], edges: Edge[], node
   const captureNode = (node: Node): HistoryInputNode => {
     // Never recycle a previously restored/user-supplied derived capture.
     const { historyResolvedInput: _stale, ...data } = node.data;
+    if (node.type === 'video') {
+      for (const key of ['klingV4Pending', 'klingV4AcceptanceUnknown']) delete data[key];
+      if (node === target) delete data.klingV4Result;
+    }
+    if (node.type === 'code-animation') {
+      // The resolved input is the immutable request. Prior videos/storyboards
+      // belong to result history and must not recursively inflate the archive.
+      for (const key of ['motionVersions', 'motionPending', 'motionSelectedVersionId', 'motionAcceptanceUnknown']) delete data[key];
+      // A downstream run still needs the selected animation's actual input
+      // assets/storyboard. Only this node's own prior result is redundant.
+      if (node === target) for (const key of ['motionAssetRefs', 'sourceAssetId', 'sourceAssetIds', 'videoUrl', 'videoUrls', 'outputs', 'metadata']) delete data[key];
+      else {
+        // Rich auxiliary metadata remains on the stable asset. Keep the exact
+        // port payload and aggregate refs without nesting them a second time.
+        delete data.metadata;
+        const outputs = data.outputs as Record<string, any> | undefined;
+        if (outputs?.video) {
+          const { metadata: _metadata, motionAssetRefs: _refs, ...video } = outputs.video;
+          data.outputs = { ...outputs, video };
+        }
+      }
+    }
     return { id: originalId(node), type: node.type || 'placeholder', position: { x: node.position.x, y: node.position.y },
       data: { ...data, ...(node === target && resolvedInput !== undefined ? { historyResolvedInput: resolvedInput } : {}) } };
   };

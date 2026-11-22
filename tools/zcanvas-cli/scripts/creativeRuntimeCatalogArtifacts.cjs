@@ -1,3 +1,7 @@
+const nov21=require('../../../backend/src/shared/nov21ModelsContract.json');
+const pmf = require('../../../backend/src/shared/previewMuseFluxContract.json');
+const newModels=require('../../../backend/src/providers/g26Krea3d');
+const tripo3d = require('../../../backend/src/providers/tripo3d');
 'use strict';
 
 const crypto = require('node:crypto');
@@ -20,12 +24,30 @@ const BACKEND_TARGET = path.join(ROOT, 'backend', 'src', 'shared', 'creativeMode
 const CLI_TARGET = path.join(ROOT, 'tools', 'zcanvas-cli', 'generated', 'creative-runtime-catalog.json');
 
 const SOURCE_PATHS = [
+  path.join(ROOT,'backend/src/shared/nov21ModelsContract.json'),path.join(ROOT,'backend/src/shared/nov21ModelsContract.mjs'),path.join(ROOT,'backend/src/providers/miora3d.js'),
+  path.join(ROOT,'backend/src/shared/nov19ModelsContract.json'),path.join(ROOT,'backend/src/shared/nov19ModelsContract.mjs'),path.join(ROOT,'backend/src/shared/qwenAudio31Voices.json'),
   MODEL_SOURCE,
   SEEDANCE_SOURCE,
   MIDJOURNEY_SOURCE,
   SEEDANCE_NZ_LLM_SOURCE,
   SEEDANCE_NZ_PROVIDER_SOURCE,
   SEEDREAM_NZ_CONTRACT_SOURCE,
+  path.join(ROOT, 'backend', 'src', 'shared', 'nb21FluxViduQ4Contract.json'),
+  path.join(ROOT, 'backend', 'src', 'shared', 'maiImageContract.json'),
+  path.join(ROOT, 'backend', 'src', 'shared', 'mossImageContract.json'),
+  path.join(ROOT, 'backend', 'src', 'shared', 'previewMuseFluxContract.json'),
+  path.join(ROOT,'backend','src','shared','g26Krea3dContract.json'),
+  path.join(ROOT,'backend','src','shared','tripo3dContract.json'),
+  path.join(ROOT,'backend','src','shared','seedream55DraftContract.json'),
+  path.join(ROOT,'backend','src','shared','seedream55DraftContract.mjs'),
+  path.join(ROOT,'backend','src','shared','h3TurboContract.json'),
+  path.join(ROOT,'backend','src','shared','h3TurboContract.mjs'),
+  path.join(ROOT,'backend','src','shared','seedance25FlashContract.json'),
+  path.join(ROOT,'backend','src','shared','seedance25FlashContract.mjs'),
+  path.join(ROOT,'backend','src','shared','tripo3dContract.mjs'),
+  path.join(ROOT,'backend','src','providers','tripo3d.js'),
+  path.join(ROOT,'backend','src','shared','flashVideoContract.json'),
+  path.join(ROOT, 'backend', 'src', 'shared', 'nbLowpriceDoubaoContract.json'),
 ];
 
 const PLATFORM_META = Object.freeze({
@@ -155,7 +177,8 @@ function buildRuntimeCatalog() {
   const midjourney = loadTypeScriptModule(MIDJOURNEY_SOURCE);
   const seedanceNz = require(SEEDANCE_NZ_PROVIDER_SOURCE);
   const seedanceNzLlmModels = JSON.parse(fs.readFileSync(SEEDANCE_NZ_LLM_SOURCE, 'utf8'));
-  const budgetImageModels = new Set([
+  const h3Turbo = require(path.join(ROOT,'backend/src/shared/h3TurboContract.json'));
+  const budgetImageModels = new Set([h3Turbo.minimax.model,h3Turbo.qwen.model,
     ...(models.ZHENZHEN_BUDGET_IMAGE_MODELS || []),
     ...(models.QWEN_IMAGE_30_MODELS || []),
     ...(models.SEEDREAM_LAYER_DECOMPOSITION_MODELS || []),
@@ -164,7 +187,7 @@ function buildRuntimeCatalog() {
   const budgetVideoModels = new Set([
     ...(seedanceNz.ZHENZHEN_APIMART_VIDEO_MODELS || []),
   ].map(String));
-  const seedanceNzVideoKinds = new Set(['wan', 'happyhorse', 'hailuo', 'vidu', 'kling', 'upscaler', 'seedance25']);
+  const seedanceNzVideoKinds = new Set(['wan', 'happyhorse', 'hailuo', 'vidu', 'kling', 'upscaler', 'seedance25', 'h3-lowprice', 'heygen', 'muse']);
 
   const llm = [];
   for (const item of models.LLM_MODELS || []) {
@@ -209,6 +232,7 @@ function buildRuntimeCatalog() {
   for (const family of models.IMAGE_MODELS || []) {
     for (const option of family.apiModelOptions || [{ value: family.apiModel, label: family.label }]) {
       const provider = optionProvider(option, 'zhenzhen', budgetImageModels);
+      const newTextOnly=newModels.imageModels.includes(option.value)&&option.maxReferenceImages===0;
       image.push(modelEntry(
         'image',
         provider,
@@ -217,15 +241,17 @@ function buildRuntimeCatalog() {
         family.id,
         {
           tabLabel: family.tabLabel,
-          capabilities: family.capabilities,
+          capabilities: newTextOnly?['t2i']:family.capabilities,
           parameterKind: option.paramKind || family.paramKind,
           aspectRatios: family.aspectRatios,
           defaultAspectRatio: family.defaultAspectRatio,
           sizes: option.sizes || family.sizes,
           defaultSize: option.sizes?.[0] || family.defaultSize,
-          supportsReference: family.supportsReference === true,
+          supportsReference: !newTextOnly&&family.supportsReference === true,
           maxReferenceImages: option.maxReferenceImages ?? family.maxReferenceImages,
           description: family.description,
+          ...(family.paramKind==='h3-turbo-image'?{seedField:'h3TurboSeed',seedRange:[-1,2147483647],originalOutput:true,outputFormats:family.id===h3Turbo.minimax.model?h3Turbo.minimax.formats:undefined,promptMaxUtf8Bytes:family.id===h3Turbo.qwen.model?8192:undefined,resolution720pRequiresReferences:family.id===h3Turbo.qwen.model,sharedParameterContract:'backend/src/shared/h3TurboContract.mjs'}:{}),
+          ...(option.value===nov21.longImage.model?{parameterKind:'kling-long-image',sharedParameterContract:'backend/src/shared/nov21ModelsContract.mjs',skills:nov21.longImage.skills,ecommerceReferences:{min:1,max:3},webpageRoles:['style','subject'],resolutions:nov21.longImage.resolutions,unsupportedFields:['n','size','width','height'],outputFormat:'png'}:{}),
         },
         option.disabled !== true,
       ));
@@ -234,7 +260,9 @@ function buildRuntimeCatalog() {
   for (const rawModel of seedanceNz.IMAGE_MODELS || []) {
     const model = String(rawModel || '').trim();
     if (!model) continue;
-    const family = seedanceNz.QWEN_IMAGE_30_MODELS?.has(model)
+    if ([nov21.longImage.model,h3Turbo.minimax.model,h3Turbo.qwen.model,...newModels.imageModels,pmf.hy.model, pmf.muse.imageModel, ...pmf.flux.models].includes(model)) continue;
+    const family = model === seedanceNz.NOV19_CONTRACT.kling.model ? model : model === seedanceNz.MOSS_IMAGE_CONTRACT.model ? 'moss-image' : seedanceNz.MAI_IMAGE_MODELS?.has(model) ? 'mai-image-2-6' : model === seedanceNz.FLUX3_IMAGE_MODEL ? 'flux-3-image'
+      : seedanceNz.QWEN_IMAGE_30_MODELS?.has(model)
       ? 'qwen-image-3.0'
       : model === seedanceNz.VOSR2_IMAGE_UPSCALE_MODEL
         ? 'vosr2-image-upscale'
@@ -249,6 +277,8 @@ function buildRuntimeCatalog() {
       : model === seedanceNz.ZHENZHEN_IMAGE_NB_PRO_MODEL
         ? 'nano-banana-pro'
         : model === seedanceNz.ZHENZHEN_IMAGE_NB_2_MODEL
+          || models.NB_LOWPRICE_MODELS.includes(model)
+          || model === seedanceNz.ZHENZHEN_IMAGE_NB_21_MODEL
           || model === seedanceNz.ZHENZHEN_IMAGE_NB_2_LITE_MODEL
           ? 'nano-banana-2'
       : model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_MODEL
@@ -260,7 +290,7 @@ function buildRuntimeCatalog() {
           || model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_REGION_EDIT_MODEL
           ? 'grok-image-tools'
         : 'seedream-v5-pro';
-    const maxReferenceImages = family === 'seedream-layer-decomposition' || family === 'vosr2-image-upscale'
+    const maxReferenceImages = family === 'moss-image' ? 1 : family === 'mai-image-2-6' ? 5 : family === 'flux-3-image' ? 10 : family === 'seedream-layer-decomposition' || family === 'vosr2-image-upscale'
       ? 1
       : family === 'qwen-image-3.0'
         ? (model.endsWith('-i2i') ? 3 : 0)
@@ -289,7 +319,7 @@ function buildRuntimeCatalog() {
       model,
       family,
       {
-        tabLabel: family === 'grok-image' || family === 'grok-image-tools'
+        tabLabel: family === 'moss-image' ? 'Moss Image' : family === 'mai-image-2-6' ? 'Mai' : family === 'flux-3-image' ? 'Flux' : family === 'grok-image' || family === 'grok-image-tools'
           ? 'Grok'
           : family === 'wan-image'
             ? 'Wan Image'
@@ -304,6 +334,11 @@ function buildRuntimeCatalog() {
             : family === 'nano-banana-pro'
               ? '香蕉Pro'
               : family === 'seedream-v5-pro' ? 'Seedream' : 'GPT2',
+        ...(models.NB_LOWPRICE_MODELS.includes(model) ? {
+          aspectRatios: model === models.NB_LOWPRICE_MODELS[0] ? models.NB_LOWPRICE_DOUBAO_CONTRACT.banana.proRatios : models.NB_LOWPRICE_DOUBAO_CONTRACT.banana.nb21Ratios,
+          sizes: ['1K', '2K', '4K'], defaultSize: '1K', defaultAspectRatio: '1:1', fixedOutputCount: 1,
+          promptCharacters: { min: 1, max: 5000 },
+        } : {}),
         capabilities: family === 'grok-image-tools'
           ? (model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_SEGMENT_MODEL ? ['segment', 'metadata'] : ['region-edit', 'edit'])
           : family === 'seedream-layer-decomposition'
@@ -311,7 +346,7 @@ function buildRuntimeCatalog() {
           : family === 'vosr2-image-upscale'
             ? ['i2i']
           : maxReferenceImages === 0 ? ['t2i'] : ['t2i', 'i2i', 'edit'],
-        parameterKind: family === 'grok-image-tools'
+        parameterKind: family === 'moss-image' ? 'moss-image' : family === 'mai-image-2-6' ? 'mai-image' : family === 'flux-3-image' ? 'flux-image' : family === 'grok-image-tools'
           ? (model === seedanceNz.ZHENZHEN_IMAGE_GK_V2_SEGMENT_MODEL ? 'grok-segment' : 'grok-region-edit')
           : seedanceNz.ZHENZHEN_IMAGE_G25_MODELS?.has(model)
             ? (model === seedanceNz.ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL
@@ -330,6 +365,23 @@ function buildRuntimeCatalog() {
                 : 'seedance-nz-image',
         supportsReference: maxReferenceImages !== 0,
         maxReferenceImages,
+        ...(family === 'moss-image' ? { sizes: [], aspectRatios: seedanceNz.MOSS_IMAGE_CONTRACT.ratios,
+          defaultSize: '', defaultAspectRatio: seedanceNz.MOSS_IMAGE_CONTRACT.defaultRatio, maxOutputs: 1, nativeSeed: false } : {}),
+        ...(family === 'mai-image-2-6' ? { sizes: seedanceNz.MAI_IMAGE_CONTRACT.resolutions,
+          aspectRatios: seedanceNz.MAI_IMAGE_CONTRACT.sizes, defaultSize: '1k', defaultAspectRatio: '1:1',
+          maxOutputs: 1, referenceSizing: 'upstream-controlled', webGrounding: true, nativeSeed: false } : {}),
+        ...(model === seedanceNz.FLUX3_IMAGE_MODEL || model === seedanceNz.ZHENZHEN_IMAGE_NB_21_MODEL
+          ? (() => {
+            const contract = require(path.join(ROOT, 'backend/src/shared/nb21FluxViduQ4Contract.json'));
+            const specification = model === seedanceNz.FLUX3_IMAGE_MODEL ? contract.flux : contract.banana21;
+            return { sizes: specification.resolutions, aspectRatios: specification.ratios,
+              defaultSize: '1k', defaultAspectRatio: model === seedanceNz.FLUX3_IMAGE_MODEL ? 'auto' : '1:1', maxOutputs: 1 };
+          })() : {}),
+        ...(require('../../../backend/src/shared/seedream55DraftContract.json').imageModels.includes(model) || require('../../../backend/src/shared/seedream55DraftContract.json').layerModels.includes(model) ? {
+          sharedParameterContract: 'backend/src/shared/seedream55DraftContract.mjs', promptMaxLength: model.endsWith('decomposition') ? 2000 : 5000,
+          referenceMaxBytes: 30 * 1024 * 1024, layerCountRange: model.endsWith('decomposition') ? [2, 100] : undefined,
+          nativeSeed: false, backgroundModes: model.endsWith('decomposition') ? undefined : ['auto','transparent','opaque'],
+        } : {}),
         description: '贞贞的平价AI小屋图像模型',
       },
     ));
@@ -365,6 +417,17 @@ function buildRuntimeCatalog() {
           maxReferenceVideos: option.maxRefVideos ?? (family.supportVideos === true ? 1 : 0),
           maxReferenceAudios: option.maxRefAudios ?? 0,
           description: option.description ?? family.description,
+          ...(family.kind === 'h3-lowprice' ? {sharedParameterContract:'backend/src/shared/h3TurboContract.mjs',nativeSeed:['minimax-h3-comfyui-charswap','minimax-h3-comfyui-wuxi'].includes(option.value),seedField:'h3ComfySeed',...(option.value === 'minimax-h3-comfyui-charswap' ? {framesField:'h3ComfyFrames',durationModeField:'h3ComfyDurationMode',framesRange:{min:22,max:362,step:17}} : {})} : {}),
+          ...(option.value.endsWith('-token')&&family.kind==='h3-lowprice'?{seedField:undefined,fixedResolution:'768p',minimumReferenceImages:1,audioLimitPerFile:true,...(option.value.includes('charswap')?{framesField:'h3ComfyFrames',durationModeField:'h3ComfyDurationMode',framesRange:{min:22,max:362,step:17},exactReferenceVideos:1}:{}),...(option.value.includes('digital-human')?{exactReferenceAudios:1,audioMustFitDuration:true}:{})}:{}),
+          ...(family.kind==='heygen'?{sharedParameterContract:'backend/src/shared/nov21ModelsContract.mjs',endpoint:'/v1/video/generations',durationFromInput:true,defaultDuration:undefined,promptMaxCharacters:5000,avatarField:'heygenAvatar',voiceField:'heygenVoice',motionField:'heygenMotionPrompt',audioExcludesPromptAndVoice:true}:{}),
+          ...(String(option.value).includes('-flash-') && family.kind === 'seedance25' ? {sharedParameterContract:'backend/src/shared/seedance25FlashContract.mjs',supportsDraft:false,referenceTaskTypes:['auto','reference','edit','extend'],referenceTaskTypeField:'seedance25ReferenceTaskType',referenceDuration:{min:2,max:30,totalMax:30}} : {}),
+          ...(String(option.value).endsWith('-draft-to-video') ? { noPrompt: true, inputMode: 'completed-draft-task-id', draftTaskIdField: 'seedance25DraftTaskId', outputFormats: ['mp4','mov'], outputResolution: 'native1080p', sharedParameterContract: 'backend/src/shared/seedream55DraftContract.mjs' } : {}),
+          ...(option.value === models.TOPAZ_VIDEO_UPSCALE_MODEL ? {
+            restorationModels: models.TOPAZ_VIDEO_CONTRACT.qualities,
+            defaultRestorationModel: models.TOPAZ_VIDEO_CONTRACT.defaultQuality,
+            restorationModelField: 'topazQuality', inputVideoUrlField: 'topazVideoUrl',
+            endpoint: models.TOPAZ_VIDEO_CONTRACT.submitPath, noPrompt: true,
+          } : {}),
         },
         option.disabled !== true,
       ));
@@ -395,8 +458,19 @@ function buildRuntimeCatalog() {
     modelEntry('audio', 'grok-oauth', 'xai-tts', 'Grok TTS', 'grok-oauth'),
     modelEntry('audio', 'grok-oauth', 'xai-stt', 'Grok STT', 'grok-oauth'),
   );
-  for (const model of seedanceNz.QWEN3_TTS_MODELS || []) {
+  for (const model of [...seedanceNz.QWEN3_TTS_MODELS,...seedanceNz.NOV19_AUDIO_MODELS]) {
     audio.push(modelEntry('audio', 'seedance-nz', model, model, 'qwen3-tts'));
+  }
+  for (const model of [models.NB_LOWPRICE_DOUBAO_CONTRACT.audio.cloneModel, models.NB_LOWPRICE_DOUBAO_CONTRACT.audio.iclModel]) {
+    const contract = models.NB_LOWPRICE_DOUBAO_CONTRACT.audio;
+    const clone = model === contract.cloneModel;
+    audio.push(modelEntry('audio', 'seedance-nz', model, model, 'seed-audio', {
+      tabLabel: 'Seed Audio', orderedMultiOutput: true,
+      ...(clone ? { speakerResultField: 'result_text', exactAudioReferences: 1, encodedSampleMaxBytes: contract.sampleMaxBytes }
+        : { requiresSameAccountSpeaker: true, speakerInputHandle: 'speaker' }),
+      promptCharacters: { min: (clone ? contract.clonePrompt : contract.iclPrompt)[0], max: (clone ? contract.clonePrompt : contract.iclPrompt)[1] },
+      metadataFields: clone ? contract.cloneFields : contract.iclFields,
+    }));
   }
   for (const model of seedanceNz.MINIMAX_AUDIO_MODELS || []) {
     audio.push(modelEntry('audio', 'seedance-nz', model, model, 'minimax'));
@@ -411,7 +485,20 @@ function buildRuntimeCatalog() {
     description: 'Flow Music 官方九项音乐创作与处理能力；请求 model 固定为 flowmusic',
   }));
 
+  for(const model of nov21.gemini.models)audio.push(modelEntry('audio','seedance-nz',model,model,'gemini-tts',{tabLabel:'Gemini 2.5 TTS',sharedParameterContract:'backend/src/shared/nov21ModelsContract.mjs',format:'wav',sampleRate:24000,channels:1}));
   const actions = [];
+  actions.push(actionEntry('model3d','seedance-nz',nov21.miora.model,nov21.miora.model,'miora-3d','model3d',{tab:'Miora 3D',endpoint:'/v1/3d/generations',viewOrder:nov21.miora.views,maximumReferenceImages:8,sharedParameterContract:'backend/src/shared/nov21ModelsContract.mjs',preserveAllFiles:true}));
+  for (const item of tripo3d.contract.models) actions.push(actionEntry('model3d', 'seedance-nz', item.id, item.id, 'tripo-3d', 'model3d', {
+    tab: 'Tripo 3D', endpoint: '/v1/3d/generations', family: item.group, mode: item.mode,
+    viewOrder: item.mode === 'multiview' ? tripo3d.contract.views : [],
+    metadataFields: tripo3d.contract.familyFields[item.group].filter(field => field !== 'prompt'),
+    conditionalFieldContract: 'backend/src/shared/tripo3dContract.mjs',
+  }));
+  for(const model of newModels.models3d)actions.push(actionEntry('model3d','seedance-nz',model,model,model.startsWith('hitem')?'hitem3d':'meshy','model3d',{
+    tab:model.startsWith('hitem')?'hitem3d':'meshy',endpoint:'/v1/3d/generations',orderedImageViews:model===newModels.contract.meshy.textModel?0:model.includes('multi')?4:1,
+    minimumReferenceImages:model===newModels.contract.meshy.textModel?0:model.includes('multi')?2:1,viewOrder:model===newModels.contract.meshy.textModel?[]:model.includes('multi')?newModels.contract.hitem.views:['front'],
+    ...(model.startsWith('hitem')?{requestTypes:newModels.contract.hitem.requestTypes,resolutions:model.includes('portrait')?['1536pro']:newModels.contract.hitem.resolutions,face:{minimum:100000,maximum:2000000}}:{optionalControls:['topology','target_polycount','symmetry_mode',...newModels.contract.meshy.booleans.filter(field=>model!==newModels.contract.meshy.textModel||field!=='should_texture'),...(model===newModels.contract.meshy.textModel?['art_style','enable_prompt_expansion']:[])],...(model===newModels.contract.meshy.textModel?{prompt:{minLength:1,maxLength:newModels.contract.meshy.maxPromptCharacters},artStyles:newModels.contract.meshy.artStyles.filter(v=>v!=='api_default')}:{})})
+  }));
   for (const model of seedanceNz.HUNYUAN3D_MODELS || []) {
     actions.push(actionEntry('model3d', 'seedance-nz', model, model, 'hunyuan-3d', 'model3d', {
       tab: 'Hunyuan 3D',

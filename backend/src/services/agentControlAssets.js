@@ -11,6 +11,11 @@ const {
 const { canvasPatchRequestDigest } = require('./canvasPatch');
 
 const DEFAULT_MAX_IMPORT_BYTES = 512 * 1024 * 1024;
+
+function assetImportMaxBytes(runtimeConfig = {}) {
+  return Math.max(1, Number(runtimeConfig.COLLAB_MAX_UPLOAD_BYTES) || DEFAULT_MAX_IMPORT_BYTES);
+}
+
 const MIME_BY_EXTENSION = Object.freeze({
   '.png': ['image', 'image/png'],
   '.jpg': ['image', 'image/jpeg'],
@@ -31,6 +36,8 @@ const MIME_BY_EXTENSION = Object.freeze({
   '.glb': ['model3d', 'model/gltf-binary'],
   '.gltf': ['model3d', 'model/gltf+json'],
   '.obj': ['model3d', 'model/obj'],
+  '.splat': ['model3d', 'application/octet-stream'],
+  '.3mf': ['model3d', 'model/3mf'],
   '.txt': ['text', 'text/plain'],
   '.md': ['text', 'text/markdown'],
 });
@@ -216,6 +223,12 @@ function inspectDownloadTarget(target) {
   };
 }
 
+// AssetUploadManager persists native imported byte counts in metadata.size.
+// Keep older top-level representations compatible without losing that count.
+function assetByteSize(asset) {
+  return Math.max(0, Number(asset?.sizeBytes ?? asset?.size ?? asset?.metadata?.size) || 0);
+}
+
 function publicDownloadPreview(asset, target, scope = {}) {
   return {
     summary: `导出 ${target.basename}`,
@@ -227,7 +240,7 @@ function publicDownloadPreview(asset, target, scope = {}) {
       name: target.basename,
       kind: String(asset.kind || ''),
       mimeType: String(asset.mimeType || ''),
-      size: Math.max(0, Number(asset.sizeBytes || asset.size) || 0),
+      size: assetByteSize(asset),
       sha256: String(asset.contentHash || '').toLowerCase(),
     },
     assetId: String(asset.id || ''),
@@ -260,7 +273,7 @@ function boundedPosition(value, fallback) {
 }
 
 async function readVerifiedTextAsset(asset, maxBytes = 2 * 1024 * 1024) {
-  const size = Math.max(0, Number(asset?.sizeBytes || asset?.size) || 0);
+  const size = assetByteSize(asset);
   if (size > maxBytes) {
     throw new AgentControlAssetError(
       'ASSET_PLACE_TEXT_TOO_LARGE',
@@ -387,8 +400,8 @@ function assetPlacementPatch(asset, document, input = {}, textContent = '') {
         [fieldPrefix + 'Urls']: [mediaUrl],
         fileName: filename,
         fileNames: [filename],
-        fileSize: Math.max(0, Number(asset.sizeBytes || asset.size) || 0),
-        fileSizes: [Math.max(0, Number(asset.sizeBytes || asset.size) || 0)],
+        fileSize: assetByteSize(asset),
+        fileSizes: [assetByteSize(asset)],
         mime: String(asset.mimeType || ''),
         mimes: [String(asset.mimeType || '')],
         sourceAssetId: String(asset.id),
@@ -428,7 +441,7 @@ function assetPlacementPatch(asset, document, input = {}, textContent = '') {
       contentHash,
       contentRevision,
       mimeType: String(asset.mimeType || ''),
-      size: Math.max(0, Number(asset.sizeBytes || asset.size) || 0),
+      size: assetByteSize(asset),
     },
     placement: {
       nodeId,
@@ -526,22 +539,23 @@ function resolveAppliedAssetPlacement(database, canvasId, snapshot) {
 function createAgentControlAssetService(options = {}) {
   const runtimeConfig = options.config || {};
   const database = options.database;
-  const uploadManager = options.uploadManager || (
-    database ? new AssetUploadManager(runtimeConfig, database, options.uploadOptions || {}) : null
-  );
+  // Read-only inspection must not create CAS/upload folders or sweep sessions.
+  // Initialize the existing native importer only after approved-file revalidation.
+  let uploadManager = options.uploadManager || null;
 
   async function inspectImport(filename) {
     return inspectImportFile(filename, {
-      maxBytes: runtimeConfig.COLLAB_MAX_UPLOAD_BYTES || DEFAULT_MAX_IMPORT_BYTES,
+      maxBytes: assetImportMaxBytes(runtimeConfig),
     });
   }
 
   async function importFile(expected, context = {}) {
-    if (!uploadManager) {
+    if (!uploadManager && !database) {
       throw new AgentControlAssetError('ASSET_IMPORT_UNAVAILABLE', '当前画布没有可用的素材导入服务', 503);
     }
     const actual = await inspectImport(expected.absolute);
     assertSameSnapshot(expected, actual);
+    if (!uploadManager) uploadManager = new AssetUploadManager(runtimeConfig, database, options.uploadOptions || {});
     const result = await uploadManager.ingestFile(actual.absolute, {
       filename: actual.basename,
       sha256: actual.sha256,
@@ -564,10 +578,12 @@ function createAgentControlAssetService(options = {}) {
 
   function search(input = {}) {
     if (!database) throw new AgentControlAssetError('ASSET_READ_UNAVAILABLE', '素材中心不可用', 503);
+    if (input.contentHash != null && !/^[a-f0-9]{64}$/.test(String(input.contentHash))) throw new AgentControlAssetError('ASSET_HASH_INVALID', '素材内容摘要格式无效');
     const limit = Math.min(100, Math.max(1, Math.trunc(Number(input.limit) || 25)));
     const offset = Math.max(0, Math.trunc(Number(input.offset) || 0));
     const filters = {
       projectId: input.projectId,
+      ...(input.contentHash == null ? {} : { contentHash: String(input.contentHash) }),
       kind: input.kind,
       query: input.query,
       limit,
@@ -682,6 +698,7 @@ function createAgentControlAssetService(options = {}) {
 
 module.exports = {
   AgentControlAssetError,
+  assetImportMaxBytes,
   MIME_BY_EXTENSION,
   assetPlacementPatch,
   createAgentControlAssetService,

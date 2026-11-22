@@ -1,8 +1,37 @@
+import SD25_FLASH from '../../backend/src/shared/seedance25FlashContract.json';
+import H3_TURBO_CONTRACT from '../../backend/src/shared/h3TurboContract.json';
+import PREVIEW_MUSE_FLUX from '../../backend/src/shared/previewMuseFluxContract.json';
+import G26_KREA_3D from '../../backend/src/shared/g26Krea3dContract.json';
+import FLASH_VIDEO from '../../backend/src/shared/flashVideoContract.json';
 /**
  * 模型注册表 - 集中定义可扩展模型清单
  * 后续要新增模型只需在对应数组里追加即可
  */
 
+import NB_FLUX_VIDU from '../../backend/src/shared/nb21FluxViduQ4Contract.json';
+import TOPAZ_VIDEO from '../../backend/src/shared/topazVideoContract.json';
+import NOV21 from '../../backend/src/shared/nov21ModelsContract.json';
+import NOV19 from '../../backend/src/shared/nov19ModelsContract.json';
+export const KLING_IMAGE_MODEL=NOV19.kling.model;
+export const QWEN_AUDIO31_MODELS=NOV19.audio.models;
+import MAI_IMAGE from '../../backend/src/shared/maiImageContract.json';
+import MOSS_IMAGE from '../../backend/src/shared/mossImageContract.json';
+export const MOSS_IMAGE_MODEL = MOSS_IMAGE.model;
+import NB_DOUBAO from '../../backend/src/shared/nbLowpriceDoubaoContract.json';
+export const NB_LOWPRICE_DOUBAO_CONTRACT = NB_DOUBAO;
+export const NB_LOWPRICE_MODELS = NB_DOUBAO.banana.models;
+export const isNbLowpriceModel = (model: string) => NB_LOWPRICE_MODELS.includes(model);
+export const SEED_AUDIO_MODELS = [NB_DOUBAO.audio.legacyModel, NB_DOUBAO.audio.cloneModel, NB_DOUBAO.audio.iclModel];
+export const MAI_IMAGE_MODELS = [...MAI_IMAGE.models,...NOV19.mai.models];
+export const MAI_IMAGE_TAB = MAI_IMAGE.models[0];
+export const isMaiImageModel = (model: string) => MAI_IMAGE_MODELS.includes(model);
+export const TOPAZ_VIDEO_CONTRACT = TOPAZ_VIDEO;
+export const TOPAZ_VIDEO_UPSCALE_MODEL = TOPAZ_VIDEO.model;
+export const NB_FLUX_VIDU_CONTRACT = NB_FLUX_VIDU;
+export const FLUX3_IMAGE_MODEL = NB_FLUX_VIDU.flux.model;
+export const ZHENZHEN_IMAGE_NB_21_MODEL = NB_FLUX_VIDU.banana21.model;
+export const VIDU_Q4_MODELS = NB_FLUX_VIDU.viduQ4.models;
+export function isViduQ4Model(model: string): boolean { return VIDU_Q4_MODELS.includes(model); }
 export type ProviderType = 'zhenzhen' | 'llm-direct' | 'runninghub';
 
 // ========== 图像 ==========
@@ -18,7 +47,10 @@ export type ProviderType = 'zhenzhen' | 'llm-direct' | 'runninghub';
 //  - 'wan-image'   : Wan 2.7 Global 图像协议,T2I 使用宽高/思考模式,I2I 使用 1-9 张参考图
 //  - 'vosr2-upscale': Vosr2 单图超分协议,只发送 model + images[1]
 //  - 'mj'          : Midjourney 协议,走专属 /api/proxy/mj/* 路由(speed_map + sref/oref)
-export type ImageParamKind = 'gpt-size' | 'gpt-image-2.5' | 'banana-ratio' | 'grok-image' | 'seedream-v5' | 'seedream-layer' | 'qwen-image-3.0' | 'qwen-image-global-2.1' | 'wan-image' | 'vosr2-upscale' | 'mj';
+export const PREVIEW_IMAGE_MODELS = [PREVIEW_MUSE_FLUX.hy.model, PREVIEW_MUSE_FLUX.muse.imageModel];
+export const FLUX_IMAGE_VARIANTS = PREVIEW_MUSE_FLUX.flux.models;
+export const MUSE_VIDEO_MODEL = PREVIEW_MUSE_FLUX.muse.videoModel;
+export type ImageParamKind = 'gpt-size' | 'gpt-image-2.5' | 'banana-ratio' | 'grok-image' | 'seedream-v5' | 'seedream-layer' | 'qwen-image-3.0' | 'qwen-image-global-2.1' | 'flux-image' | 'mai-image' | 'kling-image' | 'moss-image' | 'h3-turbo-image' | 'preview-image' | 'g26-krea' | 'wan-image' | 'vosr2-upscale' | 'mj';
 
 export interface ImageModelDef {
   id: string;             // 节点内部 id(如 'gpt-image-2')
@@ -168,12 +200,22 @@ export const ZHENZHEN_BUDGET_GROK_MODEL_OPTIONS = [
 export const ZHENZHEN_BUDGET_BANANA_2_MODEL_OPTIONS = [
   { value: ZHENZHEN_IMAGE_NB_2_MODEL, label: ZHENZHEN_IMAGE_NB_2_MODEL },
   { value: ZHENZHEN_IMAGE_NB_2_LITE_MODEL, label: ZHENZHEN_IMAGE_NB_2_LITE_MODEL },
+  { value: ZHENZHEN_IMAGE_NB_21_MODEL, label: ZHENZHEN_IMAGE_NB_21_MODEL },
+  ...NB_LOWPRICE_MODELS.map((value) => ({ value, label: value })),
 ] as const;
 export const ZHENZHEN_BUDGET_BANANA_PRO_MODEL_OPTIONS = [
   { value: ZHENZHEN_IMAGE_NB_PRO_MODEL, label: ZHENZHEN_IMAGE_NB_PRO_MODEL },
 ] as const;
 export const ZHENZHEN_IMAGE_G2_MODEL_OPTIONS = ZHENZHEN_BUDGET_GPT2_MODEL_OPTIONS.slice(0, 2);
 export const ZHENZHEN_APIMART_IMAGE_MODELS = [
+  NOV21.longImage.model, ...G26_KREA_3D.g26.models, ...G26_KREA_3D.krea.models, G26_KREA_3D.zimage.model,
+  ...PREVIEW_IMAGE_MODELS, ...FLUX_IMAGE_VARIANTS,
+  MOSS_IMAGE_MODEL,
+  ...NB_LOWPRICE_MODELS,
+  KLING_IMAGE_MODEL,
+  ...MAI_IMAGE_MODELS,
+  FLUX3_IMAGE_MODEL,
+  ZHENZHEN_IMAGE_NB_21_MODEL,
   ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL,
   ...ZHENZHEN_IMAGE_G25_MODELS,
   ZHENZHEN_IMAGE_GK_V2_MODEL,
@@ -256,6 +298,8 @@ export const SEEDREAM_LAYER_DECOMPOSITION_MODELS = [
   DOLA_SEEDREAM_LAYER_DECOMPOSITION_MODEL,
   'seedream-v5-flash-layer-decomposition',
   'dola-seedream-5.0-flash-layer-decomposition',
+  'seedream-v5.5-layer-decomposition',
+  'dola-seedream-5.5-layer-decomposition',
 ] as const;
 export type SeedreamLayerDecompositionModel = typeof SEEDREAM_LAYER_DECOMPOSITION_MODELS[number];
 export const SEEDREAM_LAYER_RESOLUTIONS = ['auto', '1k', '1.5k', '2k'] as const;
@@ -288,7 +332,7 @@ export function isZhenzhenApimartImageModel(apiModel: string | undefined | null)
 }
 
 export function isZhenzhenBudgetImageModel(apiModel: string | undefined | null): boolean {
-  return (ZHENZHEN_BUDGET_IMAGE_MODELS as readonly string[]).includes(String(apiModel || '').trim());
+  return ([H3_TURBO_CONTRACT.minimax.model,H3_TURBO_CONTRACT.qwen.model,...ZHENZHEN_BUDGET_IMAGE_MODELS] as readonly string[]).includes(String(apiModel || '').trim());
 }
 
 export function gptImage2ZhenzhenVariantSize(apiModel: string | undefined | null): '2K' | '4K' | null {
@@ -370,6 +414,55 @@ export const IMAGE_MODELS: ImageModelDef[] = [
     supportsReference: true,
     maxReferenceImages: 5,
     description: '高品质 Pro 版本',
+  },
+  {
+    id: FLUX3_IMAGE_MODEL, apiModel: FLUX3_IMAGE_MODEL,
+    label: 'FLUX 3 Image', tabLabel: 'Flux', provider: 'zhenzhen', paramKind: 'flux-image',
+    capabilities: ['t2i', 'i2i', 'edit'],
+    apiModelOptions: [FLUX3_IMAGE_MODEL, ...FLUX_IMAGE_VARIANTS].map(value => ({ value, label: value })),
+    aspectRatios: NB_FLUX_VIDU.flux.ratios, defaultAspectRatio: 'auto',
+    sizes: NB_FLUX_VIDU.flux.resolutions, defaultSize: '1k',
+    supportsReference: true, maxReferenceImages: NB_FLUX_VIDU.flux.maxImages,
+  },
+  {
+    id: KLING_IMAGE_MODEL,apiModel:KLING_IMAGE_MODEL,label:'Kling Image',tabLabel:'Kling Image',provider:'zhenzhen',paramKind:'kling-image',capabilities:['t2i','i2i','edit'],apiModelOptions:[{value:KLING_IMAGE_MODEL,label:KLING_IMAGE_MODEL},{value:NOV21.longImage.model,label:NOV21.longImage.model,maxReferenceImages:3}],aspectRatios:[],defaultAspectRatio:'',sizes:[],defaultSize:'',supportsReference:true,maxReferenceImages:10,
+  },
+  {
+    id: MAI_IMAGE_TAB, apiModel: MAI_IMAGE_TAB,
+    label: 'MAI Image 2.6 / 2.7 / Flash', tabLabel: 'Mai', provider: 'zhenzhen', paramKind: 'mai-image',
+    capabilities: ['t2i', 'i2i', 'edit'],
+    apiModelOptions: MAI_IMAGE_MODELS.map((value) => ({ value, label: value })),
+    aspectRatios: [], defaultAspectRatio: '', sizes: [], defaultSize: '',
+    supportsReference: true, maxReferenceImages: MAI_IMAGE.maxImages,
+  },
+  ...[G26_KREA_3D.g26,G26_KREA_3D.zimage,G26_KREA_3D.krea].map((spec): ImageModelDef => {
+    const models = 'models' in spec ? spec.models : [spec.model];
+    return {id:spec.tab,apiModel:models[0],label:spec.tab,tabLabel:spec.tab,provider:'zhenzhen',paramKind:'g26-krea',
+      capabilities:spec.tab==='z-image'?['t2i']:['t2i','i2i','edit'],apiModelOptions:models.map(value=>({value,label:value,maxReferenceImages:value===G26_KREA_3D.g26.models[0]?G26_KREA_3D.g26.lowpriceMaxReferences:value===G26_KREA_3D.zimage.model||value.endsWith('-t2i')?0:spec.tab==='krea'?8:16})),
+      aspectRatios:[],defaultAspectRatio:'',sizes:[],defaultSize:'',supportsReference:spec.tab!=='z-image',maxReferenceImages:spec.tab==='gpt-image-2.6'?16:spec.tab==='krea'?8:0};
+  }),
+  ...PREVIEW_IMAGE_MODELS.map((id): ImageModelDef => ({
+    id, apiModel: id, label: id === PREVIEW_MUSE_FLUX.hy.model ? 'Hunyuan Image' : 'Muse Image',
+    tabLabel: id === PREVIEW_MUSE_FLUX.hy.model ? 'Hunyuan Image' : 'Muse Image', provider: 'zhenzhen', paramKind: 'preview-image',
+    capabilities: ['t2i','i2i','edit'], apiModelOptions: [{ value: id, label: id }],
+    aspectRatios: id === PREVIEW_MUSE_FLUX.hy.model ? PREVIEW_MUSE_FLUX.hy.ratios : PREVIEW_MUSE_FLUX.muse.ratios,
+    defaultAspectRatio: 'auto', sizes: id === PREVIEW_MUSE_FLUX.hy.model ? PREVIEW_MUSE_FLUX.hy.resolutions : [],
+    defaultSize: id === PREVIEW_MUSE_FLUX.hy.model ? '1K' : '', supportsReference: true,
+    maxReferenceImages: id === PREVIEW_MUSE_FLUX.hy.model ? 5 : 9,
+  })),
+  ...[H3_TURBO_CONTRACT.minimax,H3_TURBO_CONTRACT.qwen].map((spec):ImageModelDef=>({
+    id:spec.model,apiModel:spec.model,label:spec.tab,tabLabel:spec.tab,provider:'zhenzhen',paramKind:'h3-turbo-image',
+    apiModelOptions:[{value:spec.model,label:spec.model}],capabilities:['t2i','i2i','edit'],
+    aspectRatios:spec.ratios,defaultAspectRatio:'1:1',sizes:spec.resolutions,defaultSize:spec.defaultResolution,
+    supportsReference:true,maxReferenceImages:spec.maxImages,
+  })),
+  {
+    id: MOSS_IMAGE_MODEL, apiModel: MOSS_IMAGE_MODEL,
+    label: 'Moss Image', tabLabel: 'Moss Image', provider: 'zhenzhen', paramKind: 'moss-image',
+    capabilities: ['t2i', 'i2i', 'edit'],
+    apiModelOptions: [{ value: MOSS_IMAGE_MODEL, label: MOSS_IMAGE_MODEL }],
+    aspectRatios: MOSS_IMAGE.ratios, defaultAspectRatio: MOSS_IMAGE.defaultRatio,
+    sizes: [], defaultSize: '', supportsReference: true, maxReferenceImages: MOSS_IMAGE.maxImages,
   },
   {
     id: 'grok-image',
@@ -644,7 +737,7 @@ export const NBPRO_FAL_RESOLUTIONS = ['1K', '2K', '4K'];
 
 // ========== 视频 ==========
 // kind 决定上游 payload 协议(后端会根据 model 名自动识别,前端主要用于控制参数 UI 列表)
-export type VideoKind = 'veo' | 'grok' | 'sora' | 'seedance' | 'seedance25' | 'happyhorse' | 'hailuo' | 'flux3' | 'kling' | 'vidu' | 'upscaler' | 'wan' | 'animate';
+export type VideoKind = 'veo' | 'grok' | 'sora' | 'seedance' | 'seedance25' | 'happyhorse' | 'hailuo' | 'flux3' | 'kling' | 'vidu' | 'upscaler' | 'wan' | 'animate' | 'muse' | 'h3-lowprice' | 'heygen';
 
 // ---- Video FAL 渠道注册表 (1:1 对齐 gpt-image-2-web runVeo3Fal / runGrokFal / runSora2Fal) ----
 export interface VideoFalEndpointDef {
@@ -808,6 +901,7 @@ export const ZHENZHEN_VIDEO_V31_FAST_MODEL = 'zhenzhen-video-v31-fast';
 export const ZHENZHEN_VIDEO_V31_QUALITY_MODEL = 'zhenzhen-video-v31-quality';
 export const ZHENZHEN_VIDEO_V31_LITE_MODEL = 'zhenzhen-video-v31-lite';
 export const ZHENZHEN_APIMART_VIDEO_MODELS = [
+  'zhenzhen-video-kling-v4-flash', 'zhenzhen-video-g-omni-1.2-flash-lowprice',
   ZHENZHEN_VIDEO_G_OMNI_FLASH_MODEL,
   ZHENZHEN_VIDEO_G_OMNI_FLASH_LOWPRICE_MODEL,
   ZHENZHEN_VIDEO_G_OMNI_11_FLASH_LOWPRICE_MODEL,
@@ -824,6 +918,9 @@ export const SEEDANCE25_VIDEO_MODELS = [
   'seedance-2.5-standard-i2v',
   'seedance-2.5-standard-multi',
   'seedance-2.5-standard-t2v',
+  'seedance-2.5-standard-draft-to-video',
+  'seedance-2.5-global-standard-draft-to-video',
+  ...SD25_FLASH.models,
 ] as const;
 export const HAILUO_H3_GLOBAL_VIDEO_MODELS = [
   'hailuo-h3-global-t2v',
@@ -920,6 +1017,7 @@ export function isZhenzhenApimartVideoModel(apiModel: string | undefined | null)
 const VEO_MODELS = [
   { value: 'veo-omni-10s', label: 'veo-omni-10s' },
   { value: ZHENZHEN_VIDEO_G_OMNI_FLASH_MODEL, label: ZHENZHEN_VIDEO_G_OMNI_FLASH_MODEL, builtinSource: 'seedance-nz' as const },
+  { value: 'zhenzhen-video-g-omni-1.2-flash-lowprice', label: 'zhenzhen-video-g-omni-1.2-flash-lowprice', builtinSource: 'seedance-nz' as const, durations: Array.from({length:13},(_,i)=>i+3), resolutions: FLASH_VIDEO.models['zhenzhen-video-g-omni-1.2-flash-lowprice'].resolutions, ratios: FLASH_VIDEO.models['zhenzhen-video-g-omni-1.2-flash-lowprice'].ratios, defaultDuration: 3, defaultResolution: '720p', defaultRatio: '16:9', supportImages: true, supportVideos: true, maxRefImages: 10, maxRefVideos: 1 },
   {
     value: ZHENZHEN_VIDEO_G_OMNI_11_FLASH_LOWPRICE_MODEL,
     label: `${ZHENZHEN_VIDEO_G_OMNI_11_FLASH_LOWPRICE_MODEL}（平价 Omni 1.1）`,
@@ -1428,6 +1526,14 @@ export const VIDEO_MODELS: VideoModelDef[] = [
       { value: 'vidu-q3-drama-r2v', label: 'vidu-q3-drama-r2v（上游当前不可用）', disabled: true },
       { value: 'vidu-q3-drama-short-play', label: 'vidu-q3-drama-short-play（上游当前不可用）', disabled: true },
       { value: 'vidu-q3-ad-short-play', label: 'vidu-q3-ad-short-play（上游当前不可用）', disabled: true },
+      ...VIDU_Q4_MODELS.map((value) => ({
+        value, label: value,
+        ratios: value.endsWith('-r2v') ? NB_FLUX_VIDU.viduQ4.ratios : [], defaultRatio: '16:9',
+        durations: NB_FLUX_VIDU.viduQ4.durations, defaultDuration: 5,
+        resolutions: NB_FLUX_VIDU.viduQ4.resolutions, defaultResolution: '720p',
+        supportImages: true, maxRefImages: value.endsWith('-r2v') ? 15 : 1,
+        supportAudios: value.endsWith('-r2v'), maxRefAudios: value.endsWith('-r2v') ? 3 : 0,
+      })),
     ],
     ratios: ['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16', '21:9'],
     defaultRatio: '16:9',
@@ -1467,6 +1573,12 @@ export const VIDEO_MODELS: VideoModelDef[] = [
       { value: 'kling-o3-4k-r2v', label: 'kling-o3-4k-r2v（O3 参考 4K）' },
       { value: 'kling-o3-std-edit', label: 'kling-o3-std-edit（O3 视频编辑标准）' },
       { value: 'kling-o3-pro-edit', label: 'kling-o3-pro-edit（O3 视频编辑 Pro）' },
+      { value: 'kling-v4-t2v', label: 'kling-v4-t2v' },
+      { value: 'kling-v4-i2v', label: 'kling-v4-i2v' },
+      { value: 'kling-v4-omni', label: 'kling-v4-omni' },
+      { value: 'kling-v4-custom-element', label: 'kling-v4-custom-element' },
+      { value: 'kling-v4-custom-voice', label: 'kling-v4-custom-voice' },
+      { value: 'zhenzhen-video-kling-v4-flash', label: 'zhenzhen-video-kling-v4-flash', durations: Array.from({length:18},(_,i)=>i+3), resolutions: FLASH_VIDEO.models['zhenzhen-video-kling-v4-flash'].resolutions, ratios: FLASH_VIDEO.models['zhenzhen-video-kling-v4-flash'].ratios, defaultDuration: 3, defaultResolution: '720p', defaultRatio: '16:9', supportImages: true, supportVideos: true, maxRefImages: 10, maxRefVideos: 5 },
     ],
     ratios: ['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16', '21:9'],
     defaultRatio: '16:9',
@@ -1535,6 +1647,23 @@ export const VIDEO_MODELS: VideoModelDef[] = [
     maxRefImages: 0,
   },
   {
+    id: TOPAZ_VIDEO_UPSCALE_MODEL,
+    label: 'Topaz',
+    kind: 'upscaler',
+    provider: 'zhenzhen',
+    builtinSource: 'seedance-nz',
+    description: 'Topaz · 单个 MP4 视频高清修复，保持原始宽高比',
+    apiModelOptions: [{ value: TOPAZ_VIDEO_UPSCALE_MODEL, label: TOPAZ_VIDEO_UPSCALE_MODEL }],
+    ratios: [],
+    defaultRatio: '',
+    durations: [],
+    resolutions: TOPAZ_VIDEO.resolutions,
+    defaultResolution: TOPAZ_VIDEO.defaultResolution,
+    supportImages: false,
+    supportVideos: true,
+    maxRefImages: 0,
+  },
+  {
     id: ANIMATE_MOTION_TRANSFER_MODEL,
     label: 'Animate Motion Transfer',
     kind: 'animate',
@@ -1569,9 +1698,10 @@ export const VIDEO_MODELS: VideoModelDef[] = [
     kind: 'seedance25',
     provider: 'zhenzhen',
     builtinSource: 'seedance-nz',
-    description: 'Seedance 2.5 Standard · 文生、首尾帧与多模态参考视频',
+    description: 'Seedance 2.5 Standard / Flash · 文生、首尾帧与多模态参考视频',
     apiModelOptions: SEEDANCE25_VIDEO_MODELS.map((value) => {
-      const mode = value.endsWith('-t2v') ? 't2v' : value.endsWith('-i2v') ? 'i2v' : 'multi';
+      const mode = value.endsWith('-draft-to-video') ? 'draft' : value.endsWith('-t2v') ? 't2v' : value.endsWith('-i2v') ? 'i2v' : 'multi';
+      if (mode === 'draft') return { value, label: value, description: '480P draft → native1080p', ratios: [], durations: [], resolutions: [], supportImages: false, supportVideos: true, supportAudios: false, maxRefImages: 0, maxRefVideos: 1, maxRefAudios: 0 };
       return {
         value,
         label: `${value}${mode === 't2v' ? '（文生视频）' : mode === 'i2v' ? '（首尾帧图生视频）' : '（多模态参考）'}`,
@@ -1579,19 +1709,19 @@ export const VIDEO_MODELS: VideoModelDef[] = [
           ? '仅提示词；不发送参考素材。'
           : mode === 'i2v'
             ? '1-2 张图片，依次作为首帧和可选尾帧；提示词可选。'
-            : '至少 1 个素材；最多 30 图、10 视频、10 音频，合计不超过 50 个。',
-        ratios: SEEDANCE25_RATIOS,
+            : SD25_FLASH.models.includes(value) ? '10 images / 5 videos / 5 audios' : '至少 1 个素材；最多 30 图、10 视频、10 音频，合计不超过 50 个。',
+        ratios: SD25_FLASH.models.includes(value) && mode === 'i2v' ? ['adaptive'] : SEEDANCE25_RATIOS,
         defaultRatio: mode === 'i2v' ? 'adaptive' : '16:9',
         durations: SEEDANCE25_DURATIONS,
         defaultDuration: 5,
-        resolutions: SEEDANCE25_RESOLUTIONS,
+        resolutions: SD25_FLASH.models.includes(value) ? SD25_FLASH.resolutions : SEEDANCE25_RESOLUTIONS,
         defaultResolution: '720p',
         supportImages: mode !== 't2v',
         supportVideos: mode === 'multi',
         supportAudios: mode === 'multi',
-        maxRefImages: mode === 't2v' ? 0 : mode === 'i2v' ? 2 : 30,
-        maxRefVideos: mode === 'multi' ? 10 : 0,
-        maxRefAudios: mode === 'multi' ? 10 : 0,
+        maxRefImages: mode === 't2v' ? 0 : mode === 'i2v' ? 2 : SD25_FLASH.models.includes(value) ? 10 : 30,
+        maxRefVideos: mode === 'multi' ? SD25_FLASH.models.includes(value) ? 5 : 10 : 0,
+        maxRefAudios: mode === 'multi' ? SD25_FLASH.models.includes(value) ? 5 : 10 : 0,
       };
     }),
     ratios: SEEDANCE25_RATIOS,
@@ -1603,6 +1733,24 @@ export const VIDEO_MODELS: VideoModelDef[] = [
     supportImages: true,
     supportVideos: true,
     maxRefImages: 30,
+  },
+  {id:'heygen-avatar-6',label:'HeyGen Avatar 6',kind:'heygen',provider:'zhenzhen',builtinSource:'seedance-nz',apiModelOptions:NOV21.heygen.models.map(value=>({value,label:value,supportAudios:true,maxRefAudios:1})),ratios:NOV21.heygen.ratios,defaultRatio:'16:9',durations:[],defaultDuration:5,resolutions:NOV21.heygen.resolutions,defaultResolution:'1080p',supportImages:false,maxRefImages:0,supportVideos:false},
+  {id:H3_TURBO_CONTRACT.video.model,label:H3_TURBO_CONTRACT.video.tab,kind:'h3-lowprice',provider:'zhenzhen',builtinSource:'seedance-nz',
+   apiModelOptions:Object.values(H3_TURBO_CONTRACT).filter(spec => spec === H3_TURBO_CONTRACT.video || 'video' in spec && spec.video).map(spec => ({
+     value:spec.model,label:spec.model,supportImages:true,maxRefImages:spec.maxImages,
+     supportAudios:'maxAudios' in spec && spec.maxAudios > 0,maxRefAudios:'maxAudios' in spec ? spec.maxAudios : 0,
+     supportVideos:'maxVideos' in spec && spec.maxVideos > 0,maxRefVideos:'maxVideos' in spec ? spec.maxVideos : 0,
+     ratios:spec.ratios,defaultRatio:spec.ratios[0],resolutions:spec.resolutions,defaultResolution:spec.defaultResolution,
+     durations:Array.from({length:16-('minSeconds' in spec ? spec.minSeconds : 3)},(_,i)=>i+('minSeconds' in spec ? spec.minSeconds : 3)),defaultDuration:5,
+   })),
+   ratios:H3_TURBO_CONTRACT.video.ratios,defaultRatio:'16:9',durations:Array.from({length:13},(_,i)=>i+3),defaultDuration:5,
+   resolutions:H3_TURBO_CONTRACT.video.resolutions,defaultResolution:'480p',supportImages:true,supportVideos:false,maxRefImages:9},
+  {
+    id: MUSE_VIDEO_MODEL, label: 'Muse Video', kind: 'muse', provider: 'zhenzhen', builtinSource: 'seedance-nz',
+    apiModelOptions: [{value: MUSE_VIDEO_MODEL, label: MUSE_VIDEO_MODEL}],
+    ratios: PREVIEW_MUSE_FLUX.muse.ratios, defaultRatio: 'auto', durations: [10], defaultDuration: 10,
+    resolutions: ['720p'], defaultResolution: '720p', supportImages: true, maxRefImages: 9,
+    supportVideos: false,
   },
   {
     id: 'seedance-2.0',
@@ -1886,6 +2034,7 @@ export const LLM_MODELS: LlmModelDef[] = [
 export const QWEN3_TTS_FLASH_MODEL = 'qwen3-tts-flash';
 export const QWEN3_TTS_INSTRUCT_FLASH_MODEL = 'qwen3-tts-instruct-flash';
 export const QWEN3_TTS_MODELS = [QWEN3_TTS_FLASH_MODEL, QWEN3_TTS_INSTRUCT_FLASH_MODEL] as const;
+export const QWEN_TTS_MODELS = [...QWEN3_TTS_MODELS,...QWEN_AUDIO31_MODELS];
 export const QWEN3_TTS_LANGUAGE_TYPES = [
   'Chinese', 'English', 'Japanese', 'Korean', 'German',
   'French', 'Russian', 'Portuguese', 'Spanish', 'Italian',
@@ -1949,7 +2098,9 @@ export function getFlowMusicActionDef(value: unknown) {
 }
 
 export const SEEDANCE_NZ_AUDIO_MODELS = [
+  ...NOV21.gemini.models,
   ...QWEN3_TTS_MODELS,
+  ...QWEN_AUDIO31_MODELS,
   ...MINIMAX_AUDIO_MODELS,
   ...MUREKA_BGM_MODELS,
   FLOWMUSIC_MODEL,

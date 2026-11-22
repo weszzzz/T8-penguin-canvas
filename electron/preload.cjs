@@ -4,6 +4,12 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 let canvasCloseHandler = null;
 let canvasCloseEverRegistered = false;
 let canvasCloseRequest = null;
+ipcRenderer.on('t8pc:canvas-close-phase', (_event, requestId, phase) => {
+  if (canvasCloseRequest?.id !== requestId || canvasCloseRequest.cancelled
+    || !canvasCloseRequest.approved
+    || !['closing', 'waiting', 'installing', 'update-error'].includes(phase)) return;
+  canvasCloseRequest.phase = phase;
+});
 ipcRenderer.on('t8pc:canvas-close-cancel', (_event, requestId) => {
   if (canvasCloseRequest?.id !== requestId) return;
   canvasCloseRequest.cancelled = true;
@@ -15,7 +21,7 @@ ipcRenderer.on('t8pc:canvas-close-request', async (_event, requestId) => {
   canvasCloseRequest = request;
   try {
     const result = canvasCloseHandler
-      ? await canvasCloseHandler(() => request.cancelled)
+      ? await canvasCloseHandler(() => request.cancelled, () => request.phase || 'saving')
       : { ok: !canvasCloseEverRegistered, reason: 'save' };
     request.approved = result?.ok === true;
     if (!request.cancelled) ipcRenderer.send('t8pc:canvas-close-result', {
@@ -57,6 +63,10 @@ contextBridge.exposeInMainWorld('t8pc', {
     status: () => ipcRenderer.invoke('t8pc:storage:status'),
     chooseAndRestart: () => ipcRenderer.invoke('t8pc:storage:choose'),
   },
+  agentTools: {
+    status: () => ipcRenderer.invoke('t8pc:agent-tools:status'),
+    repair: () => ipcRenderer.invoke('t8pc:agent-tools:repair'),
+  },
   locale: {
     get: () => ipcRenderer.invoke('t8pc:locale:get'),
     set: (locale) => ipcRenderer.invoke(
@@ -97,6 +107,21 @@ contextBridge.exposeInMainWorld('t8pc', {
     clear: (profileId) => ipcRenderer.invoke('t8pc:parse-auth:clear', profileId),
   },
   agentControl: {
+    onActiveContextRequest: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const listener = (_event, requestId) => {
+        if (typeof requestId !== 'string' || requestId.length > 80) return;
+        let context = { ready: false };
+        try {
+          const value = canvasCloseRequest && !canvasCloseRequest.cancelled ? null : callback();
+          context = { ready: value?.ready === true, projectId: value?.projectId,
+            canvasId: value?.canvasId, revision: value?.revision };
+        } catch { /* An unmounted/loading editor is not an active target. */ }
+        ipcRenderer.send('t8pc:agent-control:context-result', { requestId, context });
+      };
+      ipcRenderer.on('t8pc:agent-control:context-request', listener);
+      return () => ipcRenderer.removeListener('t8pc:agent-control:context-request', listener);
+    },
     getConnectionSummary: () => ipcRenderer.invoke('t8pc:agent-control:connection-summary'),
     listPendingPairings: () => ipcRenderer.invoke('t8pc:agent-control:list-pending'),
     approvePairing: (input) => ipcRenderer.invoke('t8pc:agent-control:approve', {

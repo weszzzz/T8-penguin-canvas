@@ -11,7 +11,7 @@ import {
 import { analyzeWorkflow } from '../src/utils/workflowDoctor.ts';
 
 type PortKind = 'text' | 'image' | 'video' | 'audio' | 'model3d' | 'metadata' | 'config' | 'any';
-type Resolver = 'static' | 'upload' | 'material-set' | 'loop' | 'pick-from-set' | 'random-route' | 'subflow' | 'toolbox-param';
+type Resolver = 'video' | 'static' | 'upload' | 'material-set' | 'loop' | 'pick-from-set' | 'random-route' | 'subflow' | 'toolbox-param';
 
 interface ManifestPort {
   id: string | null;
@@ -43,7 +43,11 @@ const EXPECTED_SIGNATURES: Record<string, string> = {
   upload: 'upload|none->null[image|video|audio|model3d]',
   'model-3d-upload': 'static|none->null[model3d]',
   'model-3d-preview': 'static|null[model3d]->null[image]',
-  'model-3d': 'static|null[text|image]->null[model3d]',
+  'model-3d': 'static|null[text|image|model3d]->null[model3d]',
+  'world-scene': 'static|input[model3d]->image[image],scene[model3d]',
+  'code-animation': 'static|prompt[text]->video[video],storyboard[text]',
+  'volcengine-assets': 'static|none->image[image],video[video],audio[audio]',
+  'localization-master': 'static|source-media[video|audio],source-text[text],voice-references[audio|video]->localized-video[video],dubbed-audio[audio],subtitles[text],manifest[metadata]',
   'grok-image-tools': 'static|null[image|metadata]->null[image|metadata]',
   'material-set': 'material-set|null[text|image|video|audio]->null[text|image|video|audio]',
   'generation-target': 'static|null[text|image]->null[image]',
@@ -52,7 +56,7 @@ const EXPECTED_SIGNATURES: Record<string, string> = {
   'feishu-bitable-output': 'static|null[text|image|video|audio|metadata|any]->text[text],metadata[metadata]',
   text: 'static|null[text|image|video|audio]->null[text]',
   image: 'static|null[text|image]->null[image]',
-  video: 'static|null[text|image|video|audio]->null[video]',
+  video: 'video|null[text|image|video|audio]->null[video|text|audio|metadata]',
   'video-edit': 'static|null[video]->null[video|audio]',
   seedance: 'static|null[text|image|video|audio]->null[video]',
   seedance25: 'static|null[text|image|video|audio]->null[video]',
@@ -60,7 +64,7 @@ const EXPECTED_SIGNATURES: Record<string, string> = {
   'director-storyboard': 'static|null[text|image|video|audio]->null[video|text]',
   story: 'static|null[text|image|video|audio]->null[video|text]',
   'script-master': 'static|null[text|image|video|audio]->null[text|metadata]',
-  audio: 'static|null[text|image|audio|video]->audio-0[audio],audio-1[audio],text[text],video[video]',
+  audio: 'static|null[text|image|audio|video],speaker[text]->audio-0[audio],audio-1[audio],text[text],video[video]',
   llm: 'static|null[text|image|video]->null[text]',
   'minimax-h3-prompt-enhancer': 'static|null[text|image|video]->null[text]',
   'minimax-music3-prompt-enhancer': 'static|music-idea[text],lyrics[text]->lyrics[text],music-caption[text],payload[text],report[metadata]',
@@ -165,16 +169,16 @@ function dynamicFixture(type: string): Record<string, unknown> {
   return {};
 }
 
-test('all 81 production types have a valid, exact connection authority matching audited JSX Handles', () => {
+test('all production types have a valid, exact connection authority matching audited JSX Handles', () => {
   assert.equal(manifest.schema, 't8-canvas-node-schema-v1');
   assert.equal(manifest.version, 1);
-  assert.equal(manifest.types.length, 81);
-  assert.equal(new Set(manifest.types.map((entry) => entry.type)).size, 81);
-  assert.equal(Object.keys(EXPECTED_SIGNATURES).length, 81);
+  const auditedCount = Object.keys(EXPECTED_SIGNATURES).length;
+  assert.equal(manifest.types.length, auditedCount);
+  assert.equal(new Set(manifest.types.map((entry) => entry.type)).size, auditedCount);
   assert.deepEqual(Object.keys(manifest.connectionPorts).sort(), Object.keys(EXPECTED_SIGNATURES).sort());
   assert.deepEqual(manifest.types.map((entry) => entry.type).sort(), Object.keys(manifest.connectionPorts).sort());
 
-  const resolvers = new Set<Resolver>(['static', 'upload', 'material-set', 'loop', 'pick-from-set', 'random-route', 'subflow', 'toolbox-param']);
+  const resolvers = new Set<Resolver>(['video', 'static', 'upload', 'material-set', 'loop', 'pick-from-set', 'random-route', 'subflow', 'toolbox-param']);
   const kinds = new Set<PortKind>(['text', 'image', 'video', 'audio', 'model3d', 'metadata', 'config', 'any']);
   for (const [type, authority] of Object.entries(manifest.connectionPorts)) {
     assert.equal(resolvers.has(authority.resolver), true, `${type} resolver`);
@@ -196,7 +200,7 @@ test('all 81 production types have a valid, exact connection authority matching 
   }
 });
 
-test('the runtime resolver handles every one of the 81 production node types without aggregate fallback', () => {
+test('the runtime resolver handles every production node type without aggregate fallback', () => {
   for (const { type } of manifest.types) {
     const resolution = requireResolved(canvasNode(type, dynamicFixture(type)));
     assert.equal(resolution.resolver, manifest.connectionPorts[type].resolver, type);

@@ -1,4 +1,5 @@
 import { fileNameFromUrl, type MediaKind } from './mediaCollection.ts';
+import { normalizeMoodboard, type MoodboardLayout } from './materialMoodboard.ts';
 
 export type MaterialSetKind = 'text' | 'image' | 'video' | 'audio';
 
@@ -10,6 +11,8 @@ export interface MaterialSetItem {
   name?: string;
   size?: number;
   mime?: string;
+  origin?: 'local' | 'upstream';
+  upstreamSource?: { materialId: string; sourceNodeId: string };
 }
 
 export type MaterialSetBuckets = Record<MaterialSetKind, MaterialSetItem[]>;
@@ -23,6 +26,7 @@ export interface MaterialSetBackup {
   materialSetKind: MaterialSetKind;
   materialSetItems: MaterialSetItem[];
   exportedAt: string;
+  materialMoodboard?: MoodboardLayout;
 }
 
 const KINDS: MaterialSetKind[] = ['text', 'image', 'video', 'audio'];
@@ -51,6 +55,10 @@ export function normalizeMaterialSetItem(raw: any, fallbackKind?: MaterialSetKin
     name: typeof raw?.name === 'string' && raw.name ? raw.name : kind === 'text' ? value.slice(0, 24) : fileNameFromUrl(value),
     size: typeof raw?.size === 'number' ? raw.size : undefined,
     mime: typeof raw?.mime === 'string' ? raw.mime : undefined,
+    ...(raw?.origin === 'local' || raw?.origin === 'upstream' ? { origin: raw.origin } : {}),
+    ...(typeof raw?.upstreamSource?.materialId === 'string' && raw.upstreamSource.materialId
+      && typeof raw?.upstreamSource?.sourceNodeId === 'string' && raw.upstreamSource.sourceNodeId
+      ? { upstreamSource: { materialId: raw.upstreamSource.materialId, sourceNodeId: raw.upstreamSource.sourceNodeId } } : {}),
   };
 }
 
@@ -196,6 +204,7 @@ export function createMaterialSetBackup(
   kind: MaterialSetKind,
   rawItems: MaterialSetItem[],
   title = '',
+  moodboard?: unknown,
 ): MaterialSetBackup {
   return {
     schema: MATERIAL_SET_SCHEMA,
@@ -204,6 +213,7 @@ export function createMaterialSetBackup(
     materialSetKind: kind,
     materialSetItems: normalizeMaterialSetItems(rawItems, kind),
     exportedAt: new Date().toISOString(),
+    ...(moodboard ? { materialMoodboard: normalizeMoodboard(moodboard, rawItems) } : {}),
   };
 }
 
@@ -220,11 +230,13 @@ export function parseMaterialSetBackup(raw: any): MaterialSetBackup | null {
     materialSetKind: kind,
     materialSetItems: items,
     exportedAt: typeof body.exportedAt === 'string' ? body.exportedAt : new Date().toISOString(),
+    ...(body.materialMoodboard ? { materialMoodboard: normalizeMoodboard(body.materialMoodboard, items) } : {}),
   };
 }
 
 export function materialSetItemFromMedia(kind: Exclude<MediaKind, 'model3d'>, item: { url: string; name?: string; size?: number; mime?: string }): MaterialSetItem {
   return {
+    origin: 'local',
     id: makeMaterialSetItemId(kind),
     kind,
     url: item.url,
@@ -238,6 +250,7 @@ export function materialSetItemFromText(text: string): MaterialSetItem | null {
   const value = text.trim();
   if (!value) return null;
   return {
+    origin: 'local',
     id: makeMaterialSetItemId('text'),
     kind: 'text',
     text: value,

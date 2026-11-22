@@ -87,6 +87,8 @@ import {
   type DirectorStoryboardJob,
 } from '../../utils/directorStoryboard';
 import { DEFAULT_VIDEO_EDIT_DATA, DEFAULT_VIDEO_EDIT_SETTINGS } from '../../utils/videoEdit';
+import { applyStoryLinkedDrafts, planStoryLinkedEditors } from '../../utils/storyLinkedEditors';
+import { defaultSizeOf } from '../../utils/nodePlacement';
 import {
   STORY_ANALYSIS_SCHEMA,
   applyStoryAnalysis,
@@ -346,6 +348,7 @@ function downloadJson(project: StoryProject) {
 
 const StoryNode = ({ id, data, selected }: NodeProps) => {
   const { t, i18n } = useTranslation('nodes');
+  const { t: ux } = useTranslation('creativeUx');
   const storyT = (key: string, options?: Record<string, unknown>) => t(`story.editor.${key}`, options);
   const storyRuntimeText = (value: unknown) => localizeLegacyRuntimeText('story', i18n.resolvedLanguage || i18n.language, value);
   const stageLabel = (stage: StoryStage) => storyT(`stages.${stage}`, { defaultValue: storyStageLabel(stage) });
@@ -518,6 +521,10 @@ const StoryNode = ({ id, data, selected }: NodeProps) => {
     const requestId = createCanvasNodeRunRequestId(id, STORY_RUN_PURPOSE[mode]);
     const assetTarget = mode === 'asset-one' ? projectRef.current.assets.find((asset) => asset.id === targetId) : null;
     const usesLlm = mode === 'analyze' || (mode === 'all' && projectRef.current.shots.length === 0);
+    if (usesLlm && (projectRef.current.settings.llmProviderId || projectRef.current.settings.llmProviderSource) && projectRef.current.settings.llmProviderSource !== 'zhenzhen' && !llmSelection.available) {
+      setLocalMessage(t('settings:strata.sourceUnavailable'));
+      return false;
+    }
     const usesImage = !usesLlm && (mode === 'assets-missing' || mode === 'asset-one' && assetTarget?.kind !== 'audio' || mode === 'all' && projectRef.current.assets.some((asset) => !asset.url));
     const selection = usesLlm ? llmSelection : usesImage ? imageSelection : videoSelection;
     const storySettings = projectRef.current.settings;
@@ -604,6 +611,7 @@ const StoryNode = ({ id, data, selected }: NodeProps) => {
 
   const analyze = useCallback(async (reporter: RunNodeLifecycleReporter, signal: AbortSignal) => {
     let current = ensureScript();
+    if ((current.settings.llmProviderId || current.settings.llmProviderSource) && current.settings.llmProviderSource !== 'zhenzhen' && !llmSelection.available) throw new Error(t('settings:strata.sourceUnavailable'));
     if (signal.aborted) throw new Error('用户已停止');
     setLocalMessage('正在理解剧本并规划镜头…');
     mutate((value) => ({ ...value, stage: 'script', lastError: '', updatedAt: new Date().toISOString() }), { status: 'running' });
@@ -623,11 +631,12 @@ const StoryNode = ({ id, data, selected }: NodeProps) => {
         providerModel: external.providerModel,
         model: external.providerModel,
         temperature,
-        max_tokens: 32768,
+        max_tokens: external.provider?.profile === 'strata' ? external.provider.defaults?.maxTokens ?? 1024 : 32768,
         messages,
-      }, { submissionKey: storyProviderSubmissionKey(storyReporterSubmissionBase(reporter), operation, current.storyId) })
+      }, { submissionKey: storyProviderSubmissionKey(storyReporterSubmissionBase(reporter), operation, current.storyId), signal })
       : generateLlm({ source: builtinSource, model, temperature, max_tokens: 32768, messages }, {
         submissionKey: storyProviderSubmissionKey(storyReporterSubmissionBase(reporter), operation, current.storyId),
+        signal,
       });
     try {
       await reporter.providerRequest({ provider, model, jobKind: 'story-analysis' });
@@ -643,6 +652,7 @@ const StoryNode = ({ id, data, selected }: NodeProps) => {
       try {
         payload = parseStoryAnalysisPayload(result.content);
       } catch (parseError: any) {
+        if (external?.provider?.profile === 'strata') throw parseError;
         await reporter.providerRequest({ provider, model, jobKind: 'story-analysis-repair', repairOf: 'story-analysis' });
         const repaired = await runLlm([
             { role: 'system', content: `${storyAnalysisSystemPrompt()}\n这是一次且仅一次的格式修复：保持原有事实和镜头，不得删减剧本覆盖，只修成合法 JSON。` },
@@ -657,6 +667,7 @@ const StoryNode = ({ id, data, selected }: NodeProps) => {
       }
     } catch (error: any) {
       await reporter.providerResponse({ provider, model, status: 'failed', error: { message: error?.message || '剧本分析失败' }, jobKind: 'story-analysis', httpStatusSource: 'local-backend' }).catch(() => undefined);
+      if (external?.provider?.profile === 'strata' || signal.aborted) throw error;
       payload = buildLocalStoryAnalysis(current.script, current.settings);
       source = 'local-fallback';
       logBus.warn(`Story LLM 分析不可用，已使用可解释的本地分段：${error?.message || '未知错误'}`, src);
@@ -1388,15 +1399,12 @@ const StoryNode = ({ id, data, selected }: NodeProps) => {
     throw new Error('成片合成超时');
   }, [mutate, src]);
 
-  const materializeLinkedNodes = useCallback((projectInput = projectRef.current) => {
+  const materializeLinkedNodes = useCallback((projectInput = projectRef.current, options: { newDraft?: boolean } = {}) => {
     const current = sanitizeStoryProject(projectInput);
     if (current.shots.length === 0) return current;
+    const canvasState = useCanvasStore.getState();
+    if (canvasState.activeId !== activeCanvasId || !rf.getNode(id) || canvasState.canvases.find(canvas => canvas.id === activeCanvasId)?.status === 'archived') return current;
     const nodes = rf.getNodes();
-    const owner = nodes.find((node) => node.id === id);
-    const baseX = (owner?.position.x || 0) + 430;
-    const baseY = owner?.position.y || 0;
-    const directorId = current.linkedDirectorNodeId || `story-director-${current.storyId}`;
-    const videoEditId = current.linkedVideoEditNodeId || `story-video-edit-${current.storyId}`;
     const directorShots = storyToDirectorShots(current, { videoModel: effectiveVideoModel });
     const jobs = buildDirectorStoryboardRunPlan(directorShots as any, {
       model: effectiveVideoModel,
@@ -1414,8 +1422,8 @@ const StoryNode = ({ id, data, selected }: NodeProps) => {
       taskId: shot.taskId || null, videoUrl: shot.videoUrl || null, error: shot.error || null,
     }]));
     const outputItems = buildDirectorStoryboardOutputItems(jobs, shotResults);
-    const clips = storyToVideoEditClips(current);
-    const timeline = storyToVideoEditTimeline(current);
+    const clips = storyToVideoEditClips(current, { sourceNodeId: id });
+    const timeline = storyToVideoEditTimeline(current, { sourceNodeId: id });
     const directorData = {
       seedanceApiSource: current.settings.videoApiSource,
       seedanceNzModel: current.settings.videoNzModel,
@@ -1442,24 +1450,28 @@ const StoryNode = ({ id, data, selected }: NodeProps) => {
       status: current.finalVideoUrl ? 'success' : clips.length ? 'ready' : 'idle',
       storySourceId: current.storyId, storySourceRevision: current.productionRevision,
     };
-    rf.setNodes((previous) => {
-      const next = [...previous];
-      const directorIndex = next.findIndex((node) => node.id === directorId);
-      const videoEditIndex = next.findIndex((node) => node.id === videoEditId);
-      const directorNode: Node = directorIndex >= 0
-        ? { ...next[directorIndex], data: { ...(next[directorIndex].data as any), ...directorData } }
-        : { id: directorId, type: 'director-storyboard', position: { x: baseX, y: baseY }, data: directorData };
-      const editNode: Node = videoEditIndex >= 0
-        ? { ...next[videoEditIndex], data: { ...(next[videoEditIndex].data as any), ...videoEditData } }
-        : { id: videoEditId, type: 'video-edit', position: { x: baseX + 500, y: baseY }, data: videoEditData };
-      if (directorIndex >= 0) next[directorIndex] = directorNode; else next.push(directorNode);
-      if (videoEditIndex >= 0) next[videoEditIndex] = editNode; else next.push(editNode);
-      return next;
-    });
-    const nextProject = { ...current, linkedDirectorNodeId: directorId, linkedVideoEditNodeId: videoEditId };
+    const plan = planStoryLinkedEditors(nodes, { ownerId: id, storyId: current.storyId, linkedDirectorNodeId: current.linkedDirectorNodeId, linkedVideoEditNodeId: current.linkedVideoEditNodeId,
+      newDraft: options.newDraft, directorData, videoEditData });
+    rf.setNodes((previous) => applyStoryLinkedDrafts(previous, plan));
+    const nextProject = { ...current, linkedDirectorNodeId: plan.directorId, linkedVideoEditNodeId: plan.videoEditId };
     commit(nextProject);
     return nextProject;
-  }, [commit, effectiveVideoBuiltinSource, effectiveVideoModel, id, rf, videoSelection]);
+  }, [commit, effectiveVideoBuiltinSource, effectiveVideoModel, id, rf, videoSelection, activeCanvasId]);
+
+  const openLinkedEditor = (kind: 'director' | 'video', newDraft = false) => {
+    const expectedCanvasId = activeCanvasId;
+    const linked = materializeLinkedNodes(projectRef.current, { newDraft });
+    const targetId = kind === 'director' ? linked.linkedDirectorNodeId : linked.linkedVideoEditNodeId;
+    if (!targetId) return;
+    setWorkbenchOpen(false);
+    requestAnimationFrame(() => {
+      if (useCanvasStore.getState().activeId !== expectedCanvasId) return;
+      const target = rf.getNode(targetId); if (!target) return;
+      const size = defaultSizeOf(target.type || 'video-edit');
+      rf.setNodes(nodes => nodes.map(node => ({ ...node, selected: node.id === targetId })));
+      rf.setCenter(target.position.x + (target.measured?.width || size.w) / 2, target.position.y + (target.measured?.height || size.h) / 2, { zoom: .75, duration: 300 });
+    });
+  };
 
   const runMode = useCallback(async (mode: StoryRunMode, targetId: string, reporter: RunNodeLifecycleReporter, signal: AbortSignal, budget: StoryRunTaskBudget) => {
     if (mode === 'analyze') return analyze(reporter, signal);
@@ -1499,7 +1511,7 @@ const StoryNode = ({ id, data, selected }: NodeProps) => {
     try {
       const budget: StoryRunTaskBudget = { limit: projectRef.current.settings.maxNewTasksPerRun, reserved: 0 };
       const result = await runMode(mode, targetId, reporter, controller.signal, budget);
-      const synced = materializeLinkedNodes(result);
+      const synced = result.shots.length > 0 && result.shots.every(shot => Boolean(shot.videoUrl)) ? materializeLinkedNodes(result) : result;
       await reporter.output({
         status: 'succeeded',
         outputCount: (synced.finalVideoUrl ? 1 : 0) + 1,
@@ -2089,8 +2101,11 @@ const StoryNode = ({ id, data, selected }: NodeProps) => {
             <span className="break-words text-rose-100/75">{storyRuntimeText(project.lastError)}</span>
           </div>
         )}
-        <div className="mt-5 flex justify-center gap-2">
-          <button onClick={() => materializeLinkedNodes()} className="rounded-xl border border-white/10 px-4 py-2 text-xs text-white/70">{storyT('openLinkedEditors')}</button>
+        <p className="mt-4 text-xs text-white/50">{ux('creativeUx:story.linkedDraftHint')}</p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <button onClick={() => openLinkedEditor('director')} className="rounded-xl border border-white/10 px-4 py-2 text-xs text-white/70">{ux('creativeUx:story.openLinkedDirector')}</button>
+          <button onClick={() => openLinkedEditor('video')} className="rounded-xl border border-white/10 px-4 py-2 text-xs text-white/70">{ux('creativeUx:story.openLinkedVideo')}</button>
+          <button onClick={() => openLinkedEditor('video', true)} className="rounded-xl border border-white/10 px-4 py-2 text-xs text-white/70">{ux('creativeUx:story.newLinkedDraft')}</button>
           {project.finalVideoUrl && <a href={project.finalVideoUrl} download className="rounded-xl border border-emerald-300/30 bg-emerald-300/10 px-4 py-2 text-xs text-emerald-200">{storyT('downloadFinal')}</a>}
         </div>
       </div>

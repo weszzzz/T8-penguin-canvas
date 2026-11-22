@@ -83,9 +83,10 @@ const CREATIVE_CLI_OPERATIONS = Object.freeze(
 function operationCapabilities(runtime = {}) {
   const offlineSafe = new Set(['help', 'version', 'capabilities', 'status', 'skill', 'app', 'sessions']);
   const appOnly = new Set(['auth']);
-  const pairingOnly = new Set(['workspace.list', 'workspace.use']);
+  const pairingOnly = new Set(['workspace.list', 'workspace.use', 'workspace.active']);
   const scopeRequirements = {
     'workspace.list': ['canvas:read'],
+    'workspace.active': ['canvas:read'],
     'workspace.use': ['canvas:read'],
     'doctor.inspect': ['canvas:read'],
     'doctor.validate': ['canvas:read'],
@@ -135,6 +136,7 @@ function operationCapabilities(runtime = {}) {
   const contractVerified = new Set([
     'version', 'capabilities', 'status', 'skill.install', 'skill.update', 'skill.rollback',
     'skill.verify', 'skill.uninstall', 'app.list', 'app.discover', 'sessions',
+    'workspace.active',
     'recipe.list', 'recipe.show', 'recipe.save', 'recipe.export', 'recipe.import',
     'recipe.pin', 'recipe.rollback', 'recipe.verify',
     'doctor.inspect', 'doctor.validate', 'doctor.schema', 'doctor.simulate',
@@ -460,6 +462,17 @@ function creatorRecoveryForError(error = {}) {
       nextActions: ['重新完成本机配对，然后从同一 Creator Session 继续。'],
     };
   }
+  if (['AGENT_CONTROL_PROTOCOL_MISMATCH', 'AGENT_SKILL_VERSION_MISMATCH', 'AGENT_CLI_VERSION_MISMATCH',
+    'CANVAS_PATCH_PROTOCOL_MISMATCH', 'NODE_SCHEMA_DIGEST_MISMATCH', 'PROVIDER_CATALOG_DIGEST_MISMATCH',
+    'CREATIVE_CAPABILITY_MANIFEST_DIGEST_MISMATCH', 'CREATIVE_CAPABILITY_GRAPH_DIGEST_MISMATCH',
+    'AGENT_MANIFEST_DIGEST_MISMATCH'].includes(code)) {
+    return {
+      ...result,
+      whatFailed: '所选工具与正在运行的桌面画布不配套；相同版本号不代表相同内容',
+      existingWorkState: '未修改连接端信任，不会自动换工具或重新提交已有操作；已有任务的受理状态仍以原回执为准',
+      nextActions: ['在正在运行的桌面画布设置中安装/修复 Agent 连接工具；然后在 DSH 等连接端重新检测并明确审阅该工具目录。不要手改摘要或用实例 ID 绕过校验；已有任务只查询原记录，不重交生成。'],
+    };
+  }
   if (['CREATIVE_CANVAS_STALE', 'REVISION_STALE', 'SCHEMA_STALE'].includes(code)) {
     return {
       ...result,
@@ -609,6 +622,7 @@ async function handleAuth(subcommand, parsed, human) {
   const instance = await selectInstance(String(parsed.flags.get('instance') || ''));
 
   if (action === 'pair') {
+    if (configuredInstances().pending.some(item => item.instanceId === instance.instanceId)) throw new AgentClientError('PAIRING_ALREADY_PENDING', '此实例已有待确认配对，请先在画布处理已有请求');
     const payload = await requestAgentControl(instance, '/api/agent-control/v1/pairings', {
       method: 'POST',
       body: {
@@ -649,7 +663,7 @@ async function handleAuth(subcommand, parsed, human) {
       throw new AgentClientError('PAIRING_NOT_STARTED', '没有找到此画布实例的待确认配对，请先运行 zcanvas auth pair');
     }
     if (Date.parse(String(pending.expiresAt || '')) <= Date.now()) {
-      deletePending(instance.instanceId);
+      deletePending(instance.instanceId, { expectedPairingId: pending.pairingId, expectedOrigin: instance.origin });
       throw new AgentClientError('PAIRING_EXPIRED', 'Agent 配对验证码已过期，请重新发起配对并核对新的验证码');
     }
     const payload = await requestAgentControl(
@@ -674,11 +688,11 @@ async function handleAuth(subcommand, parsed, human) {
       return EXIT_CODES.CONFIRMATION_REQUIRED;
     }
     if (result.status === 'denied') {
-      deletePending(instance.instanceId);
+      deletePending(instance.instanceId, { expectedPairingId: pending.pairingId, expectedOrigin: instance.origin });
       throw new AgentClientError('PAIRING_DENIED', '画布用户已拒绝此 Agent 连接');
     }
     if (result.status !== 'approved' || !result.accessToken) {
-      deletePending(instance.instanceId);
+      deletePending(instance.instanceId, { expectedPairingId: pending.pairingId, expectedOrigin: instance.origin });
       throw new AgentClientError('PAIRING_TOKEN_ALREADY_ISSUED', '配对凭据已领取或失效，请重新发起配对');
     }
     storeSession(instance, result);
@@ -719,7 +733,7 @@ async function handleAuth(subcommand, parsed, human) {
       ]);
       return EXIT_CODES.OK;
     } catch (error) {
-      if (['AUTH_EXPIRED', 'PAIRING_REQUIRED'].includes(error?.code)) deleteSession(instance.instanceId);
+      if (['AUTH_EXPIRED', 'PAIRING_REQUIRED'].includes(error?.code)) deleteSession(instance.instanceId, { expectedSessionId: session.sessionId, expectedOrigin: instance.origin });
       throw error;
     }
   }
@@ -737,7 +751,7 @@ async function handleAuth(subcommand, parsed, human) {
       method: 'DELETE',
       accessToken: session.accessToken,
     });
-    deleteSession(instance.instanceId);
+    deleteSession(instance.instanceId, { expectedSessionId: session.sessionId, expectedOrigin: instance.origin });
     emit(envelope({
       message: 'Agent 连接已撤销，本机安全凭据已删除',
       data: { instanceId: instance.instanceId, ...payload.data },
@@ -767,7 +781,7 @@ async function authenticatedRequest(instance, session, pathname, options = {}) {
       accessToken: session.accessToken,
     });
   } catch (error) {
-    if (['AUTH_EXPIRED', 'PAIRING_REQUIRED'].includes(error?.code)) deleteSession(instance.instanceId);
+    if (['AUTH_EXPIRED', 'PAIRING_REQUIRED'].includes(error?.code)) deleteSession(instance.instanceId, { expectedSessionId: session.sessionId, expectedOrigin: instance.origin });
     throw error;
   }
 }
@@ -812,10 +826,19 @@ async function creatorWorkspaceContext(instance, session) {
 
 async function handleWorkspace(subcommand, parsed, human) {
   const action = subcommand || 'current';
-  if (!['list', 'use', 'current'].includes(action)) {
-    throw new AgentClientError('USAGE_ERROR', `未知 workspace 子命令：${action}；可用 list、use、current`);
+  if (!['list', 'use', 'current', 'active'].includes(action)) {
+    throw new AgentClientError('USAGE_ERROR', `未知 workspace 子命令：${action}；可用 list、use、current、active`);
   }
   const { instance, session } = await authenticatedInstance(parsed);
+  if (action === 'active') {
+    const payload = await authenticatedRequest(instance, session, '/api/agent-control/v1/active-context');
+    if (payload.data?.schema !== 't8-agent-active-context-v1' || payload.data.instanceId !== instance.instanceId) {
+      throw new AgentClientError('ACTIVE_CONTEXT_INVALID', '桌面活动上下文合同不匹配；请使用配套工具，不会改选目标');
+    }
+    emit(envelope({ message: '已返回桌面窗口只读定位；不更改 Agent 已选目标或授权', data: payload.data }),
+      human, [JSON.stringify(payload.data)]);
+    return EXIT_CODES.OK;
+  }
   if (action === 'current') {
     const context = getWorkspaceContext(instance.instanceId);
     if (!context) {
@@ -1075,10 +1098,10 @@ async function handlePatch(subcommand, parsed, human) {
       return EXIT_CODES.CONFIRMATION_REQUIRED;
     }
     if (result.status === 'denied') {
-      deleteApproval(instance.instanceId);
+      deleteApproval(instance.instanceId, approval.approvalRequestId);
       throw new AgentClientError('PATCH_APPROVAL_DENIED', '画布用户已拒绝此操作');
     }
-    deleteApproval(instance.instanceId);
+    deleteApproval(instance.instanceId, approval.approvalRequestId);
     emit(envelope({
       message: result.action === 'patch.revert' ? 'Patch 已创建新的撤销 revision' : 'Patch 已应用',
       data: result,

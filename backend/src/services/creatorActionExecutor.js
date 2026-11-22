@@ -1,3 +1,5 @@
+const pmf = require('../shared/previewMuseFluxContract.json');
+const newModels=require('../providers/g26Krea3d');
 'use strict';
 
 const crypto = require('node:crypto');
@@ -31,6 +33,8 @@ function bounded(value, maximum = 1_000) {
 function mimeAndExtension(kind, bytes, contentType) {
   const mime = bounded(contentType, 120).split(';')[0].toLowerCase();
   if (kind === 'image') {
+    if (bytes.subarray(0,6).toString('ascii').match(/^GIF8[79]a$/)) return {mimeType:'image/gif',extension:'gif'};
+    if (require('../providers/providerOutputFormats').isSvgBuffer(bytes)) return {mimeType:'image/svg+xml',extension:'svg'};
     if (bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return { mimeType: 'image/png', extension: 'png' };
     if (bytes[0] === 0xff && bytes[1] === 0xd8) return { mimeType: 'image/jpeg', extension: 'jpg' };
     if (bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.subarray(8, 12).toString('ascii') === 'WEBP') return { mimeType: 'image/webp', extension: 'webp' };
@@ -365,11 +369,12 @@ class CreatorActionExecutor {
           trustedProviderFallbackDeadlineMs: MIN_PROVIDER_MEDIA_TIMEOUT_MS,
         });
         const descriptor = fs.openSync(staging, 'r');
-        const header = Buffer.alloc(16);
+        const header = Buffer.alloc(65536);
         const headerSize = fs.readSync(descriptor, header, 0, header.length, 0);
         fs.closeSync(descriptor);
         if (!downloaded.byteSize) throw new CreatorActionExecutorError('CREATOR_RESULT_INVALID_SIZE', '生成结果为空');
         const format = mimeAndExtension(kind, header.subarray(0, headerSize), downloaded.contentType);
+        if(format.extension==='svg')await require('../providers/providerOutputFormats').validateSvgBuffer(fs.readFileSync(staging));
         const contentHash = await fileSha256(staging);
         const filename = `creator-v2-${actionId.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 48)}-${contentHash.slice(0, 12)}.${format.extension}`;
         const absolute = path.join(this.config.OUTPUT_DIR, filename);
@@ -604,7 +609,7 @@ class CreatorActionExecutor {
           taskType: submitted.taskType || action.type,
           recovery: {
             version: 1,
-            kind: action.type === 'image' ? 'image' : 'video',
+            kind: action.modelSnapshot.modelId === pmf.muse.videoModel ? 'muse' : action.modelSnapshot.modelId === seedanceNz.TOPAZ_VIDEO_CONTRACT.model ? 'topaz' : action.type === 'image' ? 'image' : 'video',
             taskId: submitted.taskId,
             model: action.modelSnapshot.modelId,
             taskProvider: 'seedance-nz',
@@ -991,16 +996,41 @@ class CreatorActionExecutor {
     this._guardSkillAction(action);
     const baseUrl = bounded(settings.zhenzhenSd2BaseUrl, 2_000) || undefined;
     const grouped = preflightActionReferences(action, modelEntry, inputPaths);
+    if (action.type==='image'&&newModels.imageModels.includes(action.modelSnapshot.modelId)) {
+      const model=action.modelSnapshot.modelId,parameters=action.parameters||{},krea=newModels.contract.krea.models.includes(model);
+      const preset=newModels.contract.krea.presets[parameters.ratio]||[1024,1024];
+      return this.provider.submitImageTask({...parameters,model,prompt:action.prompt,images:grouped.images,
+        ...(krea?{size:parameters.size||`${preset[0]}*${preset[1]}`}:{})},apiKey,{baseUrl});
+    }
+    if (action.type === 'image' && [pmf.hy.model, pmf.muse.imageModel, ...pmf.flux.models].includes(action.modelSnapshot.modelId)) {
+      const model = action.modelSnapshot.modelId;
+      return this.provider.submitImageTask({model,prompt:action.prompt,images:grouped.images,
+        ...(pmf.flux.models.includes(model) ? {aspect_ratio:action.parameters.ratio || 'auto',resolution:action.parameters.resolution || '1k'}
+          : model === pmf.hy.model ? {size:action.parameters.ratio || 'auto',resolution:action.parameters.resolution || '1K'} : {size:action.parameters.ratio || 'auto'})}, apiKey, {baseUrl});
+    }
+    if (action.modelSnapshot.modelId === pmf.muse.videoModel) {
+      return this.provider.submitMuseVideoTask({model:pmf.muse.videoModel,prompt:action.prompt,images:grouped.images,size:action.parameters.ratio || 'auto'},apiKey,{baseUrl});
+    }
     if (action.type === 'image') {
       return this.provider.submitImageTask({
         model: action.modelSnapshot.modelId,
         prompt: action.prompt,
         ratio: action.parameters.ratio || '16:9',
+        ...(seedanceNz.MAI_IMAGE_MODELS.has(action.modelSnapshot.modelId)
+          ? { size: action.parameters.ratio || '1:1', resolution: action.parameters.resolution || '1k' } : {}),
+        ...(['flux-3-image', 'zhenzhen-image-nb-2.1'].includes(action.modelSnapshot.modelId)
+          ? { resolution: action.parameters.resolution || '1k' } : {}),
         n: Math.max(1, Math.min(4, Number(action.parameters.count) || 1)),
         ...(grouped.images.length ? { images: grouped.images } : {}),
       }, apiKey, { baseUrl });
     }
     const modelId = action.modelSnapshot.modelId;
+    if (modelId === seedanceNz.TOPAZ_VIDEO_CONTRACT.model) {
+      return this.provider.submitTopazVideoTask({ model: modelId, videos: grouped.videos,
+        resolution: action.parameters.resolution || seedanceNz.TOPAZ_VIDEO_CONTRACT.defaultResolution,
+        quality: action.parameters.topazQuality || seedanceNz.TOPAZ_VIDEO_CONTRACT.defaultQuality,
+      }, apiKey, { baseUrl });
+    }
     const parameters = modelEntry?.parameters && typeof modelEntry.parameters === 'object'
       ? modelEntry.parameters : {};
     const family = String(parameters.family || modelEntry?.family || '').trim().toLowerCase();
@@ -1084,15 +1114,21 @@ class CreatorActionExecutor {
     while (Date.now() < deadline) {
       const result = action.type === 'image'
         ? await this.provider.queryImageTask(taskId, apiKey, { baseUrl })
+        : modelId === pmf.muse.videoModel ? await this.provider.queryMuseVideoTask(taskId,apiKey,{baseUrl})
+        : modelId === seedanceNz.TOPAZ_VIDEO_CONTRACT.model
+          ? await this.provider.queryTopazVideoTask(taskId, apiKey, { baseUrl })
         : modelId === 'MiniMax-H3'
           ? await this.provider.queryMinimaxH3V2Task(taskId, apiKey, { baseUrl })
+          : seedanceNz.VIDU_Q4_MODELS.has(modelId)
+            ? await this.provider.queryViduTask(taskId, apiKey, { baseUrl, model: modelId })
           : await this.provider.queryTask(taskId, apiKey, { baseUrl });
       pollCount += 1;
       if (result.status === 'failed') throw new CreatorActionExecutorError('CREATOR_PROVIDER_TASK_FAILED', bounded(result.failReason, 500) || '生成任务失败');
       if (result.status === 'succeeded') {
         const urls = action.type === 'image'
           ? [...new Set([...(Array.isArray(result.imageUrls) ? result.imageUrls : []), result.imageUrl].map((url) => bounded(url, 4_000)).filter(Boolean))].slice(0, 4)
-          : [bounded(result.videoUrl, 4_000)].filter(Boolean);
+          : (modelId === seedanceNz.TOPAZ_VIDEO_CONTRACT.model && result.videoUrls?.length
+            ? result.videoUrls.map((url) => bounded(url, 4_000)) : [bounded(result.videoUrl, 4_000)]).filter(Boolean);
         if (!urls.length) throw new CreatorActionExecutorError('CREATOR_PROVIDER_RESULT_MISSING', '生成任务完成但没有返回结果');
         return { url: urls[0], urls, pollCount, result };
       }
@@ -1250,7 +1286,7 @@ class CreatorActionExecutor {
           taskType: submitted.taskType || action.type,
           recovery: {
             version: 1,
-            kind: action.type === 'image' ? 'image' : 'video',
+            kind: action.modelSnapshot.modelId === pmf.muse.videoModel ? 'muse' : action.modelSnapshot.modelId === seedanceNz.TOPAZ_VIDEO_CONTRACT.model ? 'topaz' : action.type === 'image' ? 'image' : 'video',
             taskId: submitted.taskId,
             model: snapshot.modelId,
             taskProvider: 'seedance-nz',

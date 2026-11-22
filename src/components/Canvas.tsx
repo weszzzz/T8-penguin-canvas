@@ -1,6 +1,8 @@
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type RefObject, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
+import { registerCanvasActiveContext } from '../utils/agentActiveContext';
 import DesktopDataStorage from './DesktopDataStorage';
+import CanvasQuickAddMenu from './CanvasQuickAddMenu';
 import CanvasRestoreDialog from './CanvasRestoreDialog';
 import NodeDomLanguageBoundary from '../i18n/NodeDomLanguageBoundary';
 import {
@@ -34,6 +36,8 @@ import * as LucideIcons from 'lucide-react';
 import { useCanvasStore } from '../stores/canvas';
 import { waitForCanvasCloseSave } from '../utils/canvasCloseSave';
 import { registerCanvasArchiveGuard } from '../utils/canvasArchiveLifecycle';
+import { markManualAutoOutputDrag } from '../utils/autoOutputDrag';
+import { automaticOutputGridPositions } from '../utils/autoOutputLayout';
 import { parseCanvasNodeExecutionKey } from '../stores/runBus';
 import { useApiKeysStore } from '../stores/apiKeys';
 import { createBlankNodeData } from '../utils/mediaNodeCreation';
@@ -147,6 +151,8 @@ import { formatShortcutList, matchesAnyShortcut } from '../utils/keyboardShortcu
 import {
   hasCanvasWriteAuthority,
   requireAuthoritativeCanvasRevision,
+  readCurrentCanvasAuthority,
+  StaleCanvasLoadError,
 } from '../utils/canvasLoadAuthority';
 import {
   getBrowserCanvasViewportStorage,
@@ -277,6 +283,10 @@ import {
   type CanvasPatchMergeConflict,
   type CanvasPatchPendingEnvelope,
 } from '../utils/canvasPatchMerge';
+import { recoverCanvasRevisionConflict } from '../utils/canvasSaveRecovery';
+import { CanvasSaveConflictNotice } from './CanvasSaveConflictNotice';
+import { CanvasCloseGuard, type CanvasCloseObserver } from './CanvasCloseGuard';
+import { subscribeCanvasDeletion } from '../utils/canvasDeletionLifecycle';
 import { collectFailedDownstreamNodeIds, getRunPlannedEdges, getRunPlannedNodeIds } from '../utils/runCenter';
 import {
   buildFrozenRunIntentRuntime,
@@ -329,6 +339,7 @@ import DeletableEdge from './edges/DeletableEdge';
 import PerformanceEdge from './edges/PerformanceEdge';
 import { NODE_REGISTRY } from '../config/nodeRegistry';
 import { EXECUTABLE_NODE_TYPES } from '../config/executableNodeTypes';
+import { filterInertCanvasNodeChanges } from '../utils/canvasDialogChanges';
 import type { CreativeDeskState, FarmAnimalProductId, FarmCanvasState, FarmCropId, FarmDecorObjectType, FarmEventLogItem, FarmTool, NodeType, NodeMeta } from '../types/canvas';
 import {
   appendCreativeDeskItem,
@@ -1407,6 +1418,8 @@ const RHToolboxNode = lazyCanvasNode(() => import('./nodes/RHToolboxNode'), 'RHT
 const FalToolboxNode = lazyCanvasNode(() => import('./nodes/FalToolboxNode'), 'FalToolboxNode');
 const Model3DPreviewNode = lazyCanvasNode(() => import('./nodes/Model3DPreviewNode'), 'Model3DPreviewNode');
 const Model3DNode = lazyCanvasNode(() => import('./nodes/Model3DNode'), 'Model3DNode');
+const WorldSceneNode = lazyCanvasNode(() => import('./nodes/WorldSceneNode'), 'WorldSceneNode');
+const CodeAnimationNode = lazyCanvasNode(() => import('./nodes/CodeAnimationNode'), 'CodeAnimationNode');
 const VolcengineAssetsNode = lazyCanvasNode(() => import('./nodes/VolcengineAssetsNode'), 'VolcengineAssetsNode');
 const GrokImageToolsNode = lazyCanvasNode(() => import('./nodes/GrokImageToolsNode'), 'GrokImageToolsNode');
 const FaceExpression3DNode = lazyCanvasNode(() => import('./nodes/FaceExpression3DNode'), 'FaceExpression3DNode');
@@ -1501,6 +1514,8 @@ const SPECIFIC_NODES: Record<string, any> = {
   'fal-toolbox': FalToolboxNode,
   'model-3d-preview': Model3DPreviewNode,
   'model-3d': Model3DNode,
+  'world-scene': WorldSceneNode,
+  'code-animation': CodeAnimationNode,
   'grok-image-tools': GrokImageToolsNode,
   'face-expression-3d': FaceExpression3DNode,
   'previs-studio': PrevisStudioNode,
@@ -1873,6 +1888,7 @@ const INITIAL_DATA: Record<string, Record<string, any>> = {
     error: '',
   },
   cinematic: { kind: 'cinematic', cinematicLanguage: 'en', cinematicStrength: 'balanced' },
+  'code-animation': { model: 'zhenzhen/motion-video', prompt: '', duration: 15, ratio: '16:9', resolution: '720p', motionOperation: 'generate', motionTemplate: 'api_default', motionMusic: 'api_default', status: 'idle' },
   'video-motion': { kind: 'video-motion', motionLanguage: 'en' },
   'portrait-master': {
     portraitLanguage: 'en',
@@ -2414,6 +2430,10 @@ const INITIAL_DATA: Record<string, Record<string, any>> = {
     status: 'idle',
     error: '',
     size: { w: 520, h: 440 },
+  },
+  'world-scene': {
+    worldSceneProject: { schema: 't8-world-scene-v1', sources: [], activeSourceId: '', camera: null, views: [] },
+    modelUrl: '', modelUrls: [], imageUrl: '', imageUrls: [], status: 'idle', error: '',
   },
   'model-3d': {
     threeDTab: 'hunyuan-3d',
@@ -3949,6 +3969,14 @@ type PersistableCanvasPatchState = {
 type PendingCanvasSave = PersistableCanvasPatchState & CanvasPatchPendingEnvelope;
 
 type CanvasPersistenceRuntime = {
+  closeObserver: CanvasCloseObserver | null;
+  recoveryAttempts: Map<string, number>;
+  recoveryFlights: Map<string, Promise<void>>;
+  recoveryEpoch: number;
+  disposed: boolean;
+  retiredCanvasIds: Set<string>;
+  notifyPersistence: ((canvasId: string) => void) | null;
+  recoveryCommit: ((canvasId: string, document: VersionedCanvasData, baseline: string, historyMode?: 'transition' | 'reset', patchId?: string) => { conflicts: CanvasPatchMergeConflict[] }) | null;
   saveTimersByCanvas: Map<string, number>;
   pendingSaveFlushersByCanvas: Map<string, () => void>;
   pendingSaveByCanvas: Map<string, PendingCanvasSave>;
@@ -3965,6 +3993,9 @@ type CanvasPersistenceRuntime = {
 
 function createCanvasPersistenceRuntime(): CanvasPersistenceRuntime {
   return {
+    closeObserver: null, recoveryAttempts: new Map(), recoveryFlights: new Map(),
+    recoveryEpoch: 0, disposed: false, recoveryCommit: null,
+    retiredCanvasIds: new Set(), notifyPersistence: null,
     saveTimersByCanvas: new Map(),
     pendingSaveFlushersByCanvas: new Map(),
     pendingSaveByCanvas: new Map(),
@@ -4321,6 +4352,9 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
   const saveTimersByCanvasRef = useRef(persistenceRuntime.saveTimersByCanvas);
   const pendingSaveFlushersByCanvasRef = useRef(persistenceRuntime.pendingSaveFlushersByCanvas);
   const pendingSaveByCanvasRef = useRef(persistenceRuntime.pendingSaveByCanvas);
+  const canvasSaveRecoveryAttemptsRef = useRef(persistenceRuntime.recoveryAttempts);
+  const canvasSaveRecoveryFlightsRef = useRef(persistenceRuntime.recoveryFlights);
+  const recoverCanvasSaveRef = useRef<((canvasId: string, manual?: boolean) => Promise<void>) | null>(null);
   const latestPersistableByCanvasRef = useRef(persistenceRuntime.latestPersistableByCanvas);
   const autosaveGenerationByCanvasRef = useRef(persistenceRuntime.autosaveGenerationByCanvas);
   const lastSavedByCanvasRef = useRef(persistenceRuntime.lastSavedByCanvas);
@@ -4351,6 +4385,21 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
   const loadedCanvasIdRef = useRef<string | null>(loadedCanvasId);
   loadedRef.current = loaded;
   loadedCanvasIdRef.current = loadedCanvasId;
+  useEffect(() => registerCanvasActiveContext(window.t8pc?.agentControl, () => ({
+    loaded: loadedRef.current,
+    currentCanvasId: useCanvasStore.getState().activeId,
+    loadedCanvasId: loadedCanvasIdRef.current,
+    initializedCanvasId: initializedFlowCanvasId,
+    projectId: activeProjectIdRef.current,
+    canvasId: activeId,
+    revision: activeId ? canvasRevisionsRef.current.get(activeId) : undefined,
+  })), [activeId, initializedFlowCanvasId]);
+  useEffect(() => () => {
+    // Late responses from a retired keyed editor are always off-screen. The
+    // current editor owns rendering; shared pending state survives the switch.
+    loadedRef.current = false;
+    loadedCanvasIdRef.current = null;
+  }, []);
   const lastDone = useRunBusStore((s) => s.lastDone);
   useEffect(() => { setGenerationHistorySource(undefined); }, [activeId]);
   useEffect(() => {
@@ -5253,6 +5302,20 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
     return result;
   }, []);
 
+  useEffect(() => {
+    const notify = (canvasId: string) => {
+      if (persistenceRuntime.retiredCanvasIds.has(canvasId)
+        || useCanvasStore.getState().activeId !== canvasId
+        || !loadedRef.current || loadedCanvasIdRef.current !== canvasId) return;
+      const revision = canvasRevisionsRef.current.get(canvasId);
+      if (revision) setActiveCanvasRevision(revision);
+      const pending = pendingSaveByCanvasRef.current.get(canvasId);
+      if (pending && !pending.conflicted) setDragSaveTick((tick) => tick + 1);
+    };
+    persistenceRuntime.notifyPersistence = notify;
+    return () => { if (persistenceRuntime.notifyPersistence === notify) persistenceRuntime.notifyPersistence = null; };
+  }, [persistenceRuntime]);
+
   const cancelScheduledHistoryCapture = useCallback(() => {
     if (captureTimer.current !== null) window.clearTimeout(captureTimer.current);
     captureTimer.current = null;
@@ -5343,8 +5406,12 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
     setLoaded(false);
     setLoadedCanvasId(null);
     let cancelled = false;
-    api
-      .getCanvasData(requestedCanvasId)
+    void readCurrentCanvasAuthority({
+      load: () => api.getCanvasData(requestedCanvasId),
+      minimumRevision: () => canvasRevisionsRef.current.get(requestedCanvasId) || 0,
+      cancelled: () => cancelled || useCanvasStore.getState().activeId !== requestedCanvasId
+        || persistenceRuntime.retiredCanvasIds.has(requestedCanvasId),
+    })
       .then((data) => {
         if (cancelled || useCanvasStore.getState().activeId !== requestedCanvasId) return;
         const revision = requireAuthoritativeCanvasRevision(data.revision);
@@ -5471,7 +5538,8 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       })
       .catch((e) => {
         if (cancelled || useCanvasStore.getState().activeId !== requestedCanvasId) return;
-        const message = e instanceof Error ? e.message : '未知加载错误';
+        const message = e instanceof StaleCanvasLoadError ? t('canvasSave:staleLoad')
+          : e instanceof Error ? e.message : '未知加载错误';
         console.error('加载画布失败', e);
         setCanvasLoadFailure({
           canvasId: requestedCanvasId,
@@ -5701,6 +5769,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       };
       try {
         await enqueueCanvasMutation(canvasIdForSave, async () => {
+          if (persistenceRuntime.retiredCanvasIds.has(canvasIdForSave)) return;
           // 计时器等待其他 mutation 时，generation 或 pending 身份任一变化都使旧 PUT 失效。
           if (autosaveGenerationByCanvasRef.current.get(canvasIdForSave) !== token.generation
             || pendingSaveByCanvasRef.current.get(canvasIdForSave) !== token.pendingIdentity) return;
@@ -5709,9 +5778,17 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
             allowEmpty: allowEmptySave,
             baseRevision: putBaseRevision,
           });
+          if (persistenceRuntime.retiredCanvasIds.has(canvasIdForSave)) return;
           const savedRevision = Number(saved.revision);
           if (!Number.isSafeInteger(savedRevision) || savedRevision < 1) {
             throw new Error('画布自动保存未返回有效 revision');
+          }
+          // Background authority may have advanced while this PUT response
+          // was in flight. Its older ACK must not replace the new baseline,
+          // clear its pending save, or invalidate the successor's timer.
+          if (savedRevision < (canvasRevisionsRef.current.get(canvasIdForSave) || 0)) {
+            persistenceRuntime.notifyPersistence?.(canvasIdForSave);
+            return;
           }
           const latest = latestStateForResponse();
           const latestPending = pendingSaveByCanvasRef.current.get(canvasIdForSave) || null;
@@ -5731,6 +5808,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
           });
           invalidateOutstandingAutosaves();
           setCanvasRevision(canvasIdForSave, savedRevision);
+          canvasSaveRecoveryAttemptsRef.current.delete(canvasIdForSave);
           api.autoSaveCanvasData(canvasIdForSave, {
             ...payload,
             revision: savedRevision,
@@ -5743,7 +5821,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
           lastSavedNodeCountByCanvasRef.current.set(canvasIdForSave, persistNodes.length);
           if (response.pending) pendingSaveByCanvasRef.current.set(canvasIdForSave, response.pending);
           else pendingSaveByCanvasRef.current.delete(canvasIdForSave);
-          if (response.shouldScheduleCas) setDragSaveTick((tick) => tick + 1);
+          persistenceRuntime.notifyPersistence?.(canvasIdForSave);
           useCanvasStore.setState((state) => ({
             canvases: state.canvases.map((canvas) =>
               canvas.id === canvasIdForSave
@@ -5753,6 +5831,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
           }));
         });
       } catch (e) {
+        if (persistenceRuntime.retiredCanvasIds.has(canvasIdForSave)) return;
         if (e instanceof api.ApiRequestError && e.status === 409) {
           const latest = latestStateForResponse();
           const latestPending = pendingSaveByCanvasRef.current.get(canvasIdForSave) || null;
@@ -5778,9 +5857,14 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
               setCanvasPatchConflictMessage('画布 revision 冲突；本地修改已保留并阻止自动覆盖，请先处理冲突。');
             }
             console.warn('画布版本冲突，已停止旧快照覆盖；等待协作同步', e.data);
+            const code = e.data && typeof e.data === 'object' ? (e.data as { code?: unknown }).code : '';
+            if (code === 'revision_conflict' && recoverCanvasSaveRef.current) {
+              try { await recoverCanvasSaveRef.current(canvasIdForSave); }
+              catch { logBus.warn('画布同步暂未完成，本地修改仍保留；请使用画布顶部的保存冲突操作重试。', '画布同步'); }
+            }
           } else {
             if (latest.active) setCanvasPatchConflictMessage('');
-            if (response.shouldScheduleCas) setDragSaveTick((tick) => tick + 1);
+            persistenceRuntime.notifyPersistence?.(canvasIdForSave);
             console.warn('旧画布保存请求已被新的权威 revision 取代；保留合并结果并继续补偿保存', e.data);
           }
         } else if (pendingSaveByCanvasRef.current.get(canvasIdForSave)?.snapshot === snapshot
@@ -5802,7 +5886,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
     timer = window.setTimeout(flushPendingAutosave, 800);
     saveTimersByCanvasRef.current.set(canvasIdForSave, timer);
     pendingSaveFlushersByCanvasRef.current.set(canvasIdForSave, flushPendingAutosave);
-  }, [nodes, edges, creativeDesk, farmCanvas, activeId, loaded, loadedCanvasId, getViewport, dragSaveTick, enqueueCanvasMutation, setCanvasRevision, archiveReadOnly]);
+  }, [nodes, edges, creativeDesk, farmCanvas, activeId, loaded, loadedCanvasId, getViewport, dragSaveTick, enqueueCanvasMutation, setCanvasRevision, archiveReadOnly, persistenceRuntime]);
 
   useEffect(() => registerCanvasArchiveGuard(async (canvasId) => {
     const root = document.getElementById('root');
@@ -5852,52 +5936,19 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
   }, [archiveReadOnly, loaded]);
 
   useEffect(() => {
-    const subscribe = window.t8pc?.onCanvasCloseRequest;
-    if (!subscribe) return;
-    let disposed = false;
-    let releasePreviousHold: (() => void) | null = null;
-    const unsubscribe = subscribe(async (cancelled) => {
-      releasePreviousHold?.();
-      const root = document.getElementById('root');
-      const wasInert = root?.inert ?? false;
-      (document.activeElement as HTMLElement | null)?.blur?.();
-      if (root) root.inert = true;
-      const notice = document.createElement('div');
-      notice.setAttribute('role', 'status');
-      notice.textContent = t('generationHistory.savingBeforeClose');
-      Object.assign(notice.style, {
-        position: 'fixed', inset: '0', zIndex: '2147483647', display: 'grid',
-        placeItems: 'center', background: 'var(--bg-primary, #fff)',
-        color: 'var(--text-primary, #111827)', fontSize: '16px',
-      });
-      document.body.appendChild(notice);
-      let released = false;
-      let cancellationWatch: number | undefined;
-      const restore = () => {
-        if (released) return;
-        released = true;
-        window.clearInterval(cancellationWatch);
-        if (root) root.inert = wasInert;
-        notice.remove();
-      };
-      releasePreviousHold = restore;
-      // Also release the hold if the main-process deadline wins an IPC race
-      // just after the renderer produced its receipt.
-      cancellationWatch = window.setInterval(() => {
-        if (!disposed && !cancelled()) return;
-        restore();
-      }, 50);
-      let accepted = false;
-      try {
-        flushCanvasViewportStorage();
-        const result = await waitForCanvasCloseSave({
-          cancelled: () => disposed || cancelled(),
-          read: () => {
+    const observer: CanvasCloseObserver = {
+      prepare: flushCanvasViewportStorage,
+      read: () => {
             const bus = useRunBusStore.getState();
             if (activeCanvasRunsRef.current.size || Object.keys(bus.executionTokens).length) {
               return { dirty: true, queued: false, blocked: 'running' };
             }
-            if ([...pendingSaveByCanvasRef.current.values()].some((pending) => pending.conflicted)) {
+            const blocked = [...pendingSaveByCanvasRef.current.entries()].find(([id, pending]) => (
+              pending.conflicted && !canvasSaveRecoveryFlightsRef.current.has(id)
+            ));
+            if (blocked) {
+              // An off-screen dirty canvas must have a visible resolution path.
+              if (useCanvasStore.getState().activeId !== blocked[0]) useCanvasStore.getState().setActive(blocked[0]);
               return { dirty: true, queued: false, blocked: 'conflict' };
             }
             const canvasId = useCanvasStore.getState().activeId;
@@ -5905,10 +5956,22 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
               ? persistableCanvasPatchStateFromParts(nodesRef.current, edgesRef.current,
                 creativeDeskRef.current, farmCanvasRef.current, nextNodeSerialIdRef.current)
               : null;
+            if (current && lastSavedByCanvasRef.current.get(canvasId!) === current.snapshot
+              && !pendingSaveByCanvasRef.current.has(canvasId!)) {
+              const dormant = [...pendingSaveByCanvasRef.current.keys()].find((id) => (
+                id !== canvasId && !canvasMutationQueuesRef.current.has(id)
+                && !pendingSaveFlushersByCanvasRef.current.has(id) && !canvasSaveRecoveryFlightsRef.current.has(id)
+              ));
+              // A merged off-screen edit needs the normal activation/autosave
+              // path before close, rather than timing out on an invisible draft.
+              if (dormant) useCanvasStore.getState().setActive(dormant);
+            }
             return {
               dirty: pendingSaveByCanvasRef.current.size > 0
+                || !!(canvasId && (!loadedRef.current || loadedCanvasIdRef.current !== canvasId))
                 || !!(current && lastSavedByCanvasRef.current.get(canvasId!) !== current.snapshot),
-              queued: canvasMutationQueuesRef.current.size > 0 || saveTimersByCanvasRef.current.size > 0,
+              queued: canvasMutationQueuesRef.current.size > 0 || saveTimersByCanvasRef.current.size > 0
+                || canvasSaveRecoveryFlightsRef.current.size > 0,
             };
           },
           flush: () => {
@@ -5917,16 +5980,10 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
             // A just-blurred input may not have scheduled its effect yet.
             if (!flushers.length && !canvasMutationQueuesRef.current.size) setDragSaveTick((tick) => tick + 1);
           },
-        });
-        accepted = result.ok && !disposed && !cancelled();
-        return accepted ? result : { ok: false, reason: result.reason || 'save' };
-      } finally {
-        // On success keep input frozen until main closes this exact window.
-        if (!accepted) restore();
-      }
-    });
-    return () => { disposed = true; unsubscribe(); releasePreviousHold?.(); };
-  }, [flushCanvasViewportStorage, t]);
+    };
+    persistenceRuntime.closeObserver = observer;
+    return () => { if (persistenceRuntime.closeObserver === observer) persistenceRuntime.closeObserver = null; };
+  }, [flushCanvasViewportStorage, persistenceRuntime]);
 
   const getCreativeDeskCenter = useCallback(() => {
     const flowEl = document.querySelector('.react-flow') as HTMLElement | null;
@@ -6646,6 +6703,9 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
         if (!Number.isSafeInteger(revision) || revision <= previousRevision) {
           throw new Error('保存 Patch 基线后未获得递增的有效 revision');
         }
+        if (revision < (canvasRevisionsRef.current.get(canvasId) || 0)) {
+          throw new StaleCanvasLoadError();
+        }
         setCanvasRevision(canvasId, revision);
         lastSavedByCanvasRef.current.set(canvasId, current.snapshot);
         lastSavedNodeCountByCanvasRef.current.set(canvasId, current.nodes.length);
@@ -6664,6 +6724,10 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
             : canvas),
         }));
       } catch (error) {
+        if (error instanceof StaleCanvasLoadError) {
+          persistenceRuntime.notifyPersistence?.(canvasId);
+          throw error;
+        }
         if (useCanvasStore.getState().activeId === canvasId && loadedCanvasId === canvasId) {
           const latest = currentPersistableCanvas();
           const existing = pendingSaveByCanvasRef.current.get(canvasId);
@@ -6703,14 +6767,18 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       throw stale;
     }
     return { ...current, revision, mutationEpoch };
-  }, [currentPersistableCanvas, loaded, loadedCanvasId, setCanvasRevision]);
+  }, [currentPersistableCanvas, loaded, loadedCanvasId, setCanvasRevision, persistenceRuntime]);
 
   const commitAuthoritativeCanvasPatchDocument = useCallback((
     canvasId: string,
     inputDocument: VersionedCanvasData,
     options?: { expectedLocalSnapshot?: string; historyMode?: 'transition' | 'reset'; patchId?: string },
   ) => {
+    if (persistenceRuntime.retiredCanvasIds.has(canvasId)) throw new Error('Canvas was explicitly deleted');
     const document = requireVersionedCanvasPatchDocument(inputDocument, canvasId);
+    if (document.revision < (canvasRevisionsRef.current.get(canvasId) || 0)) {
+      throw new StaleCanvasLoadError();
+    }
     const isActive = useCanvasStore.getState().activeId === canvasId
       && loadedRef.current && loadedCanvasIdRef.current === canvasId;
     const activeLocal = isActive ? currentPersistableCanvas() : null;
@@ -6752,6 +6820,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       ? mergeConcurrentCanvasPatchState(options!.expectedLocalSnapshot!, local, authoritativeState)
       : { state: authoritativeState, conflicts: [] as CanvasPatchMergeConflict[] };
     const renderedState = mergeResult.state;
+    latestPersistableByCanvasRef.current.set(canvasId, renderedState);
     autosaveGenerationByCanvasRef.current.set(
       canvasId,
       (autosaveGenerationByCanvasRef.current.get(canvasId) || 0) + 1,
@@ -6814,7 +6883,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       conflicts: mergeResult.conflicts,
       state: renderedState,
     };
-  }, [cancelScheduledHistoryCapture, currentPersistableCanvas, histCaptureTransition, histReset, setCanvasRevision]);
+  }, [cancelScheduledHistoryCapture, currentPersistableCanvas, histCaptureTransition, histReset, setCanvasRevision, persistenceRuntime]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -6887,12 +6956,54 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
     return () => window.removeEventListener('penguin:canvas-background-node-patched', handleBackgroundNodePatched);
   }, [commitAuthoritativeCanvasPatchDocument, currentPersistableCanvas]);
 
-  const fetchAuthoritativeCanvasPatchDocument = useCallback(async (canvasId: string) => {
-    const document = requireVersionedCanvasPatchDocument(await api.getCanvasData(canvasId), canvasId);
+  useEffect(() => {
+    const commit = (canvasId: string, document: VersionedCanvasData, baseline: string, historyMode?: 'transition' | 'reset', patchId?: string) => (
+      commitAuthoritativeCanvasPatchDocument(canvasId, document, { expectedLocalSnapshot: baseline, historyMode, patchId })
+    );
+    persistenceRuntime.recoveryCommit = commit;
+    return () => { if (persistenceRuntime.recoveryCommit === commit) persistenceRuntime.recoveryCommit = null; };
+  }, [commitAuthoritativeCanvasPatchDocument, persistenceRuntime]);
+
+  const fetchAuthoritativeCanvasPatchDocument = useCallback(async (canvasId: string, options: { signal?: AbortSignal } = {}) => {
+    if (persistenceRuntime.retiredCanvasIds.has(canvasId)) throw new Error('Canvas was explicitly deleted');
+    const document = requireVersionedCanvasPatchDocument(await api.getCanvasData(canvasId, options), canvasId);
+    if (persistenceRuntime.retiredCanvasIds.has(canvasId)) throw new Error('Canvas was explicitly deleted');
     const knownRevision = canvasRevisionsRef.current.get(canvasId) || 0;
     if (document.revision < knownRevision) throw new Error('服务端返回了倒退的画布 revision');
     return document;
-  }, []);
+  }, [persistenceRuntime]);
+
+  const recoverCanvasSave = useCallback((canvasId: string, manual = false): Promise<void> => {
+    if (persistenceRuntime.disposed || persistenceRuntime.retiredCanvasIds.has(canvasId)) return Promise.resolve();
+    const existing = canvasSaveRecoveryFlightsRef.current.get(canvasId);
+    if (existing) return existing;
+    const epoch = persistenceRuntime.recoveryEpoch;
+    const flight = enqueueCanvasMutation(canvasId, async () => {
+      const outcome = await recoverCanvasRevisionConflict({
+        canvasId, manual, attempts: canvasSaveRecoveryAttemptsRef.current,
+        cancelled: () => persistenceRuntime.disposed || persistenceRuntime.recoveryEpoch !== epoch
+          || persistenceRuntime.retiredCanvasIds.has(canvasId),
+        readPending: () => pendingSaveByCanvasRef.current.get(canvasId) || null,
+        load: () => fetchAuthoritativeCanvasPatchDocument(canvasId, { signal: AbortSignal.timeout(5000) }),
+        commit: (document, baseline) => {
+          if (!persistenceRuntime.recoveryCommit) throw new Error('Canvas editor is being replaced; local content retained');
+          return persistenceRuntime.recoveryCommit(canvasId, document, baseline);
+        },
+      });
+      if (!pendingSaveByCanvasRef.current.has(canvasId)) canvasSaveRecoveryAttemptsRef.current.delete(canvasId);
+      if (outcome === 'limited') {
+        if (useCanvasStore.getState().activeId === canvasId) setCanvasPatchConflictMessage(t('canvasSave:busySource'));
+      } else if (outcome === 'reconciled') {
+        logBus.info('保存序号已同步；无冲突内容已合并，后续仍通过原CAS队列确认保存。', '画布同步');
+      }
+    });
+    canvasSaveRecoveryFlightsRef.current.set(canvasId, flight);
+    void flight.finally(() => {
+      if (canvasSaveRecoveryFlightsRef.current.get(canvasId) === flight) canvasSaveRecoveryFlightsRef.current.delete(canvasId);
+    }).catch(() => undefined);
+    return flight;
+  }, [enqueueCanvasMutation, fetchAuthoritativeCanvasPatchDocument, persistenceRuntime, t]);
+  recoverCanvasSaveRef.current = recoverCanvasSave;
 
   useEffect(() => {
     if (!activeId || !loaded || loadedCanvasId !== activeId) return;
@@ -7123,20 +7234,18 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
         throw staleError;
       }
       const result = await api.applyCanvasPatch(canvasId, patch, preview.previewDigest);
-      const authoritativeDocument = result.duplicate
+      const authoritativeDocument = result.duplicate || result.document.revision < (canvasRevisionsRef.current.get(canvasId) || 0)
         ? await fetchAuthoritativeCanvasPatchDocument(canvasId)
         : result.document;
-      commitAuthoritativeCanvasPatchDocument(canvasId, authoritativeDocument, {
-        expectedLocalSnapshot: baseline.snapshot,
-        patchId: patch.id,
-      });
+      if (!persistenceRuntime.recoveryCommit) throw new Error('Canvas editor unavailable; local content retained');
+      persistenceRuntime.recoveryCommit(canvasId, authoritativeDocument, baseline.snapshot, undefined, patch.id);
       for (const key of patchPreviewBaselinesRef.current.keys()) {
         if (key.startsWith(`${canvasId}\u001f`)) patchPreviewBaselinesRef.current.delete(key);
       }
       logBus.success(`${result.duplicate ? '已确认' : '已应用'}修复：${patch.summary}`, '工作流医生');
       return result;
     });
-  }, [activeId, commitAuthoritativeCanvasPatchDocument, currentPersistableCanvas, enqueueCanvasMutation, fetchAuthoritativeCanvasPatchDocument]);
+  }, [activeId, currentPersistableCanvas, enqueueCanvasMutation, fetchAuthoritativeCanvasPatchDocument, persistenceRuntime]);
 
   useEffect(() => {
     const handleScriptMasterPatchRequest = (event: Event) => {
@@ -7178,20 +7287,18 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
         };
         result = await api.revertCanvasPatch(canvasId, patchId, refreshed.document.revision);
       }
-      const authoritativeDocument = result.duplicate
+      const authoritativeDocument = result.duplicate || result.document.revision < (canvasRevisionsRef.current.get(canvasId) || 0)
         ? await fetchAuthoritativeCanvasPatchDocument(canvasId)
         : result.document;
-      commitAuthoritativeCanvasPatchDocument(canvasId, authoritativeDocument, {
-        expectedLocalSnapshot: baseline.snapshot,
-        patchId,
-      });
+      if (!persistenceRuntime.recoveryCommit) throw new Error('Canvas editor unavailable; local content retained');
+      persistenceRuntime.recoveryCommit(canvasId, authoritativeDocument, baseline.snapshot, undefined, patchId);
       for (const key of patchPreviewBaselinesRef.current.keys()) {
         if (key.startsWith(`${canvasId}\u001f`)) patchPreviewBaselinesRef.current.delete(key);
       }
       logBus.success(`已撤回我的 Patch：${patchId}`, '工作流医生');
       return result;
     });
-  }, [activeId, commitAuthoritativeCanvasPatchDocument, enqueueCanvasMutation, ensureCanvasPatchBaseline, fetchAuthoritativeCanvasPatchDocument, refreshCleanCanvasPatchBaseline]);
+  }, [activeId, enqueueCanvasMutation, ensureCanvasPatchBaseline, fetchAuthoritativeCanvasPatchDocument, refreshCleanCanvasPatchBaseline, persistenceRuntime]);
 
   const handleResolveCanvasPatchConflict = useCallback(async (resolution: 'keep-local' | 'use-authoritative') => {
     const canvasId = activeId;
@@ -7207,6 +7314,10 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
         throw new Error('画布作用域已变化，请回到原画布后重试');
       }
       const localAtConfirmation = currentPersistableCanvas();
+      const commitResolution = (document: VersionedCanvasData) => {
+        if (persistenceRuntime.disposed || !persistenceRuntime.recoveryCommit) throw new Error('Canvas editor unavailable; local content retained');
+        return persistenceRuntime.recoveryCommit(canvasId, document, localAtConfirmation.snapshot, 'reset');
+      };
       const authoritativeDocument = await fetchAuthoritativeCanvasPatchDocument(canvasId);
       if (resolution === 'keep-local') {
         const authoritativeCreativeDesk = authoritativeDocument.creativeDesk
@@ -7263,21 +7374,15 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
         setCanvasRevision(canvasId, savedRevision);
         if (allowEmpty) allowEmptySaveCanvasIdsRef.current.delete(canvasId);
         const savedDocument = await fetchAuthoritativeCanvasPatchDocument(canvasId);
-        commitAuthoritativeCanvasPatchDocument(canvasId, savedDocument, {
-          expectedLocalSnapshot: localAtConfirmation.snapshot,
-          historyMode: 'reset',
-        });
+        commitResolution(savedDocument);
         logBus.success('本地修改已与最新服务端版本合并，并保存为新的 revision。', '画布同步');
         return;
       }
 
-      commitAuthoritativeCanvasPatchDocument(canvasId, authoritativeDocument, {
-        expectedLocalSnapshot: localAtConfirmation.snapshot,
-        historyMode: 'reset',
-      });
+      commitResolution(authoritativeDocument);
       logBus.success('已显式采用最新服务端版本；点击确认后的新增本地编辑仍会保留。', '画布同步');
     });
-  }, [activeId, commitAuthoritativeCanvasPatchDocument, currentPersistableCanvas, enqueueCanvasMutation, fetchAuthoritativeCanvasPatchDocument, getViewport, setCanvasRevision]);
+  }, [activeId, currentPersistableCanvas, enqueueCanvasMutation, fetchAuthoritativeCanvasPatchDocument, getViewport, setCanvasRevision, persistenceRuntime]);
 
   const handleOpenNestedSubflow = useCallback(async (node: Node) => {
     if (node.type !== 'subflow') return;
@@ -9506,6 +9611,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
     const RUNTIME_KEYS = [
       'status', 'taskId', 'progress', 'error',
       'isRunning', 'isPolling', 'pollingTimer',
+      'motionPending', 'motionAcceptanceUnknown', 'motionStage', 'motionProgress', 'motionBaseVersionId', 'motionRevisionInstruction', 'motionOperation',
     ];
     const sanitize = (data: any) => {
       const next: any = { ...(data || {}) };
@@ -9610,12 +9716,12 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       version: 2,
       exportedAt: new Date().toISOString(),
       canvas: { id: activeId || 'export' },
-      nodes,
-      edges,
+      nodes: nodesRef.current,
+      edges: edgesRef.current,
       viewport: getViewport(),
       nextNodeSerialId: nextNodeSerialIdRef.current,
-      creativeDesk,
-      farmCanvas,
+      creativeDesk: creativeDeskRef.current,
+      farmCanvas: farmCanvasRef.current,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -11105,7 +11211,10 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       isDraggingRef.current = true;
       setNodeDragging(true);
       altDragCloneRef.current = null;
-      if (!isAltModifierActive(e, altNodeDragIntentRef.current || altKeyPressedRef.current)) return;
+      if (!isAltModifierActive(e, altNodeDragIntentRef.current || altKeyPressedRef.current)) {
+        setNodes((prev) => markManualAutoOutputDrag(prev, node.id));
+        return;
+      }
       // ALT 按下: 确定被拖动的节点集合
       const selected = nodes.filter((n) => n.selected);
       const targets = selected.length > 0 && selected.some((n) => n.id === node.id)
@@ -11460,7 +11569,8 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       const phToOrig = new Map<string, string>();
       placeholderIds.forEach((phId, origId) => phToOrig.set(phId, origId));
       // 运行时字段黑名单
-      const RUNTIME_KEYS = ['status', 'taskId', 'progress', 'error', 'isRunning', 'isPolling', 'pollingTimer'];
+      const RUNTIME_KEYS = ['status', 'taskId', 'progress', 'error', 'isRunning', 'isPolling', 'pollingTimer',
+        'motionPending', 'motionAcceptanceUnknown', 'motionStage', 'motionProgress', 'motionBaseVersionId', 'motionRevisionInstruction', 'motionOperation'];
       const sanitize = (data: any) => {
         const next: any = { ...(data || {}) };
         for (const k of RUNTIME_KEYS) delete next[k];
@@ -11542,23 +11652,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
     // 标记被用户手动拖动过的自动外挂 OutputNode (id 以 'output-auto-' 开头),
     // 后续「网格重排」useEffect 会检测 data.userMoved 跳过这些节点, 保留用户位置。
     // 多选拖动场景: xyflow 只传主拖 node, 本函数连同所有 selected 且带该前缀的节点都打上标记。
-    setNodes((prev) => {
-      const selectedAutoOutputIds = new Set<string>();
-      for (const n of prev) {
-        if (n.selected && typeof n.id === 'string' && n.id.startsWith('output-auto-')) {
-          selectedAutoOutputIds.add(n.id);
-        }
-      }
-      if (typeof node?.id === 'string' && node.id.startsWith('output-auto-')) {
-        selectedAutoOutputIds.add(node.id);
-      }
-      if (selectedAutoOutputIds.size === 0) return prev;
-      return prev.map((n) =>
-        selectedAutoOutputIds.has(n.id)
-          ? { ...n, data: { ...((n.data as any) || {}), userMoved: true } }
-          : n
-      );
-    });
+    if (node?.id) setNodes((prev) => markManualAutoOutputDrag(prev, node.id));
   
     groupDragRef.current = null;
   }, []);
@@ -12029,7 +12123,9 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       // Dialog controls must stay usable, but document-scoped ReactFlow keys
       // cannot mutate the canvas underneath an inert application root.
       if (document.getElementById('root')?.inert) {
-        changes = changes.filter((change) => change.type === 'dimensions');
+        const editingDialogActive = Boolean(document.querySelector('[data-canvas-editing-dialog]'))
+          && !document.querySelector('[data-canvas-close-hold]');
+        changes = filterInertCanvasNodeChanges(changes, editingDialogActive);
         if (changes.length === 0) return;
       }
       const { runtimeChanges, visibleChanges } = partitionRunReplayRuntimeNodeChanges(
@@ -13143,7 +13239,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       if (!(n as any).measured?.width) continue;
       // model-3d-preview keeps modelUrl/modelUrls in its own data for download/switching.
       // Only ignore those model fields; its snapshot image still needs normal auto output.
-      const shouldCollectModelOutputs = t !== 'model-3d-preview';
+      const shouldCollectModelOutputs = t !== 'model-3d-preview' && t !== 'world-scene';
       // v1.2.8.2: 循环器仅在完成后才让 autoOutput 处理, 避免运行中注入 items[i] 时被误认为
       // “已生产产物” 并创建个空的 OutputNode。在 status='success' 时 d.imageUrls/videoUrls/audioUrls
       // 数组才是最终聚合产物, 交给 autoOutput 判并拆为 N 个 OutputNode (每行 3 个网格)。
@@ -13746,93 +13842,14 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
   // 按 pickIndex 排序, 取各列 max(width)、各行 max(height) 作为列宽/行高,
   // 重新计算 position 使节点沿边对齐且互不遮挡。
   // 只动 id 以 'output-auto-' 开头的节点, 避免影响手动创建的 OutputNode。
-  const REORDER_GAP = 30;
-  const REORDER_COLS = 3;
   useEffect(() => {
     if (!loaded) return;
-    // 按 source 分组收集自动外挂的 OutputNode
-    const groups = new Map<string, Node[]>();
-    for (const e of edges) {
-      if (!e.id.startsWith('e-auto-')) continue;
-      const target = nodes.find((n) => n.id === e.target);
-      if (!target || target.type !== 'output') continue;
-      if (!target.id.startsWith('output-auto-')) continue;
-      let g = groups.get(e.source);
-      if (!g) {
-        g = [];
-        groups.set(e.source, g);
-      }
-      g.push(target);
-    }
-    if (groups.size === 0) return;
-
-    const updates = new Map<string, { x: number; y: number }>();
-    for (const [srcId, list] of groups) {
-      const src = nodes.find((n) => n.id === srcId);
-      if (!src) continue;
-      // 按 pickIndex 排序, 保证顺序与上游输出一致
-      list.sort((a, b) => {
-        const ai = (a.data as any)?.pickIndex ?? 0;
-        const bi = (b.data as any)?.pickIndex ?? 0;
-        return ai - bi;
-      });
-      // measured 优先, 未渲染出来前回退到占位尺寸
-      const dims = list.map((n) => ({
-        w: (n as any).measured?.width || (n as any).width || 320,
-        h: (n as any).measured?.height || (n as any).height || 360,
-      }));
-      const rowsCount = Math.ceil(list.length / REORDER_COLS);
-      const colMaxW = new Array(REORDER_COLS).fill(0);
-      const rowMaxH = new Array(rowsCount).fill(0);
-      list.forEach((_, i) => {
-        const c = i % REORDER_COLS;
-        const r = Math.floor(i / REORDER_COLS);
-        if (dims[i].w > colMaxW[c]) colMaxW[c] = dims[i].w;
-        if (dims[i].h > rowMaxH[r]) rowMaxH[r] = dims[i].h;
-      });
-      // 累加出各列 / 各行 的起点偏移
-      const colX = new Array(REORDER_COLS).fill(0);
-      for (let c = 1; c < REORDER_COLS; c++) {
-        colX[c] = colX[c - 1] + colMaxW[c - 1] + REORDER_GAP;
-      }
-      const rowY = new Array(rowsCount).fill(0);
-      for (let r = 1; r < rowsCount; r++) {
-        rowY[r] = rowY[r - 1] + rowMaxH[r - 1] + REORDER_GAP;
-      }
-      const srcW = (src as any).measured?.width || (src as any).width || 320;
-      const srcH = (src as any).measured?.height || (src as any).height || 360;
-      // v1.2.10.5-hotfix4: reorder 只负责内部网格对齐，不做碰撞避让（避让是 autoOutput 的职责）。
-      // 用第一个节点的当前位置作为锚点，保留 autoOutput 算好的偏移，避免无限循环。
-      const naturalBaseX = (src.position?.x ?? 0) + srcW + 80;
-      // v1.2.10.7: naturalBaseY 对齐源节点垂直中心
-      const _totalGridH = rowY[rowsCount - 1] + rowMaxH[rowsCount - 1];
-      const naturalBaseY = (src.position?.y ?? 0) + srcH / 2 - _totalGridH / 2;
-      const firstNode = list[0];
-      const baseX = firstNode.position?.x ?? naturalBaseX;
-      const baseY = firstNode.position?.y ?? naturalBaseY;
-      // 内部网格布局：直接用 baseX + colX/rowY 对齐，不做外部碰撞检测（避免无限循环）
-      list.forEach((n, i) => {
-        const c = i % REORDER_COLS;
-        const r = Math.floor(i / REORDER_COLS);
-        const newX = baseX + colX[c];
-        const newY = baseY + rowY[r];
-        const cx = n.position?.x ?? 0;
-        const cy = n.position?.y ?? 0;
-        // 用户手动拖动过的节点 (data.userMoved=true) 跳过, 保留位置
-        if ((n.data as any)?.userMoved === true) return;
-        // 误差大于 1px 才修正, 避免微量抖动触发无限重渲染
-        if (Math.abs(cx - newX) > 1 || Math.abs(cy - newY) > 1) {
-          updates.set(n.id, { x: newX, y: newY });
-        }
-      });
-    }
+    const updates = automaticOutputGridPositions(nodes, edges);
     if (updates.size > 0) {
-      setNodes((prev) =>
-        prev.map((n) => {
-          const p = updates.get(n.id);
-          return p ? { ...n, position: p } : n;
-        })
-      );
+      setNodes((prev) => prev.map((node) => {
+        const position = updates.get(node.id);
+        return position ? { ...node, position } : node;
+      }));
     }
   }, [nodes, edges, loaded]);
 
@@ -13943,6 +13960,49 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
     pulseNearestNode(target.id);
   }, [activeId, getViewport, loaded, loadedCanvasId, setCenter]);
 
+  const revealCreatorCanvasNode = useCallback(async (nodeId: string, placement: {
+    assetId: string; contentHash?: string | null; canvasRevision?: number | null;
+  }) => {
+    const canvasId = String(activeId || '');
+    const projectId = String(activeProjectId || '');
+    const assertScope = () => {
+      if (!canvasId || !projectId || !loadedRef.current || loadedCanvasIdRef.current !== canvasId
+        || useCanvasStore.getState().activeId !== canvasId || activeProjectIdRef.current !== projectId) {
+        throw new Error('CREATOR_CANVAS_SCOPE_CHANGED');
+      }
+    };
+    assertScope();
+    return enqueueCanvasMutation(canvasId, async () => {
+      assertScope();
+      const baseline = lastSavedByCanvasRef.current.get(canvasId);
+      if (!baseline) throw new Error('CREATOR_CANVAS_SCOPE_CHANGED');
+      const document = await fetchAuthoritativeCanvasPatchDocument(canvasId);
+      assertScope();
+      if (placement.canvasRevision != null && (!Number.isSafeInteger(placement.canvasRevision)
+        || placement.canvasRevision < 1 || document.revision < placement.canvasRevision)) {
+        throw new Error('CREATOR_CANVAS_REVISION_PENDING');
+      }
+      const target = document.nodes.find((node) => node.id === nodeId);
+      const bindings = Array.isArray(target?.data?.referenceBindings) ? target.data.referenceBindings : [];
+      if (!target || target.data?.sourceAssetId !== placement.assetId
+        || (placement.contentHash && !bindings.some((binding: { assetId?: unknown; contentHash?: unknown } | null) => binding?.assetId === placement.assetId && binding?.contentHash === placement.contentHash))) {
+        throw new Error('CREATOR_CANVAS_NODE_MISSING');
+      }
+      // A placement is already committed by the backend. Read it into the
+      // existing three-way merge/CAS machinery before selecting or centering.
+      const committed = commitAuthoritativeCanvasPatchDocument(canvasId, document, { expectedLocalSnapshot: baseline });
+      assertScope();
+      const visibleTarget = committed.state.nodes.find((node) => node.id === nodeId);
+      if (!committed.active || !visibleTarget) throw new Error('CREATOR_CANVAS_NODE_MISSING');
+      setNodes((previous) => previous.map((node) => ({ ...node, selected: node.id === nodeId })));
+      const rect = rectOf(visibleTarget);
+      const zoom = Math.min(Math.max(getViewport().zoom || 1, 0.55), 1.15);
+      setCenter(rect.x + rect.w / 2, rect.y + rect.h / 2, { zoom, duration: 450 });
+      pulseNearestNode(nodeId);
+    });
+  }, [activeId, activeProjectId, commitAuthoritativeCanvasPatchDocument, enqueueCanvasMutation,
+    fetchAuthoritativeCanvasPatchDocument, getViewport, setCenter]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const handoffId = String(params.get('zcanvasHandoff') || '').trim();
@@ -14002,6 +14062,8 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
     const onClipboardKeyCapture = (e: KeyboardEvent) => {
       if (document.querySelector('[data-canvas-manager="true"], [data-canvas-restore="true"]')) return;
       if (document.getElementById('root')?.inert) {
+        const dialog = (e.target as Element | null)?.closest?.('[role="dialog"],[role="alertdialog"]');
+        if (dialog && !dialog.closest('[inert]')) return;
         // Returning alone still lets ReactFlow's document key listener delete
         // selected nodes. Stop the event before it reaches any lower listener.
         e.preventDefault();
@@ -14009,6 +14071,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
         return;
       }
       if (document.querySelector('[data-canvas-floating-ui="image-detail-viewer"]')) return;
+      if ((e.target as Element | null)?.closest?.('[data-canvas-save-conflict="true"]')) return;
       if (isEditingEvent(e)) return;
       if (matchesAnyShortcut(shortcuts['canvas.copy'], e)) {
         clipboardHandledEvents.add(e);
@@ -15179,6 +15242,12 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
         onConfirm={handleConfirmRunPreflight}
         onCancel={handleCancelRunPreflight}
       />
+      {canvasPatchConflictMessage && loaded && activeId === loadedCanvasId && <CanvasSaveConflictNotice
+        key={activeId}
+        onExport={handleExport}
+        onRetry={async () => { await recoverCanvasSave(activeId!, true); }}
+        onResolve={handleResolveCanvasPatchConflict}
+      />}
       <ProjectWorkbench
         open={projectWorkbenchOpen && loaded && loadedCanvasId === renderedCanvasId && activeProjectId != null}
         canvasId={renderedCanvasId}
@@ -15220,7 +15289,7 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
           visualStyle={visualStyle}
           themeMode={theme}
           themeTokens={themeTokens}
-          onFocusNode={focusGenerationHistoryNode}
+          onFocusNode={revealCreatorCanvasNode}
           apiSettingsRevision={apiSettingsRevision}
           onOpenApiSettings={onOpenApiSettings}
         />
@@ -16586,67 +16655,8 @@ function CanvasInner({ onAddNodeRef, onInsertWorkflowRef, onReadinessChange, onR
       })()}
 
       {/* 画布空白区右键菜单: 快速添加节点 */}
-      {paneMenu && (() => {
-        const QUICK_NODES = NODE_REGISTRY.filter(
-          (n) => n.category === 'input' || n.category === 'core'
-        );
-        const COLOR_HEX: Record<string, string> = {
-          sky: '#7dd3fc', amber: '#fcd34d', rose: '#fda4af', fuchsia: '#f0abfc',
-          violet: '#c4b5fd', emerald: '#6ee7b7', cyan: '#67e8f9', indigo: '#a5b4fc',
-          orange: '#fdba74', pink: '#f9a8d4', slate: '#cbd5e1', teal: '#5eead4',
-        };
-        const itemCls = 't8-context-menu__item';
-        return (
-          <>
-            {/* 遮罩层 */}
-            <div
-              data-canvas-floating-ui="pane-menu-backdrop"
-              className="fixed inset-0 z-30"
-              onClick={closePaneMenu}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                closePaneMenu();
-              }}
-            />
-            <div
-              data-canvas-floating-ui="pane-menu"
-              className="fixed z-40 overflow-hidden t8-context-menu t8-context-menu--quick-add"
-              style={{
-                left: Math.min(paneMenu.x, window.innerWidth - 220),
-                top: Math.min(paneMenu.y, window.innerHeight - 360),
-                width: 200,
-              }}
-            >
-              <div className="t8-context-menu__header">
-                快速添加节点
-              </div>
-              {QUICK_NODES.map((meta) => {
-                const Icon = (LucideIcons as any)[meta.icon] || LucideIcons.Box;
-                const color = COLOR_HEX[meta.color] || COLOR_HEX.slate;
-                return (
-                  <button
-                    key={meta.type}
-                    className={itemCls}
-                    onClick={() => {
-                      const at = { x: paneMenu.x, y: paneMenu.y };
-                      closePaneMenu();
-                      addNode(meta.type as NodeType, { atScreen: at });
-                    }}
-                  >
-                    <span
-                      className="t8-context-menu__node-icon"
-                      style={{ '--t8-menu-icon-color': color } as CSSProperties}
-                    >
-                      <Icon size={13} />
-                    </span>
-                    <span className="flex-1 truncate">{meta.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        );
-      })()}
+      {paneMenu && <CanvasQuickAddMenu point={paneMenu} containerRef={canvasShellRef}
+        onClose={closePaneMenu} onAdd={(type, at) => addNode(type, { atScreen: at })} />}
     </div>
   );
 }
@@ -16666,10 +16676,29 @@ export default function Canvas(props: CanvasProps) {
   const persistenceRuntimeRef = useRef<CanvasPersistenceRuntime | null>(null);
   const persistenceRuntime = persistenceRuntimeRef.current || createCanvasPersistenceRuntime();
   persistenceRuntimeRef.current = persistenceRuntime;
+  useEffect(() => subscribeCanvasDeletion((canvasId) => {
+    persistenceRuntime.retiredCanvasIds.add(canvasId);
+    const timer = persistenceRuntime.saveTimersByCanvas.get(canvasId);
+    if (timer !== undefined) window.clearTimeout(timer);
+    for (const map of [persistenceRuntime.saveTimersByCanvas, persistenceRuntime.pendingSaveFlushersByCanvas,
+      persistenceRuntime.pendingSaveByCanvas, persistenceRuntime.latestPersistableByCanvas,
+      persistenceRuntime.autosaveGenerationByCanvas, persistenceRuntime.lastSavedByCanvas,
+      persistenceRuntime.lastSavedNodeCountByCanvas, persistenceRuntime.canvasRevisions,
+      persistenceRuntime.canvasMutationQueues, persistenceRuntime.recoveryAttempts, persistenceRuntime.recoveryFlights]) map.delete(canvasId);
+    for (const set of [persistenceRuntime.skipInitialAutosaveCanvasIds, persistenceRuntime.skipInitialHistoryCanvasIds,
+      persistenceRuntime.allowEmptySaveCanvasIds]) set.delete(canvasId);
+  }), [persistenceRuntime]);
+  useEffect(() => {
+    persistenceRuntime.disposed = false;
+    return () => { persistenceRuntime.disposed = true; persistenceRuntime.recoveryEpoch += 1; };
+  }, [persistenceRuntime]);
 
   return (
+    <>
+    <CanvasCloseGuard runtime={persistenceRuntime} />
     <ReactFlowProvider key={activeCanvasId || 'canvas-empty'}>
       <CanvasInner {...props} persistenceRuntime={persistenceRuntime} />
     </ReactFlowProvider>
+    </>
   );
 }

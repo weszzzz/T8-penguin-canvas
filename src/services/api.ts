@@ -93,6 +93,7 @@ import type {
 } from '../types/project';
 import type { SubflowDefinition } from '../utils/subflows';
 import { HISTORY_QUERY_TIMEOUT, withHistoryRequestDeadline } from '../utils/historyRequestDeadline';
+import { canvasBackendFetch } from '../utils/canvasExitTransport';
 import {
   canvasDatabaseRecoveryPlanFromPayload,
   type CanvasDatabaseRecoveryPlan,
@@ -193,7 +194,7 @@ export interface CollaborationParticipantSession {
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData;
-  const res = await fetch(url, {
+  const res = await canvasBackendFetch(url, {
     ...init,
     headers: {
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
@@ -222,7 +223,7 @@ let frontendInteractiveRequest: Promise<boolean> | null = null;
 
 export async function checkBackendStatus(): Promise<boolean> {
   try {
-    const res = await fetch(`${BASE}/status`);
+    const res = await canvasBackendFetch(`${BASE}/status`);
     if (!res.ok) return false;
     try {
       const status = await res.json() as {
@@ -251,7 +252,7 @@ export async function checkBackendStatus(): Promise<boolean> {
 export function markBackendFrontendInteractive(): Promise<boolean> {
   if (frontendInteractiveSignalled) return Promise.resolve(true);
   if (frontendInteractiveRequest) return frontendInteractiveRequest;
-  frontendInteractiveRequest = fetch(`${BASE}/status/interactive`, { method: 'POST' })
+  frontendInteractiveRequest = canvasBackendFetch(`${BASE}/status/interactive`, { method: 'POST' })
     .then((res) => {
       frontendInteractiveSignalled = res.ok;
       return res.ok;
@@ -371,8 +372,8 @@ export async function createCanvas(name?: string): Promise<CanvasListItem> {
   return res.data;
 }
 
-export async function getCanvasData(id: string): Promise<CanvasData> {
-  const res = await request<{ success: boolean; data: CanvasData }>(`${BASE}/canvas/${id}`);
+export async function getCanvasData(id: string, options: { signal?: AbortSignal } = {}): Promise<CanvasData> {
+  const res = await request<{ success: boolean; data: CanvasData }>(`${BASE}/canvas/${id}`, options);
   return res.data;
 }
 
@@ -3255,7 +3256,7 @@ export async function importSubflowPackage(file: File, archiveSha256: string, pr
 
 export async function downloadSubflowPackage(definition: Pick<SubflowDefinition, 'id' | 'version' | 'projectId' | 'name'>): Promise<void> {
   const projectId = definition.projectId ? `?projectId=${encodeURIComponent(definition.projectId)}` : '';
-  const response = await fetch(`${BASE}/subflows/${encodeURIComponent(definition.id)}/${definition.version}/package${projectId}`);
+  const response = await canvasBackendFetch(`${BASE}/subflows/${encodeURIComponent(definition.id)}/${definition.version}/package${projectId}`);
   if (!response.ok) {
     let message = `HTTP ${response.status}`;
     try { message = (await response.json()).error || message; } catch (_) { /* ignore */ }
@@ -3282,7 +3283,7 @@ export async function getTaskCompletionSoundSettings(): Promise<TaskCompletionSo
 export async function uploadTaskCompletionSound(file: File): Promise<TaskCompletionSoundSettings> {
   const form = new FormData();
   form.append('audio', file);
-  const res = await fetch(`${BASE}/settings/task-completion-sound`, {
+  const res = await canvasBackendFetch(`${BASE}/settings/task-completion-sound`, {
     method: 'POST',
     body: form,
   });
@@ -3318,6 +3319,12 @@ export interface AdvancedProviderTestResult {
   message?: string;
   error?: string;
   provider?: AdvancedProviderConfig;
+  discovery?: {
+    service: 'strata'; protocolVersion: number; baseUrl: string; model: string;
+    models: Array<{ id: string; aliasOf: string; vision: boolean }>;
+    loaded: boolean; autoLoad: boolean; vision: boolean; visionLoaded: boolean;
+    contextTokens: number; instanceId: string; started: number; inFlight: number; structuredOutput: boolean;
+  };
 }
 
 export async function testAdvancedProvider(payload: {
@@ -3424,7 +3431,7 @@ export async function saveAssetToDisk(
 ): Promise<{ ok: boolean; path?: string; exist?: boolean; error?: string }> {
   try {
     if (!url) return { ok: false, error: 'empty url' };
-    const res = await fetch(`${BASE}/files/save-to-disk`, {
+    const res = await canvasBackendFetch(`${BASE}/files/save-to-disk`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, filename }),
@@ -3520,7 +3527,7 @@ export type Result<T> = OkData<T> | ErrData;
 
 async function safeRequest<T>(url: string, init?: RequestInit): Promise<Result<T>> {
   try {
-    const res = await fetch(url, {
+    const res = await canvasBackendFetch(url, {
       headers: { 'Content-Type': 'application/json' },
       ...init,
     });
@@ -4093,7 +4100,7 @@ export async function uploadResourceLocalFile(
     });
   }
 
-  const res = await fetch(`${BASE}/files/upload`, {
+  const res = await canvasBackendFetch(`${BASE}/files/upload`, {
     method: 'POST',
     body: fd,
     signal: options.signal,

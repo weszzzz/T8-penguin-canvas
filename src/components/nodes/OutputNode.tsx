@@ -11,12 +11,17 @@ import {
 } from '@xyflow/react';
 import { Box, Camera, MonitorPlay, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Music, Download, Pencil, Check, Edit3, GitCompare, Trash2, Ratio, MoveDiagonal2 } from 'lucide-react';
 import { useCanvasNodeRenderMode } from '../CanvasNodeRenderMode';
+import { approveCanvasDialogNodes } from '../../utils/canvasDialogChanges';
 import { useUpdateNodeData } from './useUpdateNodeData';
+import MentionPromptInput from './MentionPromptInput';
+import { materialMentionKey, rebaseMediaMentions, resolveMediaMentions, type MediaMention } from './mediaMentions';
+import { useDownstreamMediaMaterials, useUpstreamMaterials, type Material } from './useUpstreamMaterials';
+import { motionAssetRefs, motionSlotVideos } from '../../utils/motionVideo';
 import { useThemeStore } from '../../stores/theme';
 import { logBus } from '../../stores/logs';
 import { PORT_COLOR } from '../../config/portTypes';
 import { resolveThemeTemplate } from '../../theme/defaultTemplates';
-import ImageEditModal, { type ImageEditProduceMeta } from './ImageEditModal';
+import ImageEditModal, { type ImageEditProduceMeta } from './LazyImageEditModal';
 import ImageCompareModal from '../ImageCompareModal';
 import CollectionSplitButton from '../CollectionSplitButton';
 import ImageHoverPreview from '../ImageHoverPreview';
@@ -51,6 +56,8 @@ import {
 } from '../../utils/imageCompare';
 import { collectMaterialSetBucketsFromData, valueOfMaterialSetItem } from '../../utils/materialSet';
 import { selectSourceHandleData } from '../../utils/sourceHandleData';
+import { tripoForwardData } from '../../utils/tripoProvenance';
+import { forwardSeedance25Draft } from '../../utils/seedance25DraftProvenance';
 import { shouldCollectNodeTextOutput } from '../../utils/imageNodeOutputMode';
 import { getVideoOutputPrompt } from '../../utils/videoOutputPrompt';
 import {
@@ -335,10 +342,10 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
       const list = Array.isArray(upstreamNodes) ? upstreamNodes : [];
       for (const n of list) {
         const sid = (n as any)?.id || '';
-        const collectNodeTextOutput = shouldCollectNodeTextOutput((n as any)?.type, n?.data);
         const handles = handleMap.get(sid) || new Set<string | null>([null]);
         const routedData = selectSourceHandleData((n?.data || {}) as Record<string, unknown>, handles);
         for (const ud of routedData as any[]) {
+        const collectNodeTextOutput = shouldCollectNodeTextOutput((n as any)?.type, n?.data, ud);
 
         // 显式素材集: 按内部顺序透传；跳过旧字段读取，避免素材集同步字段造成重复。
         if ((n as any)?.type === 'material-set' && Array.isArray(ud.materialSetItems)) {
@@ -403,7 +410,9 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
         if (Array.isArray(ud.directModelUrls)) ud.directModelUrls.forEach((u: any) => pushUnique(out.models, u));
 
       // 视频
-        pushUnique(out.videos, ud.videoUrl);
+        const animationSlots = motionAssetRefs(ud);
+        if (animationSlots.length) out.videos.push(...animationSlots.map(slot => slot.url));
+        else pushUnique(out.videos, ud.videoUrl);
 
       // === v1.2.9.14: Suno 双端口语义 (与 FramePair 同模式) ===
       // AudioNode (Suno) 同时具备 audioUrl + audioUrl_1 字段时按 sourceHandle 过滤,
@@ -581,7 +590,20 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
   // 文本编辑
   const overrideText: string = typeof d.outputText === 'string' ? d.outputText : '';
   const liveText = collected.texts.join('\n\n──────\n\n');
-  const displayText = overrideText !== '' ? overrideText : liveText;
+  const mentionUpstream = useUpstreamMaterials(id);
+  const mentionDownstream = useDownstreamMediaMaterials(id);
+  const outputMentions: MediaMention[] = Array.isArray(d.outputPromptMentions) ? d.outputPromptMentions : [];
+  const mentionMaterials = useMemo(() => {
+    const own: Material[] = (['image', 'video', 'audio'] as const).flatMap((kind) => (
+      collected[`${kind}s` as 'images' | 'videos' | 'audios'].map((url) => ({id:`${id}:${kind}:${url}`,kind,url,sourceNodeId:id,origin:'local' as const,label:fileNameFromUrl(url)}))
+    ));
+    const unique = new Map<string, Material>();
+    [...mentionUpstream.images,...mentionUpstream.videos,...mentionUpstream.audios,...mentionDownstream,...own].forEach((material) => {
+      const key=materialMentionKey(material);if(!unique.has(key))unique.set(key,material);
+    });
+    return [...unique.values()];
+  }, [id, collected, mentionUpstream, mentionDownstream]);
+  const displayText = overrideText !== '' ? resolveMediaMentions(overrideText, outputMentions, mentionMaterials) : liveText;
   const mediaPromptByUrl = useMemo(() => {
     const map = new Map<string, { prompt: string; negative: string }>();
     const clean = (value: any) => (typeof value === 'string' ? value.trim() : '');
@@ -642,22 +664,24 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const taRef = useRef<HTMLTextAreaElement>(null);
+  const [draftMentions, setDraftMentions] = useState<MediaMention[]>([]);
+  const taRef = useRef<HTMLDivElement>(null);
 
   const enterEdit = () => {
-    setDraft(displayText);
+    setDraft(overrideText || liveText);
+    setDraftMentions(overrideText ? outputMentions : []);
     setEditing(true);
     setTimeout(() => taRef.current?.focus(), 30);
   };
   const saveEdit = () => {
-    update({ outputText: draft });
+    update({ outputText: draft, outputPromptMentions: draftMentions });
     setEditing(false);
   };
   const cancelEdit = () => {
     setEditing(false);
   };
   const restoreLive = () => {
-    update({ outputText: '' });
+    update({ outputText: '', outputPromptMentions: [] });
     setEditing(false);
   };
   const handleTranslationRecord = useCallback(
@@ -666,10 +690,10 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
   );
   const handleTranslated = useCallback(
     (translatedText: string, record: SmartTranslationRecord) => {
-      update({ outputText: translatedText, smartTranslation: record });
+      update({ outputText: translatedText, outputPromptMentions: rebaseMediaMentions(translatedText, outputMentions), smartTranslation: record });
       setEditing(false);
     },
-    [update],
+    [update, outputMentions],
   );
 
   const isEdited = overrideText !== '' && overrideText !== liveText;
@@ -1002,12 +1026,13 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
           directImageUrl: u,
           // 便于下游节点从 data 读取 (与现有 effect 透传不冲突)
           imageUrl: u,
+          ...(_meta && 'imageEditLineage' in _meta && _meta.imageEditLineage ? { imageEditLineage: _meta.imageEditLineage } : {}),
         },
         selected: isRhCapabilityOutput,
       } as Node;
     });
     if (isRhCapabilityOutput) {
-      rf.setNodes((prev) => [...prev.map((node) => ({ ...node, selected: false })), ...newNodes]);
+      rf.setNodes((prev) => approveCanvasDialogNodes([...prev.map((node) => ({ ...node, selected: false })), ...newNodes]));
       const first = newNodes[0];
       if (first) {
         window.setTimeout(() => {
@@ -1023,7 +1048,7 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
       }
       logBus.success(t('nodes:output.logs.rhImageCreated', { label: _meta.label || t('nodes:output.rhImageCapability'), count: newNodes.length }), logSource);
     } else {
-      rf.addNodes(newNodes);
+      rf.addNodes(approveCanvasDialogNodes(newNodes));
     }
   };
 
@@ -1203,25 +1228,35 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
       collected.audios.length > 0 ||
       collected.models.length > 0;
     const passText = hasNonText ? '' : (displayText || '');
+    const draft = forwardSeedance25Draft((Array.isArray(upstreamNodes) ? upstreamNodes : []).flatMap(n => selectSourceHandleData(n.data, handleMap.get(n.id) || new Set())), collected.videos);
+    const { modelUrl: _modelUrl, modelUrls: _modelUrls, ...tripo } = tripoForwardData((Array.isArray(upstreamNodes) ? upstreamNodes : []).flatMap(n => selectSourceHandleData(n.data, handleMap.get(n.id) || new Set())), collected.models);
+    const motionRefs = (Array.isArray(upstreamNodes) ? upstreamNodes : []).flatMap(n =>
+      selectSourceHandleData(n.data, handleMap.get(n.id) || new Set()).flatMap(value => motionAssetRefs(value)))
+      .filter(ref => collected.videos.includes(ref.url));
     const next: any = {
+      ...tripo,
+      ...draft,
       prompt: passText,
       text: passText,
       reply: passText,
+      promptResolved: passText,
       imageUrl: publishedImageUrls[0] || '',
       imageUrls: publishedImageUrls.slice(),
       urls: publishedImageUrls.slice(),
       videoUrl: collected.videos[0] || '',
+      ...(motionRefs.length || d.motionAssetRefs?.length ? { videoUrls: motionSlotVideos(collected.videos, motionRefs), motionAssetRefs: motionRefs } : {}),
       audioUrl: collected.audios[0] || '',
       audioUrl_1: collected.audios[1] || '', // 透传 Suno 双轨副轨避免串联丢失
       modelUrl: collected.models[0] || '',
       modelUrls: collected.models.slice(),
-      textSegments: hasNonText ? [] : collected.texts.slice(),
-      segments: hasNonText ? [] : collected.texts.slice(),
+      textSegments: hasNonText ? [] : overrideText !== '' ? [displayText] : collected.texts.slice(),
+      segments: hasNonText ? [] : overrideText !== '' ? [displayText] : collected.texts.slice(),
     };
     const cur: any = {
       prompt: d.prompt || '',
       text: d.text || '',
       reply: d.reply || '',
+      promptResolved: d.promptResolved || '',
       imageUrl: d.imageUrl || '',
       imageUrls: Array.isArray(d.imageUrls) ? d.imageUrls : [],
       urls: Array.isArray(d.urls) ? d.urls : [],
@@ -1237,6 +1272,7 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
       cur.prompt !== next.prompt ||
       cur.text !== next.text ||
       cur.reply !== next.reply ||
+      cur.promptResolved !== next.promptResolved ||
       cur.imageUrl !== next.imageUrl ||
       cur.videoUrl !== next.videoUrl ||
       cur.audioUrl !== next.audioUrl ||
@@ -1247,9 +1283,9 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
       JSON.stringify(cur.modelUrls) !== JSON.stringify(next.modelUrls) ||
       JSON.stringify(cur.textSegments) !== JSON.stringify(next.textSegments) ||
       JSON.stringify(cur.segments) !== JSON.stringify(next.segments);
-    if (changed) update(next);
+    if (changed || JSON.stringify(d.motionAssetRefs || []) !== JSON.stringify(motionRefs) || JSON.stringify({ tripoTaskId: d.tripoTaskId || '', tripoPartNames: d.tripoPartNames || [], tripoFiles: d.tripoFiles || [] }) !== JSON.stringify(tripo) || d.seedance25DraftTaskIdResult !== draft.seedance25DraftTaskIdResult || d.seedance25DraftSourceModel !== draft.seedance25DraftSourceModel) update(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayText, collected, publishedImageUrls]);
+   }, [displayText, overrideText, collected, publishedImageUrls, upstreamNodes, handleMap]);
 
   // === v1.2.10.2: 自动保存到本地路径 ===
   // 设计要点:
@@ -1604,22 +1640,24 @@ const OutputNode = ({ id, data, selected }: NodeProps) => {
                 {displayText || <span className="opacity-50">{t('common:empty')}</span>}
               </div>
             ) : (
-              <div className="space-y-1">
-                <textarea
-                  ref={taRef}
+              <div className="space-y-1" onKeyDown={(event) => {
+                if (event.key === 'Escape' && !event.nativeEvent.isComposing) { event.stopPropagation(); cancelEdit(); }
+              }}>
+                <MentionPromptInput
+                  editorRef={taRef}
                   value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  spellCheck={false}
-                  rows={6}
+                  mentions={draftMentions}
+                  materials={mentionMaterials}
+                  onChange={(value, mentions) => { setDraft(value); setDraftMentions(mentions); }}
+                  isDark={isDark}
+                  isPixel={activeTemplate.visuals?.style === 'pixel'}
+                  promptTemplateKind={false}
+                  onSubmit={(value, mentions) => { update({outputText:value,outputPromptMentions:mentions});setEditing(false); }}
                   className={`w-full rounded px-2 py-1.5 text-[12px] outline-none nodrag nowheel ${
                     isDark
                       ? 'bg-black/40 text-white border border-teal-400/40'
                       : 'bg-white text-zinc-900 border border-teal-500/50'
                   }`}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') cancelEdit();
-                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveEdit();
-                  }}
                 />
                 <div className="flex gap-1.5 justify-end">
                   <button

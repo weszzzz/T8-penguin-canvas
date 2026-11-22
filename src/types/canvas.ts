@@ -35,6 +35,8 @@ export type NodeType =
   | 'fal-toolbox-maker'
   | 'model-3d-preview'
   | 'model-3d'
+  | 'world-scene'
+  | 'code-animation'
   | 'grok-image-tools'
   | 'face-expression-3d'
   | 'previs-studio'
@@ -146,6 +148,9 @@ export interface AdvancedProviderConfig {
   id: string;
   label: string;
   protocol: AdvancedProviderProtocol;
+  profile?: 'strata';
+  authMode?: 'none' | 'bearer';
+  clearApiKey?: boolean;
   baseUrl?: string;
   enabled?: boolean;
   allowRemote?: boolean;

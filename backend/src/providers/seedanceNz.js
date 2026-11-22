@@ -18,10 +18,39 @@ const {
 const { providerTrace } = require('./providerTrace');
 const {
   resolveTunPublicDns,
+  isPrivateAddress,
   safeRemoteMediaFetch,
 } = require('../utils/safeRemoteMediaFetch');
 const { providerIdempotencyHeaders } = require('../services/providerSubmissionContext');
-const { resolveBundledFfprobe } = require('./llmMedia');
+const { resolveBundledFfprobe, resolveBundledFfmpeg } = require('./llmMedia');
+const NB_FLUX_VIDU = require('../shared/nb21FluxViduQ4Contract.json');
+const TOPAZ_VIDEO_CONTRACT = require('../shared/topazVideoContract.json');
+const NOV19_CONTRACT = require('../shared/nov19ModelsContract.json');
+const NOV21_CONTRACT = require('../shared/nov21ModelsContract.json');
+let nov21Promise;
+const nov21Api = () => nov21Promise ||= import('../shared/nov21ModelsContract.mjs').then(m => m.createNov21ModelsContract(NOV21_CONTRACT));
+const NOV19_VOICES = require('../shared/qwenAudio31Voices.json');
+const NOV19_AUDIO_MODELS = new Set(NOV19_CONTRACT.audio.models);
+let nov19Promise;
+const nov19Api = () => nov19Promise ||= import('../shared/nov19ModelsContract.mjs').then(m => m.createNov19ModelsContract(NOV19_CONTRACT,NOV19_VOICES));
+const MAI_IMAGE_CONTRACT = require('../shared/maiImageContract.json');
+const H3_TURBO_CONTRACT = require('../shared/h3TurboContract.json');
+const SD25_FLASH = require('../shared/seedance25FlashContract.json');
+let sd25FlashPromise;
+const sd25FlashApi = () => sd25FlashPromise ||= import('../shared/seedance25FlashContract.mjs').then(m => m.createSeedance25FlashContract(SD25_FLASH));
+let h3TurboPromise;
+const h3TurboApi = () => h3TurboPromise ||= import('../shared/h3TurboContract.mjs').then(m => m.createH3TurboContract(H3_TURBO_CONTRACT));
+const MOSS_IMAGE_CONTRACT = require('../shared/mossImageContract.json');
+const previewMuseFlux = require('./previewMuseFlux');
+const g26Krea3d = require('./g26Krea3d');
+const { buildMotionVideoPayload, normalizeMotionVideoResponse, motionError } = require('./motionVideoContract');
+const NB_DOUBAO = require('../shared/nbLowpriceDoubaoContract.json');
+const { isDoubaoVoiceModel, buildDoubaoVoicePayload } = require('./doubaoVoiceContract');
+const NB_LOWPRICE_MODELS = new Set(NB_DOUBAO.banana.models);
+const MAI_IMAGE_MODELS = new Set([...MAI_IMAGE_CONTRACT.models,...NOV19_CONTRACT.mai.models]);
+const ZHENZHEN_IMAGE_NB_21_MODEL = NB_FLUX_VIDU.banana21.model;
+const FLUX3_IMAGE_MODEL = NB_FLUX_VIDU.flux.model;
+const VIDU_Q4_MODELS = new Set(NB_FLUX_VIDU.viduQ4.models);
 const { withFfmpegProcessSlot } = require('../utils/ffmpegProcessQueue');
 const {
   MIN_PROVIDER_MEDIA_TIMEOUT_MS,
@@ -37,16 +66,20 @@ const RESOLUTIONS = new Set(['480p', '720p', '1080p', '2k', '4k', 'native1080p',
 const SEEDANCE25_T2V_MODELS = new Set([
   'seedance-2.5-global-standard-t2v',
   'seedance-2.5-standard-t2v',
+  ...SD25_FLASH.models.filter(model => model.endsWith('-t2v')),
 ]);
 const SEEDANCE25_I2V_MODELS = new Set([
   'seedance-2.5-global-standard-i2v',
   'seedance-2.5-standard-i2v',
+  ...SD25_FLASH.models.filter(model => model.endsWith('-i2v')),
 ]);
 const SEEDANCE25_MULTI_MODELS = new Set([
   'seedance-2.5-global-standard-multi',
   'seedance-2.5-standard-multi',
+  ...SD25_FLASH.models.filter(model => model.endsWith('-multi')),
 ]);
 const SEEDANCE25_MODELS = new Set([
+  ...require('../shared/seedream55DraftContract.json').draftModels,
   ...SEEDANCE25_T2V_MODELS,
   ...SEEDANCE25_I2V_MODELS,
   ...SEEDANCE25_MULTI_MODELS,
@@ -115,11 +148,20 @@ const ZHENZHEN_IMAGE_NB_2_LITE_MODEL = 'zhenzhen-image-nb-2-lite';
 const ZHENZHEN_IMAGE_NB_2_MODEL = 'zhenzhen-image-nb-2';
 const ZHENZHEN_IMAGE_NB_PRO_MODEL = 'zhenzhen-image-nb-pro';
 const ZHENZHEN_IMAGE_NB_MODELS = new Set([
+  ...NB_LOWPRICE_MODELS,
+  ZHENZHEN_IMAGE_NB_21_MODEL,
   ZHENZHEN_IMAGE_NB_2_LITE_MODEL,
   ZHENZHEN_IMAGE_NB_2_MODEL,
   ZHENZHEN_IMAGE_NB_PRO_MODEL,
 ]);
 const ZHENZHEN_APIMART_IMAGE_MODELS = new Set([
+  ...g26Krea3d.imageModels,
+  ...previewMuseFlux.imageModels,
+  MOSS_IMAGE_CONTRACT.model,
+  NOV19_CONTRACT.kling.model,
+  NOV21_CONTRACT.longImage.model,
+  ...MAI_IMAGE_MODELS,
+  FLUX3_IMAGE_MODEL,
   ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL,
   ...ZHENZHEN_IMAGE_G25_MODELS,
   ZHENZHEN_IMAGE_GK_V2_MODEL,
@@ -197,6 +239,7 @@ const ZHENZHEN_VIDEO_V31_FAST_MODEL = 'zhenzhen-video-v31-fast';
 const ZHENZHEN_VIDEO_V31_QUALITY_MODEL = 'zhenzhen-video-v31-quality';
 const ZHENZHEN_VIDEO_V31_LITE_MODEL = 'zhenzhen-video-v31-lite';
 const ZHENZHEN_APIMART_VIDEO_MODELS = new Set([
+  ...Object.keys(require('../shared/flashVideoContract.json').models),
   ZHENZHEN_VIDEO_G_OMNI_FLASH_MODEL,
   ZHENZHEN_VIDEO_G_OMNI_FLASH_LOWPRICE_MODEL,
   ZHENZHEN_VIDEO_G_OMNI_11_FLASH_LOWPRICE_MODEL,
@@ -227,6 +270,7 @@ const WHISPER_MAX_SEGMENT_TEXT_LENGTH = 4000;
 const WHISPER_MAX_SEGMENT_TEXT_TOTAL = 1_000_000;
 const ZHENZHEN_IMAGE_G2_RATIOS = new Set(RATIOS);
 const IMAGE_MODELS = new Set([
+  H3_TURBO_CONTRACT.minimax.model, H3_TURBO_CONTRACT.qwen.model,
   ...Object.values(IMAGE_MODEL_PAIRS).flat(),
   ...ZHENZHEN_IMAGE_G2_MODELS,
   ...ZHENZHEN_APIMART_IMAGE_MODELS,
@@ -297,7 +341,9 @@ const KLING_EDIT_MODELS = new Set([
   'kling-o3-pro-edit',
 ]);
 const KLING_VIDEO_MODELS = new Set([...KLING_T2V_MODELS, ...KLING_I2V_MODELS, ...KLING_R2V_MODELS]);
-const KLING_MODELS = new Set([...KLING_VIDEO_MODELS, ...KLING_EDIT_MODELS]);
+const klingV4 = require('./klingV4');
+const KLING_V4_MODELS = new Set(klingV4.contract.models);
+const KLING_MODELS = new Set([...KLING_VIDEO_MODELS, ...KLING_EDIT_MODELS, ...KLING_V4_MODELS]);
 const KLING_SECONDS = new Set(['5', '10']);
 const KLING_PROMPT_MAX_LENGTH = 20480;
 const KLING_MAX_REFERENCE_IMAGES = 4;
@@ -582,7 +628,11 @@ const FLOWMUSIC_ACTION_SPECS = Object.freeze({
 });
 const SEEDANCE_NZ_AUDIO_MODELS = new Set([
   SEED_AUDIO_MODEL,
+  NB_DOUBAO.audio.cloneModel,
+  NB_DOUBAO.audio.iclModel,
   ...QWEN3_TTS_MODELS,
+  ...NOV19_AUDIO_MODELS,
+  ...NOV21_CONTRACT.gemini.models,
   ...MINIMAX_AUDIO_MODELS,
   ...MUREKA_BGM_MODELS,
 ]);
@@ -954,7 +1004,6 @@ function seedanceNetworkCause(error) {
 function seedanceRetryIsKnownPreRequestFailure(error) {
   const cause = seedanceNetworkCause(error);
   const code = String(cause?.code || error?.code || '').trim().toUpperCase();
-  const message = String(cause?.message || error?.message || '');
   return [
     'CERT_HAS_EXPIRED',
     'DEPTH_ZERO_SELF_SIGNED_CERT',
@@ -962,7 +1011,7 @@ function seedanceRetryIsKnownPreRequestFailure(error) {
     'UNABLE_TO_GET_ISSUER_CERT',
     'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
     'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
-  ].includes(code) || /certificate|self signed|unable to verify|issuer cert/i.test(message);
+  ].includes(code);
 }
 
 async function secureFetch(url, init = {}) {
@@ -979,11 +1028,13 @@ async function secureFetch(url, init = {}) {
   } catch (error) {
     if (init?.signal?.aborted) throw error;
     const safeRead = ['GET', 'HEAD'].includes(method);
-    const stableSubmission = Boolean(headerValue(request.headers, 'idempotency-key'));
     // TLS trust can fail before an HTTP request exists on older Electron CA
     // bundles. That case is safe to retry with the provider-pinned CA even
     // when a legacy caller has no submission key.
-    if (!safeRead && !stableSubmission && !seedanceRetryIsKnownPreRequestFailure(error)) {
+    // A carried identity is correlation, not proof that this gateway deduplicates
+    // a replay. After an ambiguous paid write, retain/query the original task;
+    // only exact TLS verification failures known to precede HTTP may recover.
+    if (!safeRead && !seedanceRetryIsKnownPreRequestFailure(error)) {
       throw error;
     }
     try {
@@ -1767,6 +1818,45 @@ async function mediaBuffer(source, kind, maxBytes, options = {}) {
   return { buffer, mime, fileName };
 }
 
+async function transcodeReferenceAudio(buffer, options = {}) {
+  return withFfmpegProcessSlot(() => new Promise((resolve, reject) => {
+    if (options.signal?.aborted) return reject(options.signal.reason || new Error('音频转换已取消'));
+    const chunks = [];
+    let size = 0;
+    let settled = false;
+    const maxBytes = Number(options.maxBytes) || 50 * 1024 * 1024;
+    const wav = options.normalizeAudioWav === true;
+    const label = wav ? 'Doubao 克隆 WAV' : 'Vidu Q4 MP3';
+    const encoder = wav
+      ? ['-c:a', 'pcm_s16le', '-ar', '24000', '-ac', '1', '-f', 'wav']
+      : ['-c:a', 'libmp3lame', '-b:a', '128k', '-f', 'mp3'];
+    const child = spawn(resolveBundledFfmpeg(), [
+      '-hide_banner', '-loglevel', 'error', '-threads', '1', '-i', 'pipe:0',
+      '-vn', ...encoder, 'pipe:1',
+    ], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] });
+    const finish = (error, result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      options.signal?.removeEventListener('abort', abort);
+      if (error) { child.kill(); reject(error); } else resolve(result);
+    };
+    const abort = () => finish(new Error(`${label} 音频转换已取消`));
+    const timer = setTimeout(() => finish(new Error(`${label} 本地音频转换超时`)), 60_000);
+    options.signal?.addEventListener('abort', abort, { once: true });
+    child.on('error', () => finish(new Error(`${label} 音频转换需要可用的 FFmpeg`)));
+    child.stdin.on('error', () => {});
+    child.stdout.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > maxBytes) return finish(new Error(`${label} 参考音频超出文件限制`));
+      chunks.push(chunk);
+    });
+    child.once('close', (code) => code === 0 && size > 0
+      ? finish(null, Buffer.concat(chunks)) : finish(new Error(`${label} 参考音频无法转换`)));
+    child.stdin.end(buffer);
+  }), { isCancelled: () => options.signal?.aborted === true });
+}
+
 async function uploadMedia(source, kind, apiKey, options = {}) {
   const text = normalizeT8LocalMediaRef(source);
   if (!text) throw new Error(`未收到参考${mediaKindLabel(kind)}，请重新选择或上传素材`);
@@ -1789,7 +1879,7 @@ async function uploadMedia(source, kind, apiKey, options = {}) {
   }
 
   const promise = withUploadQueue(apiKey, intervalMs, async () => {
-    let file = await mediaBuffer(text, kind, options.maxBytes, options);
+    let file = await mediaBuffer(text, kind, options.sourceMaxBytes ?? options.maxBytes, options);
     if (kind === 'image' && options.normalizeImagePng === true) {
       const buffer = await sharp(file.buffer).png().toBuffer();
       ensureSize(buffer, kind, options.maxBytes);
@@ -1799,6 +1889,20 @@ async function uploadMedia(source, kind, apiKey, options = {}) {
         mime: 'image/png',
         fileName: String(options.fileName || 'picture.png'),
       };
+    }
+    if (kind === 'audio' && (options.normalizeAudioMp3 === true || options.normalizeAudioWav === true)) {
+      // Q4 accepts MP3, not WAV bytes renamed to .mp3. Keep other upload paths unchanged.
+      // Headerless PCM has no autodetectable container. Only the documented
+      // Doubao input (.pcm / PCM MIME, 24k mono s16le) receives an explicit header.
+      const rawPcm = options.normalizeAudioWav === true &&
+        (/^audio\/(?:x-)?pcm$/i.test(file.mime) || /\.pcm$/i.test(file.fileName)) &&
+        !require('../utils/pcmAudio').hasAudioContainerHeader(file.buffer);
+      const input = rawPcm ? require('../utils/pcmAudio').wrapPcm16MonoWav(file.buffer, 24000, options.sourceMaxBytes) : file.buffer;
+      const buffer = await transcodeReferenceAudio(input, options);
+      ensureSize(buffer, kind, options.maxBytes);
+      file = options.normalizeAudioWav === true
+        ? { ...file, buffer, mime: 'audio/wav', fileName: 'doubao-voice-reference.wav' }
+        : { ...file, buffer, mime: 'audio/mpeg', fileName: 'vidu-q4-reference.mp3' };
     }
     if (Array.isArray(options.allowedMimes) && !options.allowedMimes.includes(String(file.mime || '').toLowerCase())) {
       throw new Error(`seedance.nz 不支持该${kind}格式`);
@@ -2385,7 +2489,7 @@ async function probeSeedance25ReferenceDuration(buffer, file, kind, options = {}
       let stderr = '';
       const child = spawn(ffprobe, [
         '-v', 'error',
-        '-show_entries', 'format=duration',
+        '-show_entries', 'format=duration:stream=codec_type',
         '-of', 'json',
         inputPath,
       ], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -2418,7 +2522,12 @@ async function probeSeedance25ReferenceDuration(buffer, file, kind, options = {}
           return;
         }
         try {
-          const duration = Number(JSON.parse(stdout)?.format?.duration);
+          const probe = JSON.parse(stdout);
+          if (options.requireAudioTrack && !probe.streams?.some(stream => stream.codec_type === 'audio')) {
+            finish(Object.assign(new Error('CharSwap 源视频必须包含音轨；当前视频没有音轨，请提供带音轨的 MP4。'),{status:400,code:'h3_source_audio_required'}));
+            return;
+          }
+          const duration = Number(probe?.format?.duration);
           if (!Number.isFinite(duration) || duration <= 0) throw new Error('invalid duration');
           finish(null, duration);
         } catch {
@@ -2447,8 +2556,15 @@ async function validateSeedance25ReferenceDuration(buffer, file, kind, durationS
 }
 
 async function buildSeedance25Payload(request, apiKey, options = {}) {
+  if (require('../shared/seedream55DraftContract.json').draftModels.includes(request.model)) {
+    const api = await seedream55DraftApi();
+    return { payload: api.buildDraft(request), model: request.model, taskType: 'draft-to-video' };
+  }
   const model = String(request.model || '').trim().toLowerCase();
   const taskType = seedance25TaskTypeFromModel(model);
+  const flashApi = await sd25FlashApi(), flash = flashApi.isFlash(model);
+  const omni = flashApi.validate({...request, model});
+  const limits = flash ? SD25_FLASH.limits : SEEDANCE25_MULTI_LIMITS;
   const prompt = normalizePromptMentions(request.prompt).trim();
   if (prompt.length > SEEDANCE25_PROMPT_MAX_LENGTH) {
     throw new Error(`Seedance 2.5 prompt 最多 ${SEEDANCE25_PROMPT_MAX_LENGTH} 字符`);
@@ -2478,17 +2594,17 @@ async function buildSeedance25Payload(request, apiKey, options = {}) {
   }
   if (taskType === 'multi') {
     if (mediaCount < 1) throw new Error('Seedance 2.5 multi 至少需要 1 个参考素材');
-    if (allImages.length > SEEDANCE25_MULTI_LIMITS.images) {
-      throw new Error(`Seedance 2.5 multi 最多支持 ${SEEDANCE25_MULTI_LIMITS.images} 张图片`);
+    if (allImages.length > limits.images) {
+      throw new Error(`Seedance 2.5 multi 最多支持 ${limits.images} 张图片`);
     }
-    if (videos.length > SEEDANCE25_MULTI_LIMITS.videos) {
-      throw new Error(`Seedance 2.5 multi 最多支持 ${SEEDANCE25_MULTI_LIMITS.videos} 个视频`);
+    if (videos.length > limits.videos) {
+      throw new Error(`Seedance 2.5 multi 最多支持 ${limits.videos} 个视频`);
     }
-    if (audios.length > SEEDANCE25_MULTI_LIMITS.audios) {
-      throw new Error(`Seedance 2.5 multi 最多支持 ${SEEDANCE25_MULTI_LIMITS.audios} 个音频`);
+    if (audios.length > limits.audios) {
+      throw new Error(`Seedance 2.5 multi 最多支持 ${limits.audios} 个音频`);
     }
-    if (mediaCount > SEEDANCE25_MULTI_LIMITS.total) {
-      throw new Error(`Seedance 2.5 multi 参考素材合计最多 ${SEEDANCE25_MULTI_LIMITS.total} 个`);
+    if (mediaCount > limits.total) {
+      throw new Error(`Seedance 2.5 multi 参考素材合计最多 ${limits.total} 个`);
     }
   }
 
@@ -2500,10 +2616,12 @@ async function buildSeedance25Payload(request, apiKey, options = {}) {
   const payload = {
     model,
     metadata: {
-      resolution,
+      resolution: request.draft === true ? '480p' : resolution,
+      ...(request.draft === true ? { draft: true } : {}),
       ratio: normalizeRatio(request.ratio),
       generate_audio: request.generate_audio !== false,
       return_last_frame: request.return_last_frame === true,
+      ...omni,
     },
   };
   if (seconds === -1) payload.metadata.duration = -1;
@@ -2513,10 +2631,37 @@ async function buildSeedance25Payload(request, apiKey, options = {}) {
     payload.metadata.seed = Number(request.seed);
   }
 
+  // Flash validates every slot before any upload, including the last AV duration.
+  const prepared = new Map();
+  if (flash) {
+    const state = {total: 0};
+    for (const [kind, sources, maxBytes, allowed] of [
+      ['image', allImages, SEEDANCE25_IMAGE_MAX_BYTES, SEEDANCE25_IMAGE_MIMES],
+      ['video', videos, SEEDANCE25_MEDIA_MAX_BYTES, SEEDANCE25_VIDEO_MIMES],
+      ['audio', audios, SEEDANCE25_MEDIA_MAX_BYTES, SEEDANCE25_AUDIO_MIMES],
+    ]) for (const source of sources) {
+      const file = await mediaBuffer(source, kind, maxBytes, options);
+      if (!allowed.includes(file.mime)) throw new Error(`Seedance Flash invalid ${kind} format`);
+      if (kind === 'image') { const info = await sharp(file.buffer).metadata(); if (!['png','jpeg','webp'].includes(info.format)) throw new Error('Invalid Flash image'); await sharp(file.buffer).stats(); file.mime='image/'+info.format; }
+      else {
+        if (kind === 'video' && file.buffer.subarray(4,8).toString() !== 'ftyp') throw new Error('Flash video requires MP4');
+        if (kind === 'audio') {
+          const wav=file.buffer.subarray(0,4).toString()==='RIFF'&&file.buffer.subarray(8,12).toString()==='WAVE',mp3=file.buffer.subarray(0,3).toString()==='ID3'||file.buffer[0]===255&&(file.buffer[1]&224)===224;
+          if(!wav&&!mp3)throw new Error('Flash audio requires MP3/WAV');
+          file.mime=wav?'audio/wav':'audio/mpeg';
+          await transcodeReferenceAudio(file.buffer,{...options,normalizeAudioWav:true,maxBytes:100*1024*1024});
+        }
+        await validateSeedance25ReferenceDuration(file.buffer, file, kind, state, options);
+      }
+      prepared.set(kind + ':' + source, `data:${file.mime};base64,${file.buffer.toString('base64')}`);
+    }
+  }
+  const preparedSource = (source, kind) => prepared.get(kind + ':' + source) || source;
+
   if (taskType === 'i2v') {
     payload.images = [];
     for (const source of allImages) {
-      payload.images.push(await uploadMedia(source, 'image', apiKey, {
+      payload.images.push(await uploadMedia(preparedSource(source, 'image'), 'image', apiKey, {
         ...options,
         maxBytes: SEEDANCE25_IMAGE_MAX_BYTES,
         allowedMimes: SEEDANCE25_IMAGE_MIMES,
@@ -2527,7 +2672,7 @@ async function buildSeedance25Payload(request, apiKey, options = {}) {
     payload.metadata.content = [];
     const durationState = { total: 0 };
     for (const source of allImages) {
-      const url = await uploadMedia(source, 'image', apiKey, {
+      const url = await uploadMedia(preparedSource(source, 'image'), 'image', apiKey, {
         ...options,
         maxBytes: SEEDANCE25_IMAGE_MAX_BYTES,
         allowedMimes: SEEDANCE25_IMAGE_MIMES,
@@ -2536,12 +2681,12 @@ async function buildSeedance25Payload(request, apiKey, options = {}) {
       payload.metadata.content.push({ type: 'image_url', image_url: { url } });
     }
     for (const source of videos) {
-      const url = await uploadMedia(source, 'video', apiKey, {
+      const url = await uploadMedia(preparedSource(source, 'video'), 'video', apiKey, {
         ...options,
         maxBytes: SEEDANCE25_MEDIA_MAX_BYTES,
         allowedMimes: SEEDANCE25_VIDEO_MIMES,
         uploadCacheTtlMs: 0,
-        validateBuffer: (buffer, file) => validateSeedance25ReferenceDuration(
+        validateBuffer: flash ? undefined : (buffer, file) => validateSeedance25ReferenceDuration(
           buffer,
           file,
           'video',
@@ -2552,12 +2697,12 @@ async function buildSeedance25Payload(request, apiKey, options = {}) {
       payload.metadata.content.push({ type: 'video_url', video_url: { url } });
     }
     for (const source of audios) {
-      const url = await uploadMedia(source, 'audio', apiKey, {
+      const url = await uploadMedia(preparedSource(source, 'audio'), 'audio', apiKey, {
         ...options,
         maxBytes: SEEDANCE25_MEDIA_MAX_BYTES,
         allowedMimes: SEEDANCE25_AUDIO_MIMES,
         uploadCacheTtlMs: 0,
-        validateBuffer: (buffer, file) => validateSeedance25ReferenceDuration(
+        validateBuffer: flash ? undefined : (buffer, file) => validateSeedance25ReferenceDuration(
           buffer,
           file,
           'audio',
@@ -2761,6 +2906,89 @@ async function buildApimartImagePayload(request, apiKey, options = {}) {
     };
   }
   const prompt = normalizeApimartPrompt(request.prompt, model);
+  if (model === MOSS_IMAGE_CONTRACT.model) {
+    const sources = request.images ?? request.refImages ?? [];
+    if (!Array.isArray(sources) || sources.some(source => typeof source !== 'string' || !source.trim())) {
+      throw new Error('Moss images 必须是有效参考图数组');
+    }
+    if (sources.length > MOSS_IMAGE_CONTRACT.maxImages) throw new Error('Moss 最多支持 1 张参考图');
+    const ratio = request.ratio ?? request.metadata?.ratio ?? MOSS_IMAGE_CONTRACT.defaultRatio;
+    if (!MOSS_IMAGE_CONTRACT.ratios.includes(ratio)) throw new Error('Moss 不支持该画面比例');
+    // Closed whitelist: no resolution, n, size, seed or previous-model fields.
+    const payload = { model, prompt, metadata: { ratio } };
+    if (sources.length) payload.images = [await uploadMedia(sources[0], 'image', apiKey, {
+      ...options, maxBytes: IMAGE_REFERENCE_MAX_BYTES, normalizeImagePng: true,
+      cacheVariant: 'moss-png', fileName: 'moss-reference.png', allowedMimes: ['image/png'],
+    })];
+    return { payload, model, taskType: sources.length ? 'i2i' : 't2i' };
+  }
+  if (model === NOV21_CONTRACT.longImage.model) {
+    const payload=(await nov21Api()).image({...request,model}),roles=payload.image_with_roles;
+    const sources=payload.images || roles?.map(v=>v.url) || [],prepared=[];
+    for(const source of sources){
+      const file=await mediaBuffer(source,'image',NOV21_CONTRACT.longImage.maxBytes,options),info=await sharp(file.buffer).metadata();
+      if(!['jpeg','png'].includes(info.format)||Math.min(info.width,info.height)<300||Math.max(info.width,info.height)>Math.min(info.width,info.height)*2.5)throw Object.assign(new Error('Kling long-image references require JPEG/PNG, >=300 px and ratio 2:5..5:2'),{status:400});
+      await sharp(file.buffer).stats();prepared.push({buffer:file.buffer,mime:info.format==='jpeg'?'image/jpeg':'image/png'});
+    }
+    const urls=[];for(const file of prepared)urls.push(await uploadMedia('data:'+file.mime+';base64,'+file.buffer.toString('base64'),'image',apiKey,{...options,maxBytes:NOV21_CONTRACT.longImage.maxBytes,allowedMimes:[file.mime],cacheVariant:'kling-long-original'}));
+    if(payload.images)payload.images=urls;else if(roles)payload.image_with_roles=roles.map((v,i)=>({...v,url:urls[i]}));
+    return {payload,model,taskType:sources.length?'i2i':'t2i'};
+  }
+  if (model === NOV19_CONTRACT.kling.model || NOV19_CONTRACT.mai.models.includes(model)) {
+    const api=await nov19Api(),payload=api.image({...request,model}),prepared=[];
+    for(const source of payload.images || []){
+      const file=await mediaBuffer(source,'image',model===NOV19_CONTRACT.kling.model?NOV19_CONTRACT.kling.maxBytes:IMAGE_REFERENCE_MAX_BYTES,options);
+      const buffer=await sharp(file.buffer).png().toBuffer(),info=await sharp(buffer).metadata();
+      if(model===NOV19_CONTRACT.kling.model&&(Math.min(info.width,info.height)<300||Math.max(info.width,info.height)>Math.min(info.width,info.height)*2.5||buffer.length>NOV19_CONTRACT.kling.maxBytes))throw Object.assign(new Error('Kling reference requires >=300 px, ratio 2:5..5:2 and <=30 MB'),{status:400});
+      prepared.push(buffer);
+    }
+    if(prepared.length){payload.images=[];for(const buffer of prepared)payload.images.push(await uploadMedia('data:image/png;base64,'+buffer.toString('base64'),'image',apiKey,{...options,maxBytes:model===NOV19_CONTRACT.kling.model?NOV19_CONTRACT.kling.maxBytes:IMAGE_REFERENCE_MAX_BYTES,allowedMimes:['image/png'],cacheVariant:'nov19-original-png'}));}
+    return {payload,model,taskType:prepared.length?'i2i':'t2i'};
+  }
+  if (MAI_IMAGE_MODELS.has(model)) {
+    const contract = MAI_IMAGE_CONTRACT;
+    const refs = normalizeList(request.images || request.refImages);
+    if (refs.length > contract.maxImages) throw new Error('Mai 最多支持 5 张参考图');
+    if (request.n !== undefined && request.n !== 1) throw new Error('Mai 图片数量 n 固定为 1');
+    const webGrounding = request.web_grounding ?? false;
+    if (typeof webGrounding !== 'boolean') throw new Error('Mai web_grounding 必须是布尔值');
+    const payload = { model, prompt, n: 1, web_grounding: webGrounding };
+    if (refs.length) {
+      // All parameter validation precedes uploads. Normalize even GIF/WebP to actual PNG bytes.
+      payload.images = [];
+      for (const source of refs) payload.images.push(await uploadMedia(source, 'image', apiKey, {
+        ...options, maxBytes: IMAGE_REFERENCE_MAX_BYTES, normalizeImagePng: true,
+        cacheVariant: 'mai-png', fileName: 'mai-reference.png', allowedMimes: ['image/png'],
+      }));
+      return { payload, model, taskType: 'i2i' };
+    }
+    const auto = request.auto_aspect_ratio ?? false;
+    if (typeof auto !== 'boolean') throw new Error('Mai auto_aspect_ratio 必须是布尔值');
+    const size = auto ? 'auto' : String(request.size ?? '1:1').trim();
+    const exact = /^(\d+)[xX*×](\d+)$/.exec(size);
+    const hasPixels = !auto && (request.width !== undefined || request.height !== undefined || exact);
+    if (hasPixels) {
+      const explicit = request.width !== undefined || request.height !== undefined;
+      const width = explicit ? request.width : (exact ? Number(exact[1]) : undefined);
+      const height = explicit ? request.height : (exact ? Number(exact[2]) : undefined);
+      if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || Math.min(width, height) < contract.minEdge
+        || width * height > contract.maxPixels) throw new Error('Mai 每边至少 768，整数宽高总像素不得超过 2359296');
+      payload.width = Math.floor(width / contract.pixelStep) * contract.pixelStep;
+      payload.height = Math.floor(height / contract.pixelStep) * contract.pixelStep;
+    } else {
+      const resolution = String(request.resolution ?? '1k').toLowerCase();
+      if (!contract.resolutions.includes(resolution)) throw new Error('Mai 分辨率只支持 1k 或 2k');
+      if (size !== 'auto') {
+        const match = /^(\d+):(\d+)$/.exec(size);
+        const width = match ? Number(match[1]) : 0, height = match ? Number(match[2]) : 0;
+        if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || Math.min(width, height) < 1
+          || width > height * contract.maxAspectRatio || height > width * contract.maxAspectRatio)
+          throw new Error('Mai 画幅必须为 auto 或 1:4 至 4:1 的正整数宽高比');
+      }
+      Object.assign(payload, { size, resolution, auto_aspect_ratio: auto });
+    }
+    return { payload, model, taskType: 't2i' };
+  }
   if (ZHENZHEN_IMAGE_G25_MODELS.has(model)) {
     if (model === ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL && prompt.length > ZHENZHEN_IMAGE_G25_PROMPT_MAX_LENGTH) {
       throw new Error(`${model} 提示词最多 ${ZHENZHEN_IMAGE_G25_PROMPT_MAX_LENGTH} 字符`);
@@ -2839,6 +3067,21 @@ async function buildApimartImagePayload(request, apiKey, options = {}) {
   const n = normalizePositiveInteger(request.n, 1, 1, maxOutputs, 'APIMart 图片生成数量 n ');
   const payload = { model, prompt, n };
 
+  if (model === FLUX3_IMAGE_MODEL) {
+    const contract = NB_FLUX_VIDU.flux;
+    if (refs.length > contract.maxImages) throw new Error(`${model} 最多支持 ${contract.maxImages} 张参考图`);
+    if (n !== 1) throw new Error(`${model} 图片数量 n 固定为 1`);
+    const resolution = String(request.resolution || '1k').trim().toLowerCase();
+    const aspectRatio = String(request.aspect_ratio || request.ratio || request.size || 'auto').trim().toLowerCase();
+    if (!contract.resolutions.includes(resolution)) throw new Error(`${model} 不支持分辨率 ${resolution}`);
+    if (!contract.ratios.includes(aspectRatio)) throw new Error(`${model} 不支持比例 ${aspectRatio}`);
+    const safetyTolerance = normalizePositiveInteger(request.safety_tolerance ?? request.safetyTolerance, 2, 0, 4, 'Flux safety_tolerance ');
+    Object.assign(payload, { resolution, aspect_ratio: aspectRatio,
+      grounding: normalizeAudioBoolean(request.grounding, true), safety_tolerance: safetyTolerance });
+    if (refs.length) payload.images = await uploadApimartImages(refs, apiKey, options);
+    return { payload, model, taskType: refs.length ? 'i2i' : 't2i' };
+  }
+
   if (model === ZHENZHEN_IMAGE_GK_V2_EDIT_MODEL) {
     if (refs.length < 1 || refs.length > ZHENZHEN_IMAGE_GK_V2_EDIT_MAX_IMAGES) {
       throw new Error(`${model} 必须按顺序提供 1-${ZHENZHEN_IMAGE_GK_V2_EDIT_MAX_IMAGES} 张参考图`);
@@ -2876,6 +3119,12 @@ async function buildApimartImagePayload(request, apiKey, options = {}) {
 
   const size = String(request.size || request.ratio || '1:1').trim().toLowerCase();
   if (ZHENZHEN_IMAGE_NB_MODELS.has(model)) {
+    if (NB_LOWPRICE_MODELS.has(model) && ([...prompt].length < 1 || [...prompt].length > 5000)) {
+      throw new Error(`${model} 提示词必须为 1-5000 字符`);
+    }
+    if (model === ZHENZHEN_IMAGE_NB_21_MODEL && (prompt.length < 5 || prompt.length > 5000)) {
+      throw new Error(`${model} 提示词必须为 5-5000 字符`);
+    }
     if (refs.length > 14) throw new Error(`${model} 最多支持 14 张参考图`);
     const resolution = String(request.resolution || '1k').trim().toLowerCase();
     const allowedResolutions = model === ZHENZHEN_IMAGE_NB_2_MODEL
@@ -2886,7 +3135,11 @@ async function buildApimartImagePayload(request, apiKey, options = {}) {
     if (!allowedResolutions.has(resolution)) {
       throw new Error(`${model} 不支持分辨率 ${resolution || '(空)'}`);
     }
-    const allowedRatios = model === ZHENZHEN_IMAGE_NB_PRO_MODEL
+    const allowedRatios = NB_LOWPRICE_MODELS.has(model)
+      ? new Set(model === NB_DOUBAO.banana.models[0] ? NB_DOUBAO.banana.proRatios : NB_DOUBAO.banana.nb21Ratios)
+      : model === ZHENZHEN_IMAGE_NB_21_MODEL
+      ? new Set(NB_FLUX_VIDU.banana21.ratios)
+      : model === ZHENZHEN_IMAGE_NB_PRO_MODEL
       ? ZHENZHEN_IMAGE_NB_STANDARD_RATIOS
       : ZHENZHEN_IMAGE_NB_EXTREME_RATIOS;
     if (!allowedRatios.has(size)) {
@@ -2978,6 +3231,25 @@ async function buildApimartVideoPayload(request, apiKey, options = {}) {
   const prompt = String(request.prompt || '').trim();
   const payload = { model, metadata: {} };
   if (prompt) payload.prompt = prompt;
+
+  const flashProfile = require('../shared/flashVideoContract.json').models[model];
+  if (flashProfile) {
+    if (!prompt) throw new Error('Flash video requires a prompt');
+    if (refs.length > flashProfile.maxImages || videoSources.length > flashProfile.maxVideos || refs.length && videoSources.length || normalizeList(request.audios).length) throw new Error('Flash video requires images OR videos within the model limit; raw audio is not supported');
+    if (['imageElementIds','videoElementIds','voiceIds'].some(key => normalizeList(request[key]).length)) throw new Error('Flash video does not support element or voice IDs');
+    const seconds = request.duration ?? request.seconds ?? 3;
+    if (!Number.isInteger(Number(seconds)) || Number(seconds) < 3 || Number(seconds) > flashProfile.maxSeconds || typeof seconds === 'boolean') throw new Error('Invalid Flash video duration');
+    const resolution = request.resolution || '720p', aspect = request.aspect_ratio || request.ratio || '16:9';
+    if (!flashProfile.resolutions.includes(resolution) || !flashProfile.ratios.includes(aspect)) throw new Error('Invalid Flash video resolution or aspect ratio');
+    const flashPayload = {model,prompt,seconds:String(seconds),resolution,aspect_ratio:aspect};
+    if (refs.length) flashPayload.images = await uploadApimartImages(refs, apiKey, options);
+    if (videoSources.length) {
+      const urls = [];
+      for (const source of videoSources) urls.push(await uploadMedia(source, 'video', apiKey, options));
+      flashPayload.metadata = {video_url: urls};
+    }
+    return {payload:flashPayload,model,taskType:videoSources.length?'v2v':refs.length?'i2v':'t2v'};
+  }
 
   if (model === ZHENZHEN_VIDEO_G_OMNI_FLASH_MODEL) {
     if (refs.length > 16) throw new Error(`${model} 最多支持 16 张参考图`);
@@ -3142,7 +3414,27 @@ async function buildZhenzhenImageG2Payload(request, apiKey, options = {}) {
   };
 }
 
+let seedream55ApiPromise;
+const seedream55DraftApi = () => seedream55ApiPromise || (seedream55ApiPromise = import('../shared/seedream55DraftContract.mjs').then(m => m.createSeedream55DraftContract(require('../shared/seedream55DraftContract.json'))));
+async function buildSeedream55Payload(request, apiKey, options = {}) {
+  const payload = (await seedream55DraftApi()).buildImage(request), prepared = [];
+  for (const source of payload.images || []) {
+    const file = await mediaBuffer(source, 'image', 30 * 1024 * 1024, options);
+    const metadata = await sharp(file.buffer).metadata();
+    if (!['png','jpeg','webp'].includes(metadata.format)) throw Object.assign(new Error('Seedream 5.5 requires PNG/JPEG/WebP'), { status: 400 });
+    prepared.push(source);
+  }
+  if (prepared.length) { payload.images = []; for (const source of prepared) payload.images.push(await uploadMedia(source, 'image', apiKey, { ...options, maxBytes: 30 * 1024 * 1024, allowedMimes: ['image/png','image/jpeg','image/webp'], cacheVariant: 'seedream55' })); }
+  return { payload, model: request.model, taskType: request.model.endsWith('layer-decomposition') ? 'layer-decomposition' : prepared.length ? 'i2i' : 't2i' };
+}
 async function buildImagePayload(request, apiKey, options = {}) {
+  if ((await h3TurboApi()).imageModels.includes(request.model)) return buildH3TurboPayload(request, apiKey, options);
+  if ((await seedream55DraftApi()).isImage(request.model)) {
+    if (request.modelFamily && seedreamNzContract.families[request.modelFamily] && !seedreamNzContract.families[request.modelFamily].models.includes(request.model)) throw Object.assign(new Error('Seedream model and family do not match'), { status: 400 });
+    return buildSeedream55Payload(request, apiKey, options);
+  }
+  if (g26Krea3d.imageModels.includes(request.model)) return buildG26Krea3dPayload(g26Krea3d.buildImage(request), apiKey, options);
+  if (previewMuseFlux.imageModels.includes(request.model)) return buildPreviewMuseFluxPayload(request, apiKey, options);
   const requestedModel = String(request.model || '').trim().toLowerCase();
   if (requestedModel === VOSR2_IMAGE_UPSCALE_MODEL) {
     return buildVosr2ImagePayload(request, apiKey, options);
@@ -3185,6 +3477,7 @@ async function buildImagePayload(request, apiKey, options = {}) {
   const model = refs.length ? modelPair[1] : modelPair[0];
   if (!IMAGE_MODELS.has(model)) throw new Error(`未知 Seedream 模型：${model}`);
   const contract = seedreamNzContract.families[family];
+  if ((await seedream55DraftApi()).isImage(model)) return buildSeedream55Payload({ ...request, model, images: refs }, apiKey, options);
   const payload = {
     model,
     prompt: normalizeImagePrompt(request.prompt, contract.promptMaxLength),
@@ -3204,6 +3497,7 @@ async function buildImagePayload(request, apiKey, options = {}) {
 }
 
 async function buildSeedreamLayerDecompositionPayload(request, apiKey, options = {}) {
+  if (require('../shared/seedream55DraftContract.json').layerModels.includes(request.model)) return buildSeedream55Payload(request, apiKey, options);
   const model = String(request.model || '').trim().toLowerCase();
   if (!SEEDREAM_LAYER_DECOMPOSITION_MODELS.has(model)) {
     throw new Error(`未知 Seedream 分层模型：${model || '(空)'}`);
@@ -4167,6 +4461,7 @@ async function uploadKlingImages(sources, apiKey, options = {}) {
 
 async function buildKlingPayload(request, apiKey, options = {}) {
   const model = String(request.model || '').trim();
+  if (KLING_V4_MODELS.has(model)) return klingV4.build(request, apiKey, options, { read: mediaBuffer, upload: uploadMedia, probe: probeFashVsrInput });
   if (!KLING_MODELS.has(model)) throw new Error(`未知 Kling 模型：${model || '(空)'}`);
 
   const taskType = deriveKlingTaskType(model);
@@ -4398,8 +4693,52 @@ async function uploadViduImages(sources, apiKey, options = {}) {
   return images;
 }
 
+async function buildViduQ4Payload(request, apiKey, options = {}) {
+  const contract = NB_FLUX_VIDU.viduQ4;
+  const model = String(request.model || '').trim();
+  if (!VIDU_Q4_MODELS.has(model)) throw new Error('未知 Vidu Q4 模型');
+  const taskType = model.endsWith('-r2v') ? 'r2v' : 'i2v';
+  const prompt = String(request.prompt || '').trim();
+  const sources = normalizeList(request.images);
+  const audios = taskType === 'r2v' ? normalizeList(request.audios || request.audio_urls) : [];
+  const seconds = Number(request.duration ?? request.seconds ?? 5);
+  const resolution = String(request.resolution || '720p').toLowerCase();
+  const ratio = String(request.ratio || '16:9');
+  // Complete scalar/count validation before uploading any reference.
+  if (taskType === 'r2v' && !prompt) throw new Error('Vidu Q4 参考生视频必须填写提示词');
+  if (sources.length < 1 || sources.length > (taskType === 'i2v' ? 1 : contract.maxImages)) {
+    throw new Error(taskType === 'i2v' ? 'Vidu Q4 图生视频必须且只能提供 1 张图' : 'Vidu Q4 参考生视频需要 1-15 张图');
+  }
+  if (audios.length > contract.maxAudios) throw new Error('Vidu Q4 最多支持 3 个参考音频');
+  if (normalizeList(request.videos).length) throw new Error('Vidu Q4 不接受参考视频');
+  if (!contract.durations.includes(seconds)) throw new Error('Vidu Q4 时长必须是 3-16 秒的整数');
+  if (!contract.resolutions.includes(resolution)) throw new Error('Vidu Q4 不支持该分辨率');
+  if (taskType === 'r2v' && !contract.ratios.includes(ratio)) throw new Error('Vidu Q4 不支持该比例');
+  const metadata = {
+    resolution,
+    generate_audio: normalizeAudioBoolean(request.generateAudio ?? request.generate_audio, true),
+    is_rec: normalizeAudioBoolean(request.isRec ?? request.is_rec, true),
+    watermark: normalizeAudioBoolean(request.watermark, false),
+  };
+  if (taskType === 'r2v') metadata.ratio = ratio;
+  const payload = { model, seconds: String(seconds), metadata };
+  if (prompt) payload.prompt = prompt;
+  payload.images = await uploadViduImages(sources, apiKey, options);
+  if (audios.length) {
+    metadata.audio_urls = [];
+    for (const source of audios) {
+      metadata.audio_urls.push(await uploadMedia(source, 'audio', apiKey, {
+        ...options, maxBytes: 50 * 1024 * 1024, normalizeAudioMp3: true,
+        cacheVariant: 'vidu-q4-mp3-v1', allowedMimes: ['audio/mpeg'],
+      }));
+    }
+  }
+  return { payload, model, taskType };
+}
+
 async function buildViduPayload(request, apiKey, options = {}) {
   const model = String(request.model || '').trim();
+  if (VIDU_Q4_MODELS.has(model)) return buildViduQ4Payload(request, apiKey, options);
   if (!VIDU_Q3_MODELS.has(model)) throw new Error(`未知 Vidu Q3 模型：${model || '(空)'}`);
 
   const taskType = deriveViduTaskType(model);
@@ -4577,6 +4916,42 @@ async function submitHailuoTask(request, apiKey, options = {}) {
   return { taskId, model: built.model, taskType: built.taskType, ...safeProviderTrace(response, data, { pollCount: 0 }) };
 }
 
+async function buildTopazVideoPayload(request, apiKey, options = {}) {
+  if (request.model !== TOPAZ_VIDEO_CONTRACT.model) throw boundaryError('未知 Topaz 视频修复模型', 'TOPAZ_INVALID_MODEL', 400);
+  const resolution = request.resolution ?? TOPAZ_VIDEO_CONTRACT.defaultResolution;
+  const quality = request.quality ?? TOPAZ_VIDEO_CONTRACT.defaultQuality;
+  if (!TOPAZ_VIDEO_CONTRACT.resolutions.includes(resolution)) throw boundaryError('Topaz 分辨率必须为 720p / 1080p / 2K / 4K', 'TOPAZ_INVALID_RESOLUTION', 400);
+  if (!TOPAZ_VIDEO_CONTRACT.qualities.includes(quality)) throw boundaryError('Topaz 修复模型必须为 Ultra / Max / High / Medium / Low', 'TOPAZ_INVALID_QUALITY', 400);
+  const sources = normalizeList(request.videos);
+  if (sources.length !== 1) throw boundaryError('Topaz 必须提供且只能提供 1 个 MP4 视频', 'TOPAZ_INVALID_SOURCE_COUNT', 400);
+  const source = normalizeT8LocalMediaRef(sources[0]);
+  let videoUrl;
+  if (/^https?:\/\//i.test(source)) {
+    // A documented public URL is forwarded, not downloaded and re-uploaded.
+    // The 50 MiB cap belongs to local uploads; never add it to direct URLs.
+    let parsed;
+    try { parsed = new URL(source); } catch { throw boundaryError('Topaz 视频直链必须是公开 http(s) URL', 'TOPAZ_INVALID_URL', 400); }
+    const host = parsed.hostname.replace(/^\[|\]$/g, '').replace(/\.$/, '').toLowerCase();
+    if (!host || parsed.username || parsed.password || (net.isIP(host) ? isPrivateAddress(host)
+      : !host.includes('.') || /(?:^|\.)(?:local|internal|localhost|home\.arpa)$/.test(host))) {
+      throw boundaryError('Topaz 视频直链必须是公开 http(s) URL', 'TOPAZ_INVALID_URL', 400);
+    }
+    videoUrl = source;
+  } else {
+    videoUrl = await uploadMedia(source, 'video', apiKey, {
+      ...options,
+      maxBytes: TOPAZ_VIDEO_CONTRACT.maxUploadBytes,
+      allowedMimes: ['video/mp4'],
+      cacheVariant: 'topaz-video-mp4-v1',
+      validateBuffer: (buffer) => {
+        if (buffer.length < 12 || buffer.toString('ascii', 4, 8) !== 'ftyp') throw new Error('Topaz 仅支持有效 MP4 视频');
+      },
+    });
+  }
+  return { payload: { model: TOPAZ_VIDEO_CONTRACT.model, metadata: { video_url: [videoUrl], resolution, quality } },
+    model: TOPAZ_VIDEO_CONTRACT.model, taskType: 'upscale' };
+}
+
 async function buildVosr2VideoPayload(request, apiKey, options = {}) {
   const model = String(request.model || '').trim().toLowerCase();
   if (model !== VOSR2_VIDEO_UPSCALE_MODEL) {
@@ -4690,7 +5065,7 @@ async function submitKlingTask(request, apiKey, options = {}) {
   const fetchImpl = getFetchImpl(options);
   const baseUrl = cleanBaseUrl(options.baseUrl);
   const built = await buildKlingPayload(request, apiKey, options);
-  const response = await fetchProviderResponse(fetchImpl, `${baseUrl}/v1/videos`, {
+  const response = await fetchProviderResponse(fetchImpl, `${baseUrl}${KLING_V4_MODELS.has(built.model) ? '/v1/video/generations' : '/v1/videos'}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -4699,9 +5074,21 @@ async function submitKlingTask(request, apiKey, options = {}) {
     body: JSON.stringify(built.payload),
   }, options, 'seedance.nz Kling 任务提交');
   const data = await responseJson(response, 'seedance.nz Kling 任务提交');
-  if (!response.ok) throw createUpstreamError(data, response);
-  const taskId = requiredTaskId(data?.id || data?.task_id || data?.data?.id, 'seedance.nz Kling 任务提交', response);
-  return { taskId, model: built.model, taskType: built.taskType, ...safeProviderTrace(response, data, { pollCount: 0 }) };
+  if (!response.ok || data?.success === false) throw createUpstreamError(data, response);
+  const taskId = requiredTaskId(data?.id || data?.task_id || data?.data?.id || data?.data?.task_id, 'seedance.nz Kling 任务提交', response);
+  return { taskId, model: built.model, taskType: built.kind || built.taskType, ...safeProviderTrace(response, data, { pollCount: 0 }) };
+}
+
+async function queryKlingV4Task(taskId, model, apiKey, options = {}) {
+  if (!String(apiKey || '').trim()) throw new Error('请先设置平价小屋API Key');
+  if (!KLING_V4_MODELS.has(model)) throw Object.assign(new Error('查询Kling 4原任务需要准确模型'), { status: 400 });
+  const id = requiredTaskId(taskId, 'Kling 4查询');
+  const response = await fetchProviderResponse(getFetchImpl(options), `${cleanBaseUrl(options.baseUrl)}/v1/video/generations/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  }, options, 'seedance.nz Kling 4查询');
+  const data = await responseJson(response, 'seedance.nz Kling 4查询');
+  if (!response.ok || data?.success === false) throw createUpstreamError(data, response);
+  return { ...klingV4.normalize(data, model), ...safeProviderTrace(response, data) };
 }
 
 async function submitUpscalerTask(request, apiKey, options = {}) {
@@ -4751,17 +5138,18 @@ async function submitViduTask(request, apiKey, options = {}) {
   const fetchImpl = getFetchImpl(options);
   const baseUrl = cleanBaseUrl(options.baseUrl);
   const built = await buildViduPayload(request, apiKey, options);
-  const response = await fetchProviderResponse(fetchImpl, `${baseUrl}/v1/videos`, {
+  const endpoint = VIDU_Q4_MODELS.has(built.model) ? '/v1/video/generations' : '/v1/videos';
+  const response = await fetchProviderResponse(fetchImpl, `${baseUrl}${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(built.payload),
-  }, options, 'seedance.nz Vidu Q3 任务提交');
-  const data = await responseJson(response, 'seedance.nz Vidu Q3 任务提交');
+  }, options, 'seedance.nz Vidu 任务提交');
+  const data = await responseJson(response, 'seedance.nz Vidu 任务提交');
   if (!response.ok) throw createUpstreamError(data, response);
-  const taskId = requiredTaskId(data?.id || data?.task_id || data?.data?.id, 'seedance.nz Vidu Q3 任务提交', response);
+  const taskId = requiredTaskId(data?.id || data?.task_id || data?.data?.id || data?.data?.task_id, 'seedance.nz Vidu 任务提交', response);
   return { taskId, model: built.model, taskType: built.taskType, ...safeProviderTrace(response, data, { pollCount: 0 }) };
 }
 
@@ -5156,6 +5544,18 @@ async function querySunoMusicTask(taskId, apiKey, options = {}) {
   };
 }
 
+async function submitTopazVideoTask(request, apiKey, options = {}) {
+  if (!String(apiKey || '').trim()) throw new Error('缺少贞贞的平价AI小屋 API Key');
+  const built = await buildTopazVideoPayload(request, apiKey, options);
+  const response = await fetchProviderResponse(getFetchImpl(options), `${cleanBaseUrl(options.baseUrl)}${TOPAZ_VIDEO_CONTRACT.submitPath}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }, body: JSON.stringify(built.payload),
+  }, options, 'seedance.nz Topaz 任务提交');
+  const data = await responseJson(response, 'seedance.nz Topaz 任务提交');
+  if (!response.ok) throw createUpstreamError(data, response);
+  const taskId = requiredTaskId(data?.id || data?.task_id || data?.data?.id || data?.data?.task_id, 'seedance.nz Topaz 任务提交', response);
+  return { taskId, model: built.model, taskType: built.taskType, ...safeProviderTrace(response, data, { pollCount: 0 }) };
+}
+
 async function submitVosr2VideoTask(request, apiKey, options = {}) {
   if (!String(apiKey || '').trim()) throw new Error('请先在 API 设置中填写“贞贞的平价AI小屋 API Key”');
   const fetchImpl = getFetchImpl(options);
@@ -5380,6 +5780,34 @@ async function buildAudioPayload(request, apiKey, options = {}) {
   const model = String(request.model || SEED_AUDIO_MODEL).trim().toLowerCase();
   if (!SEEDANCE_NZ_AUDIO_MODELS.has(model)) throw new Error(`未知 seedance.nz 音频模型：${model}`);
 
+  if (isDoubaoVoiceModel(model)) {
+    const built = buildDoubaoVoicePayload({ ...request, model });
+    if (built.clone) {
+      built.payload.metadata.audio_url = await uploadMedia(built.source, 'audio', apiKey, {
+        ...options,
+        maxBytes: NB_DOUBAO.audio.sampleMaxBytes,
+        sourceMaxBytes: 50 * 1024 * 1024,
+        normalizeAudioWav: true,
+        cacheVariant: 'doubao-voice-wav-24k-mono',
+      });
+    }
+    return { payload: built.payload, model };
+  }
+
+  if (NOV21_CONTRACT.gemini.models.includes(model)) return {payload:(await nov21Api()).audio({...request,model}),model};
+  if (NOV19_AUDIO_MODELS.has(model)) {
+    const api=await nov19Api(),payload=api.audio({...request,model}),prepared=[];
+    for(const source of payload.metadata.audio_urls || []){
+      const file=await mediaBuffer(source,'audio',NOV19_CONTRACT.audio.maxReferenceBytes,options),b=file.buffer;
+      const wav=b.subarray(0,4).toString()==='RIFF'&&b.subarray(8,12).toString()==='WAVE',ogg=b.subarray(0,4).toString()==='OggS',mp3=b.subarray(0,3).toString()==='ID3'||b[0]===255&&(b[1]&224)===224&&(b[1]&24)!==8&&(b[1]&6)===2;
+      if(!wav&&!ogg&&!mp3)throw Object.assign(new Error('Qwen Next references require WAV/MP3/OGG'),{status:400});
+      const duration=await probeSeedance25ReferenceDuration(b,file,'audio',options);if(duration>30)throw Object.assign(new Error('Qwen Next reference exceeds 30 seconds'),{status:400});
+      await transcodeReferenceAudio(b,{...options,normalizeAudioWav:true,maxBytes:100*1024*1024});
+      prepared.push({buffer:b,mime:wav?'audio/wav':ogg?'audio/ogg':'audio/mpeg'});
+    }
+    if(prepared.length){payload.metadata.audio_urls=[];for(const file of prepared)payload.metadata.audio_urls.push(await uploadMedia('data:'+file.mime+';base64,'+file.buffer.toString('base64'),'audio',apiKey,{...options,maxBytes:NOV19_CONTRACT.audio.maxReferenceBytes,allowedMimes:[file.mime],cacheVariant:'qwen31-original'}));}
+    return {payload,model};
+  }
   if (QWEN3_TTS_MODELS.has(model)) {
     const prompt = String(request.prompt || '').trim();
     const voice = String(request.voice || '').trim();
@@ -5544,7 +5972,12 @@ async function submitAudioTask(request, apiKey, options = {}) {
   const data = await responseJson(response, 'seedance.nz Seed Audio 任务提交');
   if (!response.ok) throw createUpstreamError(data, response);
   const taskId = requiredTaskId(data?.task_id || data?.id || data?.data?.task_id, 'seedance.nz Seed Audio 任务提交', response);
-  return { taskId, model: built.model, ...safeProviderTrace(response, data, { pollCount: 0 }) };
+  return { taskId, model: built.model,
+    ...((built.model === NB_DOUBAO.audio.iclModel || NOV19_AUDIO_MODELS.has(built.model)) ? {
+      channels: built.payload.metadata.channels || '1',
+      outputFormat: built.payload.metadata.format,
+      sampleRate: built.payload.metadata.sample_rate,
+    } : {}), ...safeProviderTrace(response, data, { pollCount: 0 }) };
 }
 
 async function queryAudioTask(taskId, apiKey, options = {}) {
@@ -5578,8 +6011,9 @@ async function queryAudioTask(taskId, apiKey, options = {}) {
     ).trim();
     if (primary) audioUrls.push(primary);
   }
+  const audioModel = String(record?.model || data?.model || options.model || '');
   const resultText = status === 'succeeded'
-    ? String(
+    ? String(isDoubaoVoiceModel(audioModel) ? record?.result_text || '' : (
       content?.voice_id
       || content?.custom_voice_id
       || content?.result_text
@@ -5592,8 +6026,8 @@ async function queryAudioTask(taskId, apiKey, options = {}) {
       || record?.custom_voice_id
       || record?.result_text
       || record?.text
-      || '',
-    ).trim()
+      || ''
+    )).trim()
     : '';
   const failReason = status === 'failed'
     ? String(
@@ -5606,12 +6040,19 @@ async function queryAudioTask(taskId, apiKey, options = {}) {
     ).trim() || '音频任务失败'
     : null;
   return {
-    status,
+    status: isDoubaoVoiceModel(audioModel) && status === 'succeeded' && (!audioUrls.length || (audioModel === NB_DOUBAO.audio.cloneModel && !resultText)) ? 'failed' : status,
     progress: safeProgress(record?.progress ?? data?.progress),
     audioUrl: audioUrls[0] || null,
     audioUrls,
     resultText,
-    failReason,
+    ...(NOV19_AUDIO_MODELS.has(audioModel) && options.outputFormat === 'pcm' ? {
+      pcmSampleRate: (await nov19Api()).audioProfile(audioModel).rates.includes(String(options.sampleRate)) ? Number(options.sampleRate) : audioModel.endsWith('-next') ? 48000 : 22050,
+      pcmChannels: audioModel.endsWith('-next') && String(options.channels)==='2' ? 2 : 1,
+    } : {}),
+    ...(audioModel === NB_DOUBAO.audio.iclModel && options.outputFormat === 'pcm' ? {
+      pcmSampleRate: NB_DOUBAO.audio.iclFields.sample_rate.options.includes(String(options.sampleRate)) ? Number(options.sampleRate) : 24000,
+    } : {}),
+    failReason: isDoubaoVoiceModel(audioModel) && status === 'succeeded' && (!audioUrls.length || (audioModel === NB_DOUBAO.audio.cloneModel && !resultText)) ? 'Doubao 原任务缺少完整音频或权威音色 ID；原任务不会重新提交' : failReason,
     ...safeProviderTrace(response, data),
   };
 }
@@ -5720,6 +6161,165 @@ async function transcribeAudio(request, apiKey, options = {}) {
   };
 }
 
+async function buildG26Krea3dPayload(built, apiKey, options = {}) {
+  const { sources, maxReferenceBytes, ...result } = built;
+  const prepared = [];
+  for (const source of sources) {
+    const file = await mediaBuffer(source, 'image', 50 * 1024 * 1024, options);
+    const buffer = await sharp(file.buffer, { failOn: 'error' }).png().toBuffer();
+    ensureSize(buffer, 'image', maxReferenceBytes);
+    prepared.push(buffer);
+  }
+  if (prepared.length) {
+    result.payload.images = [];
+    for (const buffer of prepared) result.payload.images.push(await uploadMedia(`data:image/png;base64,${buffer.toString('base64')}`, 'image', apiKey,
+      { ...options, maxBytes: maxReferenceBytes, allowedMimes: ['image/png'], cacheVariant: 'g26-krea-3d-png' }));
+  }
+  return result;
+}
+
+async function buildPreviewMuseFluxPayload(request, apiKey, options = {}) {
+  const { sources, ...built } = previewMuseFlux.buildPreviewMuseFluxPayload(request);
+  const { contract } = previewMuseFlux;
+  const muse = [contract.muse.imageModel, contract.muse.videoModel].includes(built.model);
+  const maxBytes = contract.flux.models.includes(built.model) ? contract.flux.maxReferenceBytes : muse ? contract.muse.maxReferenceBytes : 50 * 1024 * 1024;
+  const prepared = [];
+  // Validate every encoded reference before the first upload. Ordered duplicate slots remain intact.
+  for (const source of sources) {
+    const file = await mediaBuffer(source, 'image', 50 * 1024 * 1024, options);
+    const buffer = await sharp(file.buffer, { failOn: 'error' }).png().toBuffer();
+    ensureSize(buffer, 'image', maxBytes);
+    prepared.push(buffer);
+  }
+  if (muse && prepared.reduce((sum, buffer) => sum + buffer.length, 0) > contract.muse.maxReferenceBytes) {
+    throw new Error('Muse reference images must total at most 11 MiB');
+  }
+  if (prepared.length) {
+    built.payload.images = [];
+    for (const buffer of prepared) built.payload.images.push(await uploadMedia(`data:image/png;base64,${buffer.toString('base64')}`, 'image', apiKey,
+      { ...options, maxBytes, allowedMimes: ['image/png'], cacheVariant: 'preview-muse-flux-png' }));
+  }
+  return built;
+}
+
+async function buildH3TurboPayload(request, apiKey, options = {}) {
+  const api = await h3TurboApi(), payload = api.build(request), spec = api.profile(request.model), video = api.videoModels.includes(spec.model);
+  const preparedImages = [], preparedAudios = [], preparedVideos = [];
+  // Read and validate all references before the first upload. Preserve order and repeated slots.
+  for (const source of request.images || []) {
+    const file = await mediaBuffer(source, 'image', video ? spec.imageBytes : undefined, options);
+    const info = await sharp(file.buffer).metadata();
+    if (!['png','jpeg','webp'].includes(info.format)) throw Object.assign(new Error('H3/Turbo requires PNG/JPEG/WebP'), {status:400});
+    await sharp(file.buffer).stats();
+    preparedImages.push({buffer:file.buffer,mime:info.format === 'jpeg' ? 'image/jpeg' : 'image/'+info.format});
+  }
+  if (video && preparedImages.reduce((sum,file)=>sum+file.buffer.length,0)>spec.imagesBytes) throw Object.assign(new Error('H3 image references exceed combined size limit'),{status:400});
+  for (const source of request.audios || []) {
+    const file = await mediaBuffer(source,'audio',spec.audioBytes,options), buffer = file.buffer;
+    const wav = buffer.subarray(0,4).toString()==='RIFF' && buffer.subarray(8,12).toString()==='WAVE';
+    const mp3 = buffer.subarray(0,3).toString()==='ID3' || buffer[0]===255 && (buffer[1]&224)===224;
+    if (!wav && !mp3) throw Object.assign(new Error('H3 audio references require MP3/WAV'),{status:400});
+    // Decode locally; do not upload a corrupt header or rename an unsupported container.
+    await transcodeReferenceAudio(buffer,{...options,normalizeAudioWav:true,maxBytes:100*1024*1024});
+    if(spec.audioCoversDuration && await probeSeedance25ReferenceDuration(buffer,file,'audio',options)>Number(payload.seconds)+0.05)throw Object.assign(new Error('H3 digital-human duration must cover the driving audio'),{status:400});
+    preparedAudios.push({buffer,mime:wav?'audio/wav':'audio/mpeg'});
+  }
+  if (video && !spec.audioPerFile && preparedAudios.reduce((sum,file)=>sum+file.buffer.length,0)>spec.audioBytes) throw Object.assign(new Error('H3 audio references exceed 10 MiB'),{status:400});
+  for (const source of request.videos || []) {
+    const file = await mediaBuffer(source, 'video', spec.videoBytes, options);
+    if (file.buffer.subarray(4,8).toString() !== 'ftyp') throw Object.assign(new Error('H3 video requires MP4'),{status:400});
+    await probeSeedance25ReferenceDuration(file.buffer,file,'video',{...options,requireAudioTrack:request.model === H3_TURBO_CONTRACT.charswap.model});
+    preparedVideos.push({buffer:file.buffer,mime:'video/mp4'});
+  }
+  if (preparedVideos.reduce((sum,file)=>sum+file.buffer.length,0) > (spec.videoBytes || 0)) throw Object.assign(new Error('H3 video references exceed 50 MiB'),{status:400});
+  const upload = async (file,kind) => uploadMedia('data:'+file.mime+';base64,'+file.buffer.toString('base64'),kind,apiKey,{...options,cacheVariant:'h3-turbo-original',...(video?{maxBytes:kind==='image'?spec.imageBytes:kind==='audio'?spec.audioBytes:spec.videoBytes}:{}),allowedMimes:[file.mime]});
+  if (preparedImages.length) { payload.images=[]; for (const file of preparedImages) payload.images.push(await upload(file,'image')); }
+  if (preparedAudios.length) { payload.metadata.audio_urls=[]; for (const file of preparedAudios) payload.metadata.audio_urls.push(await upload(file,'audio')); }
+  if (preparedVideos.length) { payload.metadata.video_url=[]; for (const file of preparedVideos) payload.metadata.video_url.push(await upload(file,'video')); }
+  return {payload,model:spec.model,taskType:video?'video':preparedImages.length?'i2i':'t2i'};
+}
+async function submitH3TurboVideoTask(request, apiKey, options = {}) {
+  if (!(await h3TurboApi()).videoModels.includes(request.model)) throw Object.assign(new Error('Invalid H3 Lowprice model'),{status:400});
+  if (!String(apiKey || '').trim()) throw new Error('Missing budget-house API Key');
+  const built=await buildH3TurboPayload(request,apiKey,options);
+  const response=await fetchProviderResponse(getFetchImpl(options),cleanBaseUrl(options.baseUrl)+'/v1/video/generations',{
+    method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey},body:JSON.stringify(built.payload)},options,'H3 Lowprice submit');
+  const data=await responseJson(response,'H3 Lowprice submit');
+  if (!response.ok) throw createUpstreamError(data,response);
+  const taskId=requiredTaskId(data?.task_id||data?.id||data?.data?.task_id||data?.data?.id,'H3 Lowprice submit',response);
+  return {taskId,model:built.model,taskType:built.taskType,...safeProviderTrace(response,data,{pollCount:0})};
+}
+async function queryH3TurboVideoTask(taskId, apiKey, options = {}) {
+  return queryNov21LegacyVideoTask(taskId,apiKey,options,(await h3TurboApi()).videoModels,H3_TURBO_CONTRACT.video.model);
+}
+async function buildHeygenPayload(request,apiKey,options={}) {
+  const payload=(await nov21Api()).video(request),source=payload.metadata.audio_urls?.[0];
+  if(source){
+    const file=await mediaBuffer(source,'audio',undefined,options),b=file.buffer;
+    const valid=b.subarray(0,4).toString()==='RIFF'&&b.subarray(8,12).toString()==='WAVE'||b.subarray(0,3).toString()==='ID3'||b[0]===255&&(b[1]&224)===224&&(b[1]&24)!==8&&(b[1]&6)===2||b.subarray(4,8).toString()==='ftyp';
+    if(!valid)throw Object.assign(new Error('HeyGen audio must be MP3/WAV/M4A'),{status:400});
+    await transcodeReferenceAudio(b,{...options,normalizeAudioWav:true,maxBytes:100*1024*1024});
+    const url=await uploadMedia(source,'audio',apiKey,{...options,cacheVariant:'heygen-original-audio'});
+    if(!/^https:\/\//i.test(url))throw Object.assign(new Error('HeyGen requires a public HTTPS audio URL'),{status:400});
+    payload.metadata.audio_urls=[url];
+  }
+  return {payload,model:request.model,taskType:source?'audio':'text'};
+}
+async function submitHeygenVideoTask(request,apiKey,options={}) {
+  if(!String(apiKey||'').trim())throw new Error('Missing budget-house API Key');
+  const built=await buildHeygenPayload(request,apiKey,options);
+  const response=await fetchProviderResponse(getFetchImpl(options),cleanBaseUrl(options.baseUrl)+'/v1/video/generations',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey},body:JSON.stringify(built.payload)},options,'HeyGen submit');
+  const data=await responseJson(response,'HeyGen submit');if(!response.ok)throw createUpstreamError(data,response);
+  return {taskId:requiredTaskId(data?.task_id||data?.id||data?.data?.task_id||data?.data?.id,'HeyGen submit',response),model:built.model,taskType:built.taskType,...safeProviderTrace(response,data,{pollCount:0})};
+}
+async function queryHeygenVideoTask(taskId,apiKey,options={}) {
+  return queryNov21LegacyVideoTask(taskId,apiKey,options,NOV21_CONTRACT.heygen.models,NOV21_CONTRACT.heygen.models[0]);
+}
+async function queryNov21LegacyVideoTask(taskId, apiKey, options, models, fallback) {
+  if (!String(apiKey || '').trim()) throw new Error('Missing budget-house API Key');
+  const response=await fetchProviderResponse(getFetchImpl(options),cleanBaseUrl(options.baseUrl)+'/v1/video/generations/'+encodeURIComponent(taskId),{
+    method:'GET',headers:{Authorization:'Bearer '+apiKey}},options,'H3 Lowprice query');
+  const data=await responseJson(response,'H3 Lowprice query');
+  if (!response.ok) throw createUpstreamError(data,response);
+  const record=data?.data||data,nested=record?.data||{};
+  const api = await h3TurboApi();
+  const model = api.normalizeResultModel(record.model || nested.model || options.model || fallback);
+  if (!models.includes(model) || options.model && options.model !== model || [record.model,nested.model].filter(Boolean).some(value=>api.normalizeResultModel(value)!==model)) throw new Error('Video model mismatch');
+  const statuses=[record.status,nested.status].filter(v=>typeof v==='string'&&v.trim()).map(normalizeImageTaskStatus);
+  const status=statuses.includes('failed')?'failed':statuses.length&&statuses.every(v=>v==='succeeded')?'succeeded':statuses.includes('running')?'running':'pending';
+  return {taskId,model,status,progress:String(record.progress??''),videoUrl:record.result_url||nested.result_url||nested?.content?.video_url||'',failReason:record.fail_reason||record.error?.message||'',...safeProviderTrace(response,data)};
+}
+
+async function submitMuseVideoTask(request, apiKey, options = {}) {
+  if (!String(apiKey || '').trim()) throw new Error('Missing budget-house API Key');
+  if (request.model !== previewMuseFlux.contract.muse.videoModel) throw new Error('Invalid Muse Video model');
+  const built = await buildPreviewMuseFluxPayload(request, apiKey, options);
+  const response = await fetchProviderResponse(getFetchImpl(options), `${cleanBaseUrl(options.baseUrl)}/v1/video/generations`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }, body: JSON.stringify(built.payload),
+  }, options, 'Muse Video submit');
+  const data = await responseJson(response, 'Muse Video submit');
+  if (!response.ok) throw createUpstreamError(data, response);
+  const taskId = requiredTaskId(data?.task_id || data?.id || data?.data?.task_id || data?.data?.id, 'Muse Video submit', response);
+  return { taskId, model: built.model, taskType: built.taskType, ...safeProviderTrace(response, data, { pollCount: 0 }) };
+}
+
+async function queryMuseVideoTask(taskId, apiKey, options = {}) {
+  if (!String(apiKey || '').trim()) throw new Error('Missing budget-house API Key');
+  const response = await fetchProviderResponse(getFetchImpl(options), `${cleanBaseUrl(options.baseUrl)}/v1/video/generations/${encodeURIComponent(taskId)}`, {
+    method: 'GET', headers: { Authorization: `Bearer ${apiKey}` },
+  }, options, 'Muse Video query');
+  const data = await responseJson(response, 'Muse Video query');
+  if (!response.ok) throw createUpstreamError(data, response);
+  const record = data?.data || data, nested = record?.data || {};
+  if ((record.model || nested.model) && (record.model || nested.model) !== previewMuseFlux.contract.muse.videoModel) throw new Error('Muse Video model mismatch');
+  const statuses = [record.status, nested.status].filter(value => typeof value === 'string' && value.trim()).map(normalizeImageTaskStatus);
+  const status = statuses.includes('failed') ? 'failed' : statuses.length && statuses.every(value => value === 'succeeded') ? 'succeeded'
+    : statuses.includes('running') ? 'running' : 'pending';
+  const videoUrl = nested?.content?.video_url || record.result_url || record.video_url || record.metadata?.url || '';
+  return { taskId, model: previewMuseFlux.contract.muse.videoModel, status, progress: String(record.progress ?? ''), videoUrl,
+    failReason: record.fail_reason || record.error?.message || record.message || '', ...safeProviderTrace(response, data) };
+}
+
 async function submitImageTask(request, apiKey, options = {}) {
   if (!String(apiKey || '').trim()) throw new Error('请先在 API 设置中填写“贞贞的平价AI小屋 API Key”');
   const fetchImpl = getFetchImpl(options);
@@ -5804,6 +6404,12 @@ async function queryImageTask(taskId, apiKey, options = {}) {
   const status = normalizeImageTaskStatus(record?.status || data?.status);
   const nested = record?.data && typeof record.data === 'object' ? record.data : {};
   const imageUrls = status === 'succeeded' ? imageTaskResultUrls(record, nested) : [];
+  const rawLayers = nested?.content?.layers;
+  let layers;
+  if (rawLayers !== undefined && require('../shared/seedream55DraftContract.json').layerModels.includes(record.model || options.model)) {
+    if (!Array.isArray(rawLayers) || rawLayers.length !== imageUrls.length || rawLayers.some((layer, index) => !layer || layer.url !== imageUrls[index])) throw Object.assign(new Error('Seedream layer metadata does not match image order'), { status: 502 });
+    layers = rawLayers.map(layer => Object.fromEntries(['url','outputType','size','text','zindex','boundingBox','description','name'].filter(key => layer[key] !== undefined && JSON.stringify(layer[key]).length <= 16384).map(key => [key, layer[key]])));
+  }
   const operationResult = status === 'succeeded'
     ? (record?.content?.result || nested?.content?.result || data?.content?.result || null)
     : null;
@@ -5823,12 +6429,50 @@ async function queryImageTask(taskId, apiKey, options = {}) {
     imageUrl: imageUrls[0] || null,
     imageUrls,
     operationResult,
+    ...(layers ? { layers } : {}),
     failReason,
     ...safeProviderTrace(response, data),
   };
 }
 
 async function buildHunyuan3dPayload(request, apiKey, options = {}) {
+  if(request.model===NOV21_CONTRACT.miora.model){
+    const payload=(await nov21Api()).model3d(request),prepared=[];
+    for(const source of payload.images||[]){const file=await mediaBuffer(source,'image',NOV21_CONTRACT.miora.maxBytes,options),info=await sharp(file.buffer).metadata();if(!['jpeg','png','webp'].includes(info.format))throw Object.assign(new Error('Miora requires JPEG/PNG/WebP views'),{status:400});await sharp(file.buffer).stats();prepared.push({buffer:file.buffer,mime:'image/'+(info.format==='jpeg'?'jpeg':info.format)});}
+    if(prepared.length){payload.images=[];for(const file of prepared)payload.images.push(await uploadMedia('data:'+file.mime+';base64,'+file.buffer.toString('base64'),'image',apiKey,{...options,maxBytes:NOV21_CONTRACT.miora.maxBytes,allowedMimes:[file.mime],cacheVariant:'miora-original'}));}
+    return {payload,model:request.model,taskType:prepared.length?'i3d':'t3d'};
+  }
+  if (require('./tripo3d').MODELS.includes(request.model)) {
+    const tripo3d = require('./tripo3d');
+    const built = (await tripo3d.getContract()).build(request);
+    const prepared = [];
+    // Validate every input before uploading the first file.
+    for (const binding of built.bindings) {
+      const file = await mediaBuffer(binding.source, binding.kind, binding.kind === 'image' ? 50 * 1024 * 1024 : tripo3d.contract.maxModelBytes, options);
+      if (binding.kind === 'image') {
+        const buffer = await sharp(file.buffer, { failOn: 'error' }).png().toBuffer();
+        ensureSize(buffer, 'image', tripo3d.contract.maxImageBytes);
+        prepared.push({ ...binding, source: `data:image/png;base64,${buffer.toString('base64')}` });
+      } else {
+        const format = path.extname(file.fileName).slice(1).toLowerCase();
+        if (!['glb', 'gltf', 'fbx', 'obj', 'stl'].includes(format)) throw Object.assign(new Error('Tripo source model must be GLB/GLTF/FBX/OBJ/STL'), { status: 400 });
+        await tripo3d.validateArtifact(file.buffer, format);
+        prepared.push({ ...binding, format });
+      }
+    }
+    for (const binding of prepared) {
+      const uploaded = await uploadMedia(binding.source, binding.kind, apiKey, {
+        ...options, maxBytes: binding.kind === 'image' ? tripo3d.contract.maxImageBytes : tripo3d.contract.maxModelBytes,
+        cacheVariant: `tripo-${binding.kind}`,
+        ...(binding.kind === 'image' ? { allowedMimes: ['image/png'] } : { validateBuffer: buffer => tripo3d.validateArtifact(buffer, binding.format) }),
+      });
+      if (binding.field) built.payload.metadata[binding.field] = uploaded;
+      else built.payload.images[binding.index] = uploaded;
+    }
+    const { bindings, ...result } = built;
+    return result;
+  }
+  if (g26Krea3d.models3d.includes(request.model)) return buildG26Krea3dPayload(g26Krea3d.build3d(request), apiKey, options);
   const model = String(request.model || '').trim().toLowerCase();
   if (!HUNYUAN3D_MODELS.has(model)) throw new Error(`未知 Hunyuan 3D 模型：${model || '(空)'}`);
   const prompt = String(request.prompt || '').trim();
@@ -5904,14 +6548,20 @@ async function queryHunyuan3dTask(taskId, apiKey, options = {}) {
   // A successful Hunyuan response can include previews and ZIP sidecars beside
   // the actual GLB. Keep only the highest-confidence renderable model so the
   // materializer and 3D preview never receive an unrelated attachment.
-  const rankedModelUrls = status === 'succeeded' ? model3dResultUrls(record) : [];
+  const tripo3d = require('./tripo3d');
+  const model = String(record.model || record.data?.model || options.model || '');
+  if(options.model && model!==options.model)throw new Error('3D result model mismatch');
+  const tripoResult = status === 'succeeded' ? model===NOV21_CONTRACT.miora.model ? require('./miora3d').parseFiles(record) : tripo3d.MODELS.includes(model) ? tripo3d.parseFiles(record) : null : null;
+  const rankedModelUrls = status === 'succeeded' ? tripoResult ? tripoResult.modelUrls : model3dResultUrls(record) : [];
   const modelUrls = rankedModelUrls.length ? [rankedModelUrls[0]] : [];
   return {
     status,
     progress: safeProgress(record?.progress ?? data?.progress),
     modelUrl: modelUrls[0] || null,
     modelUrls,
-    failReason: status === 'failed' ? String(record?.fail_reason || record?.failReason || record?.message || data?.message || '3D 任务失败') : null,
+    model,
+    ...(tripoResult || {}),
+    failReason: status === 'failed' ? String(record?.fail_reason || record?.failReason || record?.data?.error?.message || record?.message || data?.message || '3D 任务失败') : null,
     ...safeProviderTrace(response, data),
   };
 }
@@ -6055,6 +6705,8 @@ async function queryTask(taskId, apiKey, options = {}) {
     videoUrl: status === 'succeeded'
       ? String(metadata?.url || data?.url || data?.data?.url || '').trim() || null
       : null,
+    draftTaskId: status === 'succeeded' ? String(data?.data?.content?.draft_task_id || data?.content?.draft_task_id || metadata?.draft_task_id || '').trim() : '',
+    lastFrameUrl: status === 'succeeded' ? String(metadata?.last_frame_url || data?.data?.content?.last_frame_url || data?.content?.last_frame_url || '').trim() : '',
     draftCache: status === 'succeeded'
       ? String(metadata?.draft_cache || data?.draft_cache || data?.data?.draft_cache || '').trim() || null
       : null,
@@ -6129,7 +6781,7 @@ async function queryFashVsrTask(taskId, apiKey, options = {}) {
   };
 }
 
-async function queryVosr2VideoTask(taskId, apiKey, options = {}) {
+async function queryLegacyVideoTask(taskId, apiKey, options = {}, label = 'Vosr2 视频超分') {
   if (!String(apiKey || '').trim()) throw new Error('缺少贞贞的平价AI小屋 API Key');
   const fetchImpl = getFetchImpl(options);
   const baseUrl = cleanBaseUrl(options.baseUrl);
@@ -6138,9 +6790,9 @@ async function queryVosr2VideoTask(taskId, apiKey, options = {}) {
     `${baseUrl}/v1/video/generations/${encodeURIComponent(taskId)}`,
     { headers: { Authorization: `Bearer ${apiKey}` } },
     options,
-    'seedance.nz Vosr2 视频超分任务查询',
+    `seedance.nz ${label}任务查询`,
   );
-  const data = await responseJson(response, 'seedance.nz Vosr2 视频超分任务查询');
+  const data = await responseJson(response, `seedance.nz ${label}任务查询`);
   if (!response.ok) throw createUpstreamError(data, response);
   const body = data?.data && typeof data.data === 'object' ? data.data : data;
   const status = normalizeStatus(body?.status || body?.data?.status);
@@ -6154,13 +6806,60 @@ async function queryVosr2VideoTask(taskId, apiKey, options = {}) {
     || body?.content?.video_url
     || '',
   ).trim();
+  const listed = body?.data?.content?.video_urls || body?.content?.video_urls || body?.metadata?.video_urls;
+  const videoUrls = Array.isArray(listed) ? listed.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()) : [];
+  if (!videoUrls.length && videoUrl) videoUrls.push(videoUrl);
   return {
     status,
     progress: safeProgress(body?.progress ?? body?.data?.progress),
-    videoUrl: status === 'succeeded' ? videoUrl || null : null,
-    failReason: status === 'failed' ? 'Vosr2 视频超分任务失败' : null,
+    videoUrl: status === 'succeeded' ? (options.preserveVideoUrls ? videoUrls[0] : videoUrl) || null : null,
+    ...(options.preserveVideoUrls ? { videoUrls: status === 'succeeded' ? videoUrls : [] } : {}),
+    failReason: status === 'failed' ? `${label}任务失败` : null,
     ...safeProviderTrace(response, data),
   };
+}
+
+async function submitMotionVideoTask(request, apiKey, options = {}) {
+  if (!String(apiKey || '').trim()) throw motionError('请先设置贞贞的平价AI小屋 API Key');
+  const built = buildMotionVideoPayload(request);
+  if (built.operation === 'revise') {
+    // Read-only ownership/completion preflight. Never use a paid submit to test a base task.
+    const base = await queryMotionVideoTask(built.payload.motion.revise_from, apiKey, { ...options, model: built.model });
+    if (base.status !== 'succeeded') throw motionError('请选择自己已完成的代码动画作为修改基准', 'MOTION_BASE_NOT_COMPLETED', 409);
+  }
+  const response = await fetchProviderResponse(getFetchImpl(options), `${cleanBaseUrl(options.baseUrl)}/v1/video/generations`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }, body: JSON.stringify(built.payload),
+  }, options, 'seedance.nz 代码动画提交');
+  const data = await responseJson(response, 'seedance.nz 代码动画提交');
+  if (!response.ok || data?.success === false) throw createUpstreamError(data, response);
+  const taskId = requiredTaskId(data?.task_id || data?.id || data?.data?.task_id || data?.data?.id, 'seedance.nz 代码动画提交', response);
+  return { taskId, model: built.model, operation: built.operation, ...safeProviderTrace(response, data, { pollCount: 0 }) };
+}
+
+async function queryMotionVideoTask(taskId, apiKey, options = {}) {
+  if (!String(apiKey || '').trim()) throw motionError('请先设置贞贞的平价AI小屋 API Key');
+  const id = requiredTaskId(taskId, 'seedance.nz 代码动画查询');
+  const response = await fetchProviderResponse(getFetchImpl(options), `${cleanBaseUrl(options.baseUrl)}/v1/video/generations/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  }, options, 'seedance.nz 代码动画查询');
+  const data = await responseJson(response, 'seedance.nz 代码动画查询');
+  if (!response.ok || data?.success === false) throw createUpstreamError(data, response);
+  return { ...normalizeMotionVideoResponse(data, { model: options.model, secrets: [apiKey] }), ...safeProviderTrace(response, data) };
+}
+
+async function queryTopazVideoTask(taskId, apiKey, options = {}) {
+  // Reuse the legacy transport/status mapping, while preserving the full Topaz output list.
+  return queryLegacyVideoTask(taskId, apiKey, { ...options, preserveVideoUrls: true }, 'Topaz 视频修复');
+}
+
+async function queryVosr2VideoTask(taskId, apiKey, options = {}) {
+  return queryLegacyVideoTask(taskId, apiKey, options);
+}
+
+async function queryViduTask(taskId, apiKey, options = {}) {
+  if (!VIDU_Q4_MODELS.has(String(options.model || ''))) return queryTask(taskId, apiKey, options);
+  // Same documented legacy envelope; Q3 keeps its existing modern route.
+  return queryLegacyVideoTask(taskId, apiKey, options, 'Vidu Q4 ');
 }
 
 function animateMotionTransferResultUrl(body) {
@@ -6219,6 +6918,16 @@ function resetCachesForTests() {
 }
 
 module.exports = {
+  H3_TURBO_CONTRACT, buildH3TurboPayload, submitH3TurboVideoTask, queryH3TurboVideoTask,
+  VIDU_Q4_MODELS,
+  FLUX3_IMAGE_MODEL,
+  NOV19_CONTRACT, NOV19_AUDIO_MODELS,
+  MAI_IMAGE_CONTRACT,
+  MOSS_IMAGE_CONTRACT,
+  MAI_IMAGE_MODELS,
+  ZHENZHEN_IMAGE_NB_21_MODEL,
+  buildViduQ4Payload,
+  queryViduTask,
   BASE_URL,
   HAILUO23_I2V_MODELS,
   HAILUO23_MODELS,
@@ -6291,6 +7000,7 @@ module.exports = {
   KLING_EDIT_MODELS,
   KLING_I2V_MODELS,
   KLING_MODELS,
+  KLING_V4_MODELS,
   KLING_R2V_MODELS,
   KLING_SECONDS,
   KLING_T2V_MODELS,
@@ -6441,6 +7151,13 @@ module.exports = {
   buildUpscalerPayload,
   buildFashVsrPayload,
   buildVosr2ImagePayload,
+  TOPAZ_VIDEO_CONTRACT,
+  buildTopazVideoPayload,
+  submitTopazVideoTask,
+  queryTopazVideoTask,
+  buildMotionVideoPayload,
+  submitMotionVideoTask,
+  queryMotionVideoTask,
   buildVosr2VideoPayload,
   buildAnimateMotionTransferPayload,
   buildViduPayload,
@@ -6485,12 +7202,15 @@ module.exports = {
   submitHailuoTask,
   submitFlux3Task,
   submitKlingTask,
+  queryKlingV4Task,
   submitUpscalerTask,
   submitFashVsrTask,
   submitVosr2VideoTask,
   submitAnimateMotionTransferTask,
   submitViduTask,
   submitHappyHorseTask,
+  buildPreviewMuseFluxPayload, submitMuseVideoTask, queryMuseVideoTask,
+  buildHeygenPayload, submitHeygenVideoTask, queryHeygenVideoTask,
   submitImageTask,
   submitMinimaxH3ContextIrTask,
   submitMidjourneyAction,

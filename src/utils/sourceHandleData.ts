@@ -1,11 +1,12 @@
+import nbDoubao from '../../backend/src/shared/nbLowpriceDoubaoContract.json';
 export type SourceHandleData = Record<string, unknown>;
 
 const OUTPUT_KIND_FIELDS: Record<string, string[]> = {
   text: ['outputText', 'reply', 'promptResolved', 'prompt', 'text', 'textSegments', 'segments', 'texts'],
   image: ['imageUrl', 'imageUrls', 'generatedImages', 'resultUrl', 'resultUrls', 'firstFrameUrl', 'lastFrameUrl'],
-  video: ['videoUrl', 'videoUrls'],
+  video: ['videoUrl', 'videoUrls', 'seedance25DraftTaskIdResult', 'seedance25DraftSourceModel'],
   audio: ['audioUrl', 'audioUrl_1', 'audioUrls'],
-  model3d: ['modelUrl', 'modelUrls', 'directModelUrl', 'directModelUrls'],
+  model3d: ['modelUrl', 'modelUrls', 'directModelUrl', 'directModelUrls', 'worldSceneUrl', 'worldSceneFormat', 'worldSceneSource', 'fileName', 'fileNames', 'tripoTaskId', 'tripoPartNames', 'tripoFiles'],
   metadata: [
     'metadata',
     'outputMetadata',
@@ -26,6 +27,7 @@ const HANDLE_KIND_ALIASES: Record<string, string> = {
   audio: 'audio',
   model: 'model3d',
   model3d: 'model3d',
+  scene: 'model3d',
   metadata: 'metadata',
 };
 
@@ -45,6 +47,14 @@ export function selectSourceHandleData(
   handles: ReadonlySet<string | null | undefined>,
 ): SourceHandleData[] {
   const source = data && typeof data === 'object' ? data : {};
+  // A training text port is an actual returned speaker, never its preview prompt
+  // or a requested custom ID. Keep the existing aggregate/audio paths unchanged.
+  if (handles.size === 1 && handles.has('text') &&
+    [source.seedAudioModel, source.apiModel, source.model].includes(nbDoubao.audio.cloneModel)) {
+    const text = typeof source.seedanceNzAudioResultText === 'string' ? source.seedanceNzAudioResultText.trim()
+      : typeof source.outputText === 'string' ? source.outputText.trim() : '';
+    return [{ outputText: text, text, texts: text ? [text] : [] }];
+  }
   const outputs = source.subflowOutputs && typeof source.subflowOutputs === 'object' && !Array.isArray(source.subflowOutputs)
     ? source.subflowOutputs
     : source.outputs;

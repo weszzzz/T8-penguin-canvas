@@ -1,9 +1,15 @@
+import { isPreviewImage, isFluxVariant, buildPreviewImageRequest } from './previewMuseFlux';
+import {NEW_IMAGE_CONTRACT as nc,isNewImageModel,newImageSettings,buildNewImageRequest} from './g26Krea';
 import { ZHENZHEN_IMAGE_G25_MODELS, ZHENZHEN_IMAGE_G25_LOWPRICE_MODEL, ZHENZHEN_IMAGE_G25_RESOLUTIONS,
   ZHENZHEN_IMAGE_G25_LOWPRICE_SIZES, ZHENZHEN_IMAGE_G25_OFFICIAL_SIZES, ZHENZHEN_IMAGE_G25_QUALITIES,
   ZHENZHEN_IMAGE_G25_OUTPUT_FORMATS, ZHENZHEN_IMAGE_G25_BACKGROUNDS, ZHENZHEN_IMAGE_G25_MODERATION,
   ZHENZHEN_IMAGE_G25_PROMPT_MAX_LENGTH, ZHENZHEN_IMAGE_G25_LOWPRICE_MAX_IMAGES,
   ZHENZHEN_IMAGE_G25_OFFICIAL_MAX_IMAGES, validateGptImage25Size } from '../providers/models';
 import { historyImageBasicSettings } from './historyImageBasicSettings';
+import {NOV21,buildLongImageRequest,longImageSettings} from './nov21Models';
+import {NOV19,buildKlingImageRequest,klingImageSettings} from './nov19Models';
+import { MAI_IMAGE_TAB, isMaiImageModel, buildMaiImageRequest } from './maiImage';
+import { MOSS_IMAGE_CONTRACT, buildMossImageRequest } from './mossImage';
 
 const baseKeys = ['model', 'apiModel', 'aspectRatio', 'sizeLevel', 'imageBuiltinSource', 'providerSource', 'providerId', 'providerModel',
   'zhenzhenImageG25Size', 'zhenzhenImageG25Resolution', 'zhenzhenImageG25Count'];
@@ -15,6 +21,58 @@ const officialKeys = ['zhenzhenImageG25CustomWidth', 'zhenzhenImageG25CustomHeig
 export function readHistoryBudgetImageInput(data: Record<string, unknown>) {
   const settings = historyImageBasicSettings(data);
   if (!settings) throw new Error('历史未记录完整图像输入，未套用当前默认值');
+  if(isNewImageModel(String(settings.apiModel))){
+    const model=String(settings.apiModel),family=nc.g26.models.includes(model)?nc.g26.tab:nc.krea.models.includes(model)?nc.krea.tab:nc.zimage.tab;
+    const keys=['model','apiModel','aspectRatio','sizeLevel','imageBuiltinSource','providerSource','providerId','providerModel',...Object.keys(newImageSettings(model,{}))];
+    const context=data.historyResolvedInput as {prompt:string;referenceImages:string[]},invalid=()=>new Error('历史图像输入不完整或已不兼容，未套用当前默认值');
+    if(settings.model!==family||settings.imageBuiltinSource!=='seedance-nz'||settings.providerSource!=='zhenzhen'||settings.providerId!==''||settings.providerModel!==''||keys.some(k=>!Object.hasOwn(settings,k)))throw invalid();
+    try{buildNewImageRequest(model,context.prompt,context.referenceImages,settings);}catch{throw invalid();}
+    return {settings:Object.fromEntries(keys.map(k=>[k,settings[k]])),prompt:context.prompt,media:context.referenceImages.map((url,index)=>({kind:'image' as const,url,label:`图片 ${index+1}`}))};
+  }
+  if (isPreviewImage(String(settings.apiModel)) || isFluxVariant(String(settings.apiModel))) {
+    const model = String(settings.apiModel), hy = model === 'zhenzhen-image-hy-v3.5-preview', flux = isFluxVariant(model);
+    const keys = ['model','apiModel','aspectRatio','sizeLevel','imageBuiltinSource','providerSource','providerId','providerModel',
+      ...(hy ? ['hyWidth','hyHeight','hySeed','hyNegativePrompt'] : flux ? ['fluxImageGrounding','fluxImageSafetyTolerance','fluxImageSeed','fluxImageSteps','fluxImageOutputFormat'] : [])];
+    const invalid = () => new Error('历史图像参数不完整或已不兼容，未套用当前默认值');
+    const context = data.historyResolvedInput as {prompt:string;referenceImages:string[]};
+    if (settings.model !== (flux ? 'flux-3-image' : model) || settings.imageBuiltinSource !== 'seedance-nz' || settings.providerSource !== 'zhenzhen'
+      || settings.providerId !== '' || settings.providerModel !== '' || keys.some(key => !Object.hasOwn(settings,key))) throw invalid();
+    try {buildPreviewImageRequest(model,context.prompt,context.referenceImages,String(settings.aspectRatio),String(settings.sizeLevel),settings);} catch {throw invalid();}
+    return {settings:Object.fromEntries(keys.map(key=>[key,settings[key]])),prompt:context.prompt,
+      media:context.referenceImages.map((url,index)=>({kind:'image' as const,url,label:`图片 ${index+1}`}))};
+  }
+  if (settings.model === MOSS_IMAGE_CONTRACT.model) {
+    const keys = ['model', 'apiModel', 'aspectRatio', 'sizeLevel', 'imageBuiltinSource', 'providerSource', 'providerId', 'providerModel'];
+    const context = data.historyResolvedInput as { prompt: string; referenceImages: string[] };
+    const invalid = () => new Error('历史 Moss 输入不完整或已不兼容，未套用当前默认值');
+    if (settings.apiModel !== MOSS_IMAGE_CONTRACT.model || settings.imageBuiltinSource !== 'seedance-nz'
+      || settings.providerSource !== 'zhenzhen' || settings.providerId !== '' || settings.providerModel !== ''
+      || settings.sizeLevel !== '' || keys.some(key => !Object.hasOwn(settings, key))
+      || context.referenceImages.some(url => !url.trim())) throw invalid();
+    try { buildMossImageRequest(context.prompt, context.referenceImages, String(settings.aspectRatio)); } catch { throw invalid(); }
+    return { settings: Object.fromEntries(keys.map(key => [key, settings[key]])), prompt: context.prompt,
+      media: context.referenceImages.map((url, index) => ({ kind: 'image' as const, url, label: `图片 ${index + 1}` })) };
+  }
+  if(settings.model===NOV19.contract.kling.model){
+    const keys=['model','apiModel','aspectRatio','sizeLevel','imageBuiltinSource','providerSource','providerId','providerModel',...Object.keys(NOV21.isImage(String(settings.apiModel))?longImageSettings({}):klingImageSettings({}))],invalid=()=>new Error('Kling image history inputs are incomplete');
+    if(settings.apiModel!==NOV19.contract.kling.model&&!NOV21.isImage(String(settings.apiModel))||settings.imageBuiltinSource!=='seedance-nz'||settings.providerSource!=='zhenzhen'||settings.providerId!==''||settings.providerModel!==''||keys.some(k=>!Object.hasOwn(settings,k)))throw invalid();
+    const context=data.historyResolvedInput as {prompt:string;referenceImages:string[]};try{(NOV21.isImage(String(settings.apiModel))?buildLongImageRequest:buildKlingImageRequest)(context.prompt,context.referenceImages,settings);}catch{throw invalid();}
+    return {settings:Object.fromEntries(keys.map(k=>[k,settings[k]])),prompt:context.prompt,media:context.referenceImages.map((url,index)=>({kind:'image' as const,url,label:'image '+(index+1)}))};
+  }
+  if (settings.model === MAI_IMAGE_TAB) {
+    const keys = ['model', 'apiModel', 'aspectRatio', 'sizeLevel', 'imageBuiltinSource', 'providerSource', 'providerId', 'providerModel',
+      'maiSize', 'maiResolution', 'maiCustomRatio', 'maiWidth', 'maiHeight', 'maiAutoAspectRatio', 'maiWebGrounding',...(NOV19.isMai(String(settings.apiModel))?['maiBackground','maiNsfw']:[])];
+    const invalid = () => new Error('历史 Mai 输入不完整或已不兼容，未套用当前默认值');
+    if (!isMaiImageModel(String(settings.apiModel)) || settings.imageBuiltinSource !== 'seedance-nz'
+      || settings.providerSource !== 'zhenzhen' || settings.providerId !== '' || settings.providerModel !== ''
+      || keys.some(key => !Object.hasOwn(settings, key))) throw invalid();
+    const context = data.historyResolvedInput as { prompt: string; referenceImages: string[] };
+    if (context.referenceImages.some(url => !url.trim())) throw invalid();
+    try { buildMaiImageRequest(String(settings.apiModel), context.prompt, context.referenceImages, settings); }
+    catch { throw invalid(); }
+    return { settings: Object.fromEntries(keys.map(key => [key, settings[key]])), prompt: context.prompt,
+      media: context.referenceImages.map((url, index) => ({ kind: 'image' as const, url, label: `图片 ${index + 1}` })) };
+  }
   if (settings.model !== 'gpt-image-2' || settings.imageBuiltinSource !== 'seedance-nz'
     || settings.providerSource !== 'zhenzhen' || settings.providerId !== '' || settings.providerModel !== ''
     || !(ZHENZHEN_IMAGE_G25_MODELS as readonly string[]).includes(String(settings.apiModel))) {

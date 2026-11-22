@@ -1,6 +1,16 @@
+const h3Turbo = require('../shared/h3TurboContract.json');
+const pmf = require('../shared/previewMuseFluxContract.json');
+const newModels=require('../providers/g26Krea3d');
 const canvasNodeSchema = require('../shared/canvasNodeSchema.json');
 const seedanceNzLlmModels = require('../shared/seedanceNzLlmModels.json');
 const seedreamNzContract = require('../shared/seedreamNzContract.json');
+const nb21FluxViduContract = require('../shared/nb21FluxViduQ4Contract.json');
+const nbDoubaoContract = require('../shared/nbLowpriceDoubaoContract.json');
+const topazVideoContract = require('../shared/topazVideoContract.json');
+const nov21=require('../shared/nov21ModelsContract.json');
+const nov19=require('../shared/nov19ModelsContract.json');
+const maiImageContract = require('../shared/maiImageContract.json');
+const mossImageContract = require('../shared/mossImageContract.json');
 
 const RUN_INTENT_AUTHORITY_SCHEMA = 't8-run-intent-authority-v1';
 const MAX_CANVAS_NODES = 20_000;
@@ -51,6 +61,14 @@ const LOCAL_EXECUTION_NODE_TYPES = new Set([
 ]);
 
 const IMAGE_RUNTIME_MODELS = Object.freeze({
+  ...Object.fromEntries([h3Turbo.minimax.model,h3Turbo.qwen.model].map(model=>[model,{defaultModel:model,models:[model]}])),
+  [newModels.contract.g26.tab]:{defaultModel:newModels.contract.g26.models[0],models:newModels.contract.g26.models},
+  [newModels.contract.krea.tab]:{defaultModel:newModels.contract.krea.models[0],models:newModels.contract.krea.models},
+  [newModels.contract.zimage.tab]:{defaultModel:newModels.contract.zimage.model,models:[newModels.contract.zimage.model]},
+  ...Object.fromEntries([pmf.hy.model, pmf.muse.imageModel].map(model => [model, {defaultModel:model, models:[model]}])),
+  [mossImageContract.model]: { defaultModel: mossImageContract.model, models: [mossImageContract.model] },
+  [nov19.kling.model]:{defaultModel:nov19.kling.model,models:[nov19.kling.model,nov21.longImage.model]},
+  'mai-image-2-6': { defaultModel: maiImageContract.models[0], models: [...maiImageContract.models,...nov19.mai.models] },
   'gpt-image-2': {
     defaultModel: 'gpt-image-2-all',
     models: [
@@ -64,7 +82,7 @@ const IMAGE_RUNTIME_MODELS = Object.freeze({
     defaultModel: 'gemini-3.1-flash-image',
     models: [
       'gemini-3.1-flash-image', 'gemini-3.1-flash-lite-image', 'nano-banana-2-fal',
-      'zhenzhen-image-nb-2-lite', 'zhenzhen-image-nb-2',
+      'zhenzhen-image-nb-2-lite', 'zhenzhen-image-nb-2', nb21FluxViduContract.banana21.model, ...nbDoubaoContract.banana.models,
     ],
   },
   'nano-banana-pro': {
@@ -77,6 +95,10 @@ const IMAGE_RUNTIME_MODELS = Object.freeze({
   'grok-image': {
     defaultModel: 'grok-4.2-image',
     models: ['grok-4.2-image', 'zhenzhen-image-gk-v15', 'zhenzhen-image-gk-v15-edit'],
+  },
+  'flux-3-image': {
+    defaultModel: nb21FluxViduContract.flux.model,
+    models: [nb21FluxViduContract.flux.model, ...pmf.flux.models],
   },
   'seedream-v5-pro': {
     defaultModel: 'seedream-v5-pro',
@@ -112,6 +134,7 @@ const VIDEO_RUNTIME_MODELS = Object.freeze({
   ],
   'veo3.1': [
     'veo-omni-10s',
+    'zhenzhen-video-g-omni-1.2-flash-lowprice',
     'zhenzhen-video-g-omni-flash',
     'zhenzhen-video-v31-fast',
     'zhenzhen-video-v31-quality',
@@ -132,14 +155,37 @@ const VIDEO_RUNTIME_MODELS = Object.freeze({
     'veo3.1-fal',
   ],
   'sora-2': ['sora-2', 'sora-2-zhenzhen'],
+  'kling-v3.0': require('../shared/creativeModelCatalog.json').video
+    .filter(entry => entry.family === 'kling-v3.0' && entry.provider === 'seedance-nz')
+    .map(entry => entry.model),
   'wan-2.7-spicy': ['wan-2.7-spicy-i2v'],
   'happyhorse-1.1': ['happyhorse-1.1-t2v', 'happyhorse-1.1-i2v', 'happyhorse-1.1-r2v'],
   'seedance-2.0': ['seedance-2.0'],
+  'seedance-2.5': require('../shared/creativeModelCatalog.json').video.filter(entry => entry.family === 'seedance-2.5' && entry.provider === 'seedance-nz').map(entry => entry.model),
   'vosr2-video-upscale': ['vosr2-video-upscale'],
+  [h3Turbo.video.model]: Object.values(h3Turbo).filter(spec => spec === h3Turbo.video || spec.video).map(spec => spec.model),
+  'heygen-avatar-6': nov21.heygen.models,
+  [pmf.muse.videoModel]: [pmf.muse.videoModel],
+  [topazVideoContract.model]: [topazVideoContract.model],
   'animate-motion-transfer': ['animate-motion-transfer'],
+  'vidu-q3': [
+    'vidu-q3-turbo-t2v', 'vidu-q3-pro-t2v', 'vidu-q3-pro-fast-t2v',
+    'vidu-q3-turbo-i2v', 'vidu-q3-pro-i2v', 'vidu-q3-pro-fast-i2v',
+    'vidu-q3-turbo-start-end', 'vidu-q3-pro-start-end', 'vidu-q3-pro-fast-start-end',
+    'vidu-q3-r2v', 'vidu-q3-mix-r2v', 'vidu-q3-ad-r2v', 'vidu-q3-drama-r2v',
+    'vidu-q3-drama-short-play', 'vidu-q3-ad-short-play', ...nb21FluxViduContract.viduQ4.models,
+  ],
 });
 
 const SEEDANCE_NZ_IMAGE_RUNTIME_MODELS = new Set([
+  h3Turbo.minimax.model,h3Turbo.qwen.model,
+  ...newModels.imageModels,
+  pmf.hy.model, pmf.muse.imageModel, ...pmf.flux.models,
+  mossImageContract.model,
+  ...nbDoubaoContract.banana.models,
+  nov21.longImage.model, nov19.kling.model,...nov19.mai.models,
+  ...maiImageContract.models,
+  nb21FluxViduContract.banana21.model, nb21FluxViduContract.flux.model,
   ...seedreamNzContract.layerModels,
   'zhenzhen-image-g2-t2i',
   'zhenzhen-image-g2-i2i',
@@ -153,6 +199,12 @@ const SEEDANCE_NZ_IMAGE_RUNTIME_MODELS = new Set([
   'qwen-image-global-2.1',
 ]);
 const SEEDANCE_NZ_VIDEO_RUNTIME_MODELS = new Set([
+  ...nov21.heygen.models, ...VIDEO_RUNTIME_MODELS[h3Turbo.video.model],
+  ...VIDEO_RUNTIME_MODELS['seedance-2.5'],
+  ...Object.keys(require('../shared/flashVideoContract.json').models),
+  pmf.muse.videoModel,
+  topazVideoContract.model,
+  ...nb21FluxViduContract.viduQ4.models,
   'zhenzhen-video-g-omni-flash',
   'zhenzhen-video-gk-v15',
   'zhenzhen-video-v31-fast',
@@ -326,6 +378,26 @@ function hasAuthoritativeImageReference(node, context) {
 function providerDeclarationForNode(node, context = {}) {
   const type = boundedString(node?.type, 120);
   const data = isRecord(node?.data) ? node.data : {};
+  if (type === 'video' && data.klingV4Pending != null) {
+    const pending = data.klingV4Pending;
+    if (!require('../shared/klingV4Contract.json').models.includes(pending.model) || pending.request?.model !== pending.model || !/^[A-Za-z0-9._:-]{1,512}$/.test(pending.taskId || '')) {
+      throw authorityError('intent_kling4_pending_invalid', '待恢复Kling 4任务身份不完整，不会重新提交', [node.id]);
+    }
+    return { provider: 'seedance-nz', model: pending.model };
+  }
+  if (type === 'code-animation') {
+    const models = require('../shared/motionVideoContract.json').models;
+    const versions = Array.isArray(data.motionVersions) ? data.motionVersions : [];
+    const base = data.motionOperation === 'revise' ? versions.find(v => v?.id === data.motionBaseVersionId) : null;
+    const pending = data.motionPending;
+    if (pending != null && (pending.schema !== 't8-motion-video-input-v1'
+      || !/^[A-Za-z0-9._:-]{1,512}$/.test(pending.taskId || '') || !/^seedance-nz:[a-f0-9]{64}$/.test(pending.connectionRef || ''))) {
+      throw authorityError('intent_motion_pending_invalid', '待恢复动画任务身份不完整，不会重新提交', [node.id]);
+    }
+    const model = pending != null ? pending.request?.model : data.motionOperation === 'revise' ? base?.result?.model : (data.model || models[0]);
+    if (!models.includes(model)) throw authorityError('intent_motion_model_invalid', '代码动画模型或修订基准无效', [node.id]);
+    return { provider: 'seedance-nz', model };
+  }
 
   if (REMOTE_UNSUPPORTED_HOST_ONLY_NODE_TYPES.has(type)) {
     throw authorityError(
@@ -376,6 +448,13 @@ function providerDeclarationForNode(node, context = {}) {
     };
   }
 
+  if (type === 'model-3d') {
+    const requested = boundedString(data.model);
+    const model = requested===nov21.miora.model || newModels.models3d.includes(requested) || requested === 'hunyuan3d-v3.1-image-to-3d'
+      ? requested : 'hunyuan3d-v3.1-text-to-3d';
+    return { provider: 'seedance-nz-3d', model };
+  }
+
   if (type === 'video') {
     const resolved = resolvedVideoRuntimeModel(data);
     return {
@@ -384,7 +463,7 @@ function providerDeclarationForNode(node, context = {}) {
         : boundedString(data.videoBuiltinSource) === 'seedance-nz'
           || SEEDANCE_NZ_VIDEO_RUNTIME_MODELS.has(resolved.model)
           ? 'seedance-nz'
-        : (resolved.familyId === 'wan-2.7-spicy' || resolved.familyId === 'happyhorse-1.1')
+        : (resolved.familyId === 'wan-2.7-spicy' || resolved.familyId === 'happyhorse-1.1' || resolved.familyId === 'kling-v3.0')
           ? 'seedance-nz'
           : 'zhenzhen',
       model: resolved.model,
@@ -429,8 +508,9 @@ function providerDeclarationForNode(node, context = {}) {
   if (type === 'audio') {
     const mode = boundedString(data.audioProviderMode, 40) || 'suno';
     const seedanceNzModels = {
-      'seed-audio': 'doubao-seed-audio-1.0',
+      'seed-audio': boundedString(data.seedAudioModel) || 'doubao-seed-audio-1.0',
       whisper: 'whisper-1',
+      'gemini-tts':boundedString(data.geminiTtsModel)||nov21.gemini.models[0],
       'qwen3-tts': boundedString(data.qwenTtsModel) || 'qwen3-tts-flash',
       minimax: boundedString(data.minimaxAudioModel) || 'minimax-speech-2.8-turbo',
       mureka: boundedString(data.murekaModel) || 'mureka-v8-bgm',

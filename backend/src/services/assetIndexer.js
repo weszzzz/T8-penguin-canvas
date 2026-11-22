@@ -153,10 +153,12 @@ function scanUtf8LinesSync(filename, options, visitor) {
 }
 
 const EXTENSION_INFO = Object.freeze({
+  svg: ['image','image/svg+xml'],
   png: ['image', 'image/png'], jpg: ['image', 'image/jpeg'], jpeg: ['image', 'image/jpeg'], webp: ['image', 'image/webp'], gif: ['image', 'image/gif'], bmp: ['image', 'image/bmp'], avif: ['image', 'image/avif'], tif: ['image', 'image/tiff'], tiff: ['image', 'image/tiff'],
   mp4: ['video', 'video/mp4'], webm: ['video', 'video/webm'], mov: ['video', 'video/quicktime'], m4v: ['video', 'video/x-m4v'], mkv: ['video', 'video/x-matroska'], avi: ['video', 'video/x-msvideo'],
   mp3: ['audio', 'audio/mpeg'], wav: ['audio', 'audio/wav'], ogg: ['audio', 'audio/ogg'], m4a: ['audio', 'audio/mp4'], flac: ['audio', 'audio/flac'], aac: ['audio', 'audio/aac'],
   glb: ['model3d', 'model/gltf-binary'], gltf: ['model3d', 'model/gltf+json'], obj: ['model3d', 'model/obj'], fbx: ['model3d', 'application/octet-stream'], stl: ['model3d', 'model/stl'], usdz: ['model3d', 'model/vnd.usdz+zip'],
+  spz: ['model3d', 'application/octet-stream'], ply: ['model3d', 'application/octet-stream'], splat: ['model3d', 'application/octet-stream'], ksplat: ['model3d', 'application/octet-stream'], '3mf': ['model3d', 'model/3mf'],
   txt: ['text', 'text/plain'], md: ['text', 'text/markdown'], json: ['text', 'application/json'], csv: ['text', 'text/csv'], srt: ['text', 'application/x-subrip'], vtt: ['text', 'text/vtt'],
 });
 
@@ -165,6 +167,7 @@ const MIME_EXTENSION = Object.freeze({
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
   'image/gif': 'gif',
+  'image/svg+xml':'svg',
   'image/bmp': 'bmp',
   'image/avif': 'avif',
   'image/tiff': 'tiff',
@@ -263,6 +266,7 @@ function detectHostArtifactType(filename, declaredContentType = '', sourceType =
   const declared = normalizedContentType(declaredContentType);
   const sourceExtension = path.extname(filename).slice(1).toLowerCase();
   const known = (() => {
+    if (require('../providers/providerOutputFormats').isSvgBuffer(prefix)) return artifactType('image','image/svg+xml','svg');
     if (bufferStartsWith(prefix, Buffer.from('89504e470d0a1a0a', 'hex'))) return artifactType('image', 'image/png', 'png');
     if (bufferStartsWith(prefix, Buffer.from('ffd8ff', 'hex'))) return artifactType('image', 'image/jpeg', 'jpg');
     if (bufferStartsWith(prefix, Buffer.from('GIF87a')) || bufferStartsWith(prefix, Buffer.from('GIF89a'))) return artifactType('image', 'image/gif', 'gif');
@@ -292,6 +296,12 @@ function detectHostArtifactType(filename, declaredContentType = '', sourceType =
     return null;
   })();
   if (known) return { ...known, stat };
+  // Only the Provider's verified local receipt may identify opaque model formats.
+  // Caller-supplied kind/extension/metadata remain non-authoritative.
+  if (sourceType === 'controlled-output') {
+    const tripo = require('./tripoMediaMetadata').readTripoMediaMetadata(path.dirname(filename), filename);
+    if (tripo) return { ...artifactType('model3d', extensionInfo(filename).mimeType, tripo.format), stat };
+  }
 
   const textual = prefix.length === 0 || (isUtf8(prefix) && !prefix.includes(0));
   const trimmed = textual ? prefix.toString('utf8').trimStart().toLowerCase() : '';
@@ -2357,6 +2367,14 @@ class AssetIndexer {
       );
       const contentHash = String(stableSource.contentHash).toLowerCase();
       const artifactUid = stableEntityUuid('t8-host-artifact-v1', attempt.entityUid, prepared.outputOrdinal);
+      // Read auxiliary provider data from the verified local media receipt, never
+      // from caller-supplied metadata. Match the exact task/model/connection and bytes.
+      const motionResult = detected.kind === 'video'
+        ? require('./motionVideoMetadata').readMotionVideoMetadata(this.config.OUTPUT_DIR, materialized.absolute, contentHash, attempt.metadata?.recovery)
+        : null;
+      const tripoResult = detected.kind === 'model3d'
+        ? require('./tripoMediaMetadata').readTripoMediaMetadata(this.config.OUTPUT_DIR, materialized.absolute, contentHash, attempt.metadata?.recovery)
+        : null;
       artifacts.push({
         opId: stableEntityUuid('t8-host-artifact-operation-v1', attempt.entityUid, prepared.outputOrdinal),
         artifactUid,
@@ -2371,6 +2389,8 @@ class AssetIndexer {
         sourcePath: materialized.absolute,
         metadata: {
           ...stableSource.metadata,
+          ...(motionResult ? { motionResult } : {}),
+          ...(tripoResult ? { tripoResult } : {}),
           size: byteSize,
           extension: detected.extension,
           root: 'output',

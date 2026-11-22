@@ -6,6 +6,44 @@ const required = ['model', 'apiModel', 'aspectRatio', 'sizeLevel', 'imageBuiltin
   'providerSource', 'providerId', 'providerModel'] as const;
 const optional = ['seedreamApiSource'] as const;
 export const IMAGE_HISTORY_EXTRA_FIELDS: Record<string, { label: string; type: 'string' | 'number' | 'boolean' }> = {
+  longImageSkill:{label:'longImageSkill',type:'string'},longImageLength:{label:'longImageLength',type:'string'},longImageResolution:{label:'longImageResolution',type:'string'},longImageSingleRole:{label:'longImageSingleRole',type:'string'},longImageNsfw:{label:'longImageNsfw',type:'boolean'},
+  h3TurboSeed: {label:'h3TurboSeed',type:'number'}, h3TurboFormat: {label:'h3TurboFormat',type:'string'},
+  g26Mode: {label:'g26Mode',type:'string'},
+  g26Size: {label:'g26Size',type:'string'},
+  g26Width: {label:'g26Width',type:'number'},
+  g26Height: {label:'g26Height',type:'number'},
+  g26Resolution: {label:'g26Resolution',type:'string'},
+  g26Count: {label:'g26Count',type:'number'},
+  g26Quality: {label:'g26Quality',type:'string'},
+  g26Format: {label:'g26Format',type:'string'},
+  g26Complexity: {label:'g26Complexity',type:'string'},
+  g26Compression: {label:'g26Compression',type:'number'},
+  g26GifSize: {label:'g26GifSize',type:'string'},
+  g26GifWidth: {label:'g26GifWidth',type:'number'},
+  g26GifHeight: {label:'g26GifHeight',type:'number'},
+  g26FrameCount: {label:'g26FrameCount',type:'number'},
+  g26FrameDuration: {label:'g26FrameDuration',type:'number'},
+  g26MaskUrl: {label:'g26MaskUrl',type:'string'},
+  g26MarkupUrl: {label:'g26MarkupUrl',type:'string'},
+  kreaSize: {label:'kreaSize',type:'string'},
+  kreaWidth: {label:'kreaWidth',type:'number'},
+  kreaHeight: {label:'kreaHeight',type:'number'},
+  kreaVariant: {label:'kreaVariant',type:'string'},
+  kreaReasoning: {label:'kreaReasoning',type:'string'},
+  kreaFormat: {label:'kreaFormat',type:'string'},
+  kreaSeed: {label:'kreaSeed',type:'number'},
+  kreaNegative: {label:'kreaNegative',type:'string'},
+  zImageRatio: {label:'zImageRatio',type:'string'},
+  zImageSeed: {label:'zImageSeed',type:'number'},
+  klingImageSize:{label:'klingImageSize',type:'string'},klingImageResolution:{label:'klingImageResolution',type:'string'},klingImageMode:{label:'klingImageMode',type:'string'},klingImageCount:{label:'klingImageCount',type:'number'},klingImageMaxImages:{label:'klingImageMaxImages',type:'number'},klingImageNsfw:{label:'klingImageNsfw',type:'boolean'},maiBackground:{label:'maiBackground',type:'string'},maiNsfw:{label:'maiNsfw',type:'boolean'},
+  maiSize: { label: 'Mai 尺寸模式', type: 'string' }, maiResolution: { label: 'Mai 分辨率', type: 'string' },
+  maiCustomRatio: { label: 'Mai 自定义比例', type: 'string' }, maiWidth: { label: 'Mai 宽度', type: 'number' },
+  maiHeight: { label: 'Mai 高度', type: 'number' }, maiAutoAspectRatio: { label: 'Mai 自动画幅', type: 'boolean' },
+  maiWebGrounding: { label: 'Mai 联网检索', type: 'boolean' },
+  hyWidth: {label:'HY width',type:'number'}, hyHeight: {label:'HY height',type:'number'}, hySeed: {label:'HY seed',type:'number'}, hyNegativePrompt: {label:'HY negative prompt',type:'string'},
+  fluxImageSeed: {label:'Flux seed',type:'number'}, fluxImageSteps: {label:'Flux steps',type:'number'}, fluxImageOutputFormat: {label:'Flux output format',type:'string'},
+  fluxImageGrounding: { label: 'FLUX grounding', type: 'boolean' },
+  fluxImageSafetyTolerance: { label: 'FLUX safety_tolerance', type: 'number' },
   mjVersion: { label: 'MJ 版本', type: 'string' }, mjAr: { label: 'MJ 比例', type: 'string' },
   mjSpeed: { label: 'MJ 速度', type: 'string' }, mjC: { label: 'MJ 混乱度', type: 'number' },
   mjS: { label: 'MJ 风格化', type: 'number' }, mjIw: { label: 'MJ 图像权重', type: 'number' },
@@ -44,6 +82,8 @@ export const IMAGE_HISTORY_EXTRA_FIELDS: Record<string, { label: string; type: '
   qwenPromptExtend: { label: 'Qwen 提示词扩展', type: 'boolean' },
   wanImageWidth: { label: 'Wan 图像宽度', type: 'number' }, wanImageHeight: { label: 'Wan 图像高度', type: 'number' },
   wanImageThinkingMode: { label: 'Wan 思考模式', type: 'boolean' }, seedreamLayerResolution: { label: 'Seedream 分层分辨率', type: 'string' },
+  seedream55Background: { label: 'Seedream 5.5 背景', type: 'string' }, seedream55Watermark: { label: 'Seedream 5.5 水印', type: 'boolean' },
+  seedream55SafetyIdentifier: { label: 'Seedream 5.5 安全标识', type: 'string' }, seedream55MaxImages: { label: 'Seedream 5.5 图层数量', type: 'number' }, seedream55TextRecognition: { label: 'Seedream 5.5 识别文字', type: 'boolean' },
   seedreamNzModelFamily: { label: 'Seedream 模型区域', type: 'string' }, seedreamNzResolution: { label: 'Seedream 分辨率', type: 'string' },
   seedreamNzCustomSize: { label: 'Seedream 平价渠道自定义尺寸', type: 'string' },
 };
@@ -64,6 +104,7 @@ export function historyImageBasicSettings(data: Record<string, unknown>): Record
       || typeof settings[key] !== (IMAGE_HISTORY_EXTRA_FIELDS[key]?.type || 'string')
       || (typeof settings[key] === 'number' && !Number.isFinite(settings[key])))
     || !['zhenzhen', 'seedance-nz'].includes(settings.imageBuiltinSource as string)
+    || (Object.hasOwn(settings, 'fluxImageSafetyTolerance') && ![0, 1, 2, 3, 4].includes(settings.fluxImageSafetyTolerance as number))
     || (Object.hasOwn(settings, 'seedreamApiSource') && !['zhenzhen', 'seedance-nz'].includes(settings.seedreamApiSource as string))
     || (settings.providerSource !== 'zhenzhen' && (!settings.providerSource || !settings.providerId || !settings.providerModel))) throw invalid();
   return { ...settings } as Record<string, string | number | boolean>;

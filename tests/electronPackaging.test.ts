@@ -35,6 +35,8 @@ test('Electron package files include every static local CommonJS startup depende
     'electron/systemFetchBridge.cjs',
     'electron/dataStorage.cjs',
     'electron/startupDiagnostics.cjs',
+    'electron/agentTools.cjs',
+    'electron/agentContext.cjs',
   ];
   for (const entrypoint of requiredEntrypoints) {
     assert.ok(packagedFiles.has(entrypoint), `missing Electron entrypoint from build.files: ${entrypoint}`);
@@ -83,6 +85,8 @@ test('Windows and macOS post-build gates enforce the shared app.asar startup con
     'electron/systemFetchBridge.cjs',
     'electron/dataStorage.cjs',
     'electron/startupDiagnostics.cjs',
+    'electron/agentTools.cjs',
+    'electron/agentContext.cjs',
     'package.json',
   ]);
   assert.ok(contract.REQUIRED_ELECTRON_ASAR_ENTRIES.includes('electron/i18n.cjs'));
@@ -157,9 +161,10 @@ test('Electron does not open the renderer before the packaged backend is ready',
   assert.match(main, /status\?\.instanceId === expectedInstanceId/);
   assert.match(main, /function shutdownBackendForElectron\(reason = 'ELECTRON_QUIT'\)/);
   assert.match(main, /const ELECTRON_BACKEND_SHUTDOWN_DEADLINE_MS = 15_000/);
-  assert.match(main, /settleWithinElectronDeadline\(\s+shutdownWork,\s+ELECTRON_BACKEND_SHUTDOWN_DEADLINE_MS,/);
+  assert.match(main, /backendShutdownCompletionPromise = shutdownWork\.then/);
+  assert.match(main, /settleWithinElectronDeadline\(\s+backendShutdownCompletionPromise,\s+ELECTRON_BACKEND_SHUTDOWN_DEADLINE_MS,/);
   assert.match(main, /Electron shutdown deadline reached/);
-  assert.match(main, /const outcome = await backendModule\?\.gracefulShutdown\?\.\(reason\)/);
+  assert.match(main, /const outcome = await backendModule\?\.gracefulShutdown\?\.\(reason, \{\s+onProgress: \(phase\) => \{/);
   assert.match(main, /bounded shutdown left tracked work deferred; waiting within the Electron cutoff/);
   assert.match(main, /await backendModule\?\.waitForRuntimeStorageCloseLifecycle\?\.\(\)/);
   assert.match(main, /await shutdownBackendForElectron\('STARTUP_FAILURE'\)/);
@@ -266,7 +271,8 @@ test('Electron package locks canvas Agent bytecode and shared node schema to sou
 
   assert.equal(schema.schema, 't8-canvas-node-schema-v1');
   assert.equal(schema.version, 1);
-  assert.equal(schema.types.length, 83);
+  assert.equal(schema.types.length, 85);
+  assert.ok(schema.types.some((entry: { type: string }) => entry.type === 'world-scene'));
   for (const source of requiredSources) assert.ok(encrypt.includes(`source: '${source}'`), source);
   for (const output of requiredOutputs) {
     assert.ok(encrypt.includes(`output: '${output}'`), output);

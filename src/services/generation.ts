@@ -5,6 +5,7 @@
 import type { AdvancedProviderConfig } from '../types/canvas';
 import type { ImageParamKind, SunoNzOperation, SunoNzResultFamily } from '../providers/models';
 import { normalizeProviderErrorMessage } from '../utils/providerErrorMessage.ts';
+import nov19Models from '../../backend/src/shared/nov19ModelsContract.json';
 
 export interface ProviderTransportTrace {
   /** 上游或本地代理显式返回的请求 ID；绝不从通用 id 字段猜测。 */
@@ -289,6 +290,7 @@ export async function submitImageAsync(
 }
 
 export interface ImageQueryResult extends ProviderTransportTrace {
+  layers?: Array<Record<string, any>>;
   status: string;       // pending / running / completed / failed
   progress: string;
   urls?: string[];
@@ -318,15 +320,19 @@ export async function queryImageStatus(taskId: string, apiModel?: string, transp
 }
 
 export interface SeedreamNzSubmitRequest {
+  watermark?: boolean; safety_identifier?: string; max_images?: number; text_recognition?: boolean;
   prompt?: string;
   images?: string[];
   model?:
+    | 'seedream-v5.5-t2i' | 'seedream-v5.5-i2i' | 'dola-seedream-5.5-t2i' | 'dola-seedream-5.5-i2i' | 'seedream-v5.5-layer-decomposition' | 'dola-seedream-5.5-layer-decomposition'
     | 'zhenzhen-image-g2-t2i'
     | 'zhenzhen-image-g2-i2i'
     | 'zhenzhen-image-g-v2-lowprice'
     | 'zhenzhen-image-g-v2.5-lowprice'
     | 'zhenzhen-image-g-v2.5-flare'
     | 'zhenzhen-image-g-v2.5-sunburst'
+    | 'zhenzhen-image-g-v2.6-lowprice' | 'zhenzhen-image-g-v2.6-flare' | 'zhenzhen-image-g-v2.6-sunburst'
+    | 'krea-v3-t2i' | 'krea-v3-i2i' | 'z-image-t2i'
     | 'zhenzhen-image-gk-v2'
     | 'zhenzhen-image-gk-v2-edit'
     | 'zhenzhen-image-gk-v2-segment'
@@ -335,6 +341,14 @@ export interface SeedreamNzSubmitRequest {
     | 'zhenzhen-image-gk-v15-edit'
     | 'zhenzhen-image-nb-2-lite'
     | 'zhenzhen-image-nb-2'
+    | 'zhenzhen-image-nb-2.1'
+    | 'zhenzhen-image-hy-v3.5-preview' | 'zhenzhen-image-muse'
+    | 'flux-3-image-t2i' | 'flux-3-image-i2i' | 'flux-3-image-klein-t2i' | 'flux-3-image-klein-i2i'
+    | 'flux-3-image'
+    | 'mai-image-2-6'
+    | 'mai-image-2-6-flash' | 'mai-image-2-7' | 'mai-image-2-7-flash' | 'kling-v4-image' | 'kling-v4-long-image'
+    | 'minimax-h3-image' | 'qwen-image-2.1-turbo'
+    | 'moss-image'
     | 'zhenzhen-image-nb-pro'
     | 'qwen-image-3.0-t2i'
     | 'qwen-image-3.0-i2i'
@@ -353,12 +367,22 @@ export interface SeedreamNzSubmitRequest {
     | 'seedream-v5-flash-layer-decomposition'
     | 'dola-seedream-5.0-flash-layer-decomposition'
     | 'vosr2-image-upscale';
-  modelFamily?: 'domestic' | 'overseas' | 'domestic-flash' | 'overseas-flash';
-  resolution?: 'auto' | '0.5k' | '1k' | '1.5k' | '2k' | '4k';
-  ratio?: 'adaptive' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16' | '21:9' | '2:3' | '3:2' | '4:5' | '5:4';
+  sequential_image_generation?: 'disabled' | 'auto';
+  sequential_image_generation_options?: {max_images:number};
+  modelFamily?: 'domestic' | 'overseas' | 'domestic-flash' | 'overseas-flash' | 'domestic-55' | 'overseas-55';
+  resolution?: '720p' | 'auto' | '0.5k' | '768sq' | '1k' | '1.5k' | '2k' | '4k' | '1K' | '2K' | '4K';
+  ratio?: '1:3' | '3:1' | 'adaptive' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16' | '21:9' | '2:3' | '3:2' | '4:5' | '5:4';
   size?: string;
   n?: number;
-  output_format?: 'png' | 'jpeg' | 'webp';
+  output_format?: 'png' | 'jpeg' | 'webp' | 'gif' | 'svg';
+  output_mode?: 'image' | 'gif' | 'svg';
+  frame_count?: number;
+  frame_duration_ms?: number;
+  complexity?: string;
+  mask_url?: string;
+  markup_url?: string;
+  model_variant?: string;
+  reasoning_level?: string;
   quality?: 'auto' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
   output_compression?: number;
   background?: 'auto' | 'transparent' | 'opaque';
@@ -372,6 +396,11 @@ export interface SeedreamNzSubmitRequest {
   height?: number;
   thinking_mode?: boolean;
   aspect_ratio?: string;
+  grounding?: boolean;
+  web_grounding?: boolean;
+  auto_aspect_ratio?: boolean;
+  safety_tolerance?: number;
+  steps?: number;
   nsfw_check?: boolean;
   operation?: 'segment' | 'region_edit';
   source_task_id?: string;
@@ -814,12 +843,13 @@ export async function generateLlm(
   };
 }
 
-export interface GenerateExternalLlmRequest extends Omit<GenerateLlmRequest, 'stream'> {
+export interface GenerateExternalLlmRequest extends GenerateLlmRequest {
   providerId: string;
   providerModel?: string;
   providerParams?: Record<string, any>;
   /** 扩展 LLM 同步请求超时；由后端限界，Music 3 多阶段任务需显式放宽。 */
   timeoutMs?: number;
+  reasoningEffort?: 'none' | 'low' | 'medium' | 'high' | '';
 }
 
 export function buildGenerateExternalLlmRequestBody(req: GenerateExternalLlmRequest): GenerateExternalLlmRequest {
@@ -847,9 +877,50 @@ export async function generateExternalLlm(
     finishReason: payload.finishReason || payload.finish_reason || payload.raw?.choices?.[0]?.finish_reason,
     truncated: payload.truncated === true || payload.raw?.choices?.[0]?.finish_reason === 'length',
     raw: payload.raw,
-    model: req.model,
+    model: payload.model || req.model,
     ...providerTransportTrace(payload, r),
   };
+}
+
+export async function generateExternalLlmStream(
+  req: GenerateExternalLlmRequest,
+  opts: ProviderSubmissionTransport & { onDelta?: (chunk: string) => void; onStatus?: (phase: string) => void } = {},
+): Promise<GenerateLlmResult> {
+  const response = await fetch('/api/proxy/external/llm', {
+    method: 'POST', headers: providerSubmissionHeaders(opts),
+    body: JSON.stringify({ ...req, stream: true }), signal: opts.signal,
+  });
+  if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {
+    throw providerResponseError(response, await response.json());
+  }
+  if (!response.body) throw new Error('LLM: missing response stream');
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  try {
+    while (true) {
+      const part = await reader.read();
+      buffer += decoder.decode(part.value, { stream: !part.done });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      if (part.done && buffer) { lines.push(buffer); buffer = ''; }
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const event = JSON.parse(line.slice(5).trim());
+        if (event.type === 'delta' && typeof event.delta === 'string') opts.onDelta?.(event.delta);
+        if (event.type === 'status') opts.onStatus?.(String(event.phase || ''));
+        if (event.type === 'result') {
+          if (!event.success) throw Object.assign(new Error(event.error || 'LLM failed'), { code: event.code });
+          const payload = event.data || {};
+          return { content: payload.text || '', model: payload.model || req.model, raw: undefined,
+            finishReason: payload.finishReason, truncated: payload.truncated, ...providerTransportTrace(payload, response) };
+        }
+      }
+      if (part.done) break;
+      if (buffer.length > 4 * 1024 * 1024) throw new Error('LLM: response event too large');
+    }
+    throw new Error('LLM: stream ended without a terminal result');
+  } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
 }
 
 /**
@@ -1169,6 +1240,7 @@ export interface HappyHorseQueryResult extends ProviderTransportTrace {
   status: 'pending' | 'running' | 'succeeded' | 'failed' | string;
   progress?: string | number;
   videoUrl?: string | null;
+  videoUrls?: string[];
   failReason?: string | null;
   error?: string;
   code?: string;
@@ -1270,6 +1342,7 @@ export async function queryHailuo(
 }
 
 export type KlingModel =
+  | 'kling-v4-custom-element' | 'kling-v4-custom-voice' | 'kling-v4-i2v' | 'kling-v4-omni' | 'kling-v4-t2v'
   | 'kling-v3.0-std-t2v'
   | 'kling-v3.0-pro-t2v'
   | 'kling-v3-turbo-std-t2v'
@@ -1295,11 +1368,25 @@ export type KlingModel =
 export interface KlingSubmitRequest {
   model: KlingModel;
   prompt?: string;
-  duration: 5 | 10;
+  duration?: number;
   ratio?: string;
   negativePrompt?: string;
   images?: string[];
   videos?: string[];
+  resolution?: string;
+  watermark?: string;
+  videoUrlsText?: string;
+  imageElementIds?: string[];
+  videoElementIds?: string[];
+  voiceIds?: string[];
+  elementName?: string;
+  referenceType?: string;
+  elementVoiceId?: string;
+  tagList?: string;
+  voiceName?: string;
+  voiceSource?: string;
+  audioUrl?: string;
+  videoId?: string;
 }
 
 export async function submitKling(req: KlingSubmitRequest, transport: ProviderSubmissionTransport = {}): Promise<{
@@ -1309,6 +1396,7 @@ export async function submitKling(req: KlingSubmitRequest, transport: ProviderSu
 } & ProviderTransportTrace> {
   const r = await fetch('/api/proxy/video/kling/submit', {
     method: 'POST',
+    signal: transport.signal,
     headers: providerSubmissionHeaders(transport),
     body: JSON.stringify(req),
   });
@@ -1317,8 +1405,13 @@ export async function submitKling(req: KlingSubmitRequest, transport: ProviderSu
   return withProviderTransportTrace(data.data, r);
 }
 
-export async function queryKling(taskId: string): Promise<HappyHorseQueryResult> {
-  const r = await fetch(`/api/proxy/video/kling/status/${encodeURIComponent(taskId)}`);
+export async function queryKling(taskId: string, model?: string, transport: { signal?: AbortSignal; referenceType?: string } = {}): Promise<HappyHorseQueryResult & {
+  videoUrls?: string[]; audioUrl?: string | null; auxiliaryText?: string; elementId?: string; voiceId?: string;
+}> {
+  const params = new URLSearchParams();
+  if (model) params.set('model', model);
+  if (transport.referenceType) params.set('referenceType', transport.referenceType);
+  const r = await fetch(`/api/proxy/video/kling/status/${encodeURIComponent(taskId)}${params.size ? `?${params}` : ''}`, { signal: transport.signal });
   const data = await safeJsonResponse(r, 'Kling 查询');
   if (!r.ok || !data.success) throw providerResponseError(r, data);
   return withProviderTransportTrace(data.data, r);
@@ -1396,16 +1489,24 @@ export type ViduQ3Model =
   | 'vidu-q3-ad-r2v'
   | 'vidu-q3-drama-r2v'
   | 'vidu-q3-drama-short-play'
-  | 'vidu-q3-ad-short-play';
+  | 'vidu-q3-ad-short-play'
+  | 'vidu-q4-preview-global-i2v'
+  | 'vidu-q4-preview-global-r2v'
+  | 'vidu-q4-preview-i2v'
+  | 'vidu-q4-preview-r2v';
 
 export interface ViduSubmitRequest {
   model: ViduQ3Model;
   prompt?: string;
   duration: number;
   ratio: string;
-  resolution: 'default' | '720p' | '1080p';
+  resolution: 'default' | '540p' | '720p' | '1080p' | '2k' | '4k';
   seed?: number;
   images?: string[];
+  audios?: string[];
+  generateAudio?: boolean;
+  isRec?: boolean;
+  watermark?: boolean;
   scriptName?: string;
   style?: string;
   assetType?: 'character' | 'scene' | 'prop';
@@ -1423,14 +1524,14 @@ export async function submitVidu(req: ViduSubmitRequest, transport: ProviderSubm
     headers: providerSubmissionHeaders(transport),
     body: JSON.stringify(req),
   });
-  const data = await safeJsonResponse(r, 'Vidu Q3 提交');
+  const data = await safeJsonResponse(r, 'Vidu 提交');
   if (!r.ok || !data.success) throw providerResponseError(r, data);
   return withProviderTransportTrace(data.data, r);
 }
 
-export async function queryVidu(taskId: string): Promise<HappyHorseQueryResult> {
-  const r = await fetch(`/api/proxy/video/vidu/status/${encodeURIComponent(taskId)}`);
-  const data = await safeJsonResponse(r, 'Vidu Q3 查询');
+export async function queryVidu(taskId: string, model?: string): Promise<HappyHorseQueryResult> {
+  const r = await fetch(`/api/proxy/video/vidu/status/${encodeURIComponent(taskId)}${model ? `?model=${encodeURIComponent(model)}` : ''}`);
+  const data = await safeJsonResponse(r, 'Vidu 查询');
   if (!r.ok || !data.success) throw providerResponseError(r, data);
   return withProviderTransportTrace(data.data, r);
 }
@@ -1493,6 +1594,8 @@ export async function queryWan(taskId: string): Promise<HappyHorseQueryResult> {
 export type SeedanceTaskProvider = 'auto' | 'seedance-nz' | 'zhenzhen-legacy';
 
 export interface SeedanceSubmitRequest {
+  omni_reference_task_type?: string;
+  draft_task_id?: string; draft?: boolean; output_format?: 'mp4' | 'mov';
   /** 'doubao-seedance-2-0-260128' | 'doubao-seedance-2-0-fast-260128' | 'doubao-seedance-2.0-mini' */
   model: string;
   prompt: string;
@@ -1538,7 +1641,7 @@ export interface SeedanceSubmitResult extends ProviderTransportTrace {
 }
 
 export async function submitSeedance(
-  req: SeedanceSubmitRequest,
+  req: SeedanceSubmitRequest | (Omit<SeedanceSubmitRequest, 'prompt'> & { prompt?: never; draft_task_id: string }),
   transport: ProviderSubmissionTransport = {},
 ): Promise<SeedanceSubmitResult> {
   const r = await fetch('/api/proxy/seedance/submit', {
@@ -1565,6 +1668,93 @@ export interface SeedanceQueryResult extends ProviderTransportTrace {
   taskProvider?: Exclude<SeedanceTaskProvider, 'auto'>;
   model?: string;
   taskType?: 't2v' | 'i2v' | 'v2v' | 'multi';
+}
+
+export interface TopazVideoSubmitRequest {
+  model: 'Topaz-Upscale-LowPirce';
+  videos: string[];
+  resolution: '720p' | '1080p' | '2K' | '4K';
+  quality: 'Ultra' | 'Max' | 'High' | 'Medium' | 'Low';
+}
+
+export interface MotionQueryResult {
+  status: string; stage: string; progress: number | null; model: string; connectionRef: string;
+  videoUrl: string | null; videoUrls: string[]; failReason?: string; recoverable?: boolean;
+  motionResult: import('../utils/motionVideo').MotionResult;
+}
+export async function getMotionConnection(transport: ProviderSubmissionTransport = {}) {
+  const r = await fetch('/api/proxy/video/motion/connection', { signal: transport.signal });
+  const data = await safeJsonResponse(r, 'Motion connection');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return data.data as { configured: boolean; connectionRef: string };
+}
+export async function submitMotionVideo(req: import('../utils/motionVideo').MotionRequest, transport: ProviderSubmissionTransport = {}) {
+  const r = await fetch('/api/proxy/video/motion/submit', {
+    method: 'POST', headers: providerSubmissionHeaders(transport), body: JSON.stringify(req), signal: transport.signal,
+  });
+  const data = await safeJsonResponse(r, 'Motion submit');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data as { taskId: string; model: string; connectionRef: string }, r);
+}
+export async function queryMotionVideo(taskId: string, model: string, connectionRef: string,
+  transport: ProviderSubmissionTransport & { inspect?: boolean; verifyConnection?: boolean } = {}) {
+  const params = new URLSearchParams({ model, connectionRef });
+  if (transport.inspect) params.set('inspect', '1');
+  if (transport.verifyConnection) params.set('verifyConnection', '1');
+  const r = await fetch(`/api/proxy/video/motion/status/${encodeURIComponent(taskId)}?${params}`, { signal: transport.signal });
+  const data = await safeJsonResponse(r, 'Motion query');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data as MotionQueryResult, r);
+}
+
+export async function submitHeygenVideo(req: ReturnType<typeof import('../utils/nov21Models').buildHeygenRequest>, transport:ProviderSubmissionTransport={}){const r=await fetch('/api/proxy/video/heygen/submit',{method:'POST',headers:providerSubmissionHeaders(transport),body:JSON.stringify(req),signal:transport.signal});const data=await safeJsonResponse(r,'HeyGen submit');if(!r.ok||!data.success)throw providerResponseError(r,data);return withProviderTransportTrace(data.data,r);}
+export async function queryHeygenVideo(taskId:string,model:string,transport:ProviderSubmissionTransport={}):Promise<HappyHorseQueryResult>{const r=await fetch('/api/proxy/video/heygen/status/'+encodeURIComponent(taskId)+'?model='+encodeURIComponent(model),{signal:transport.signal});const data=await safeJsonResponse(r,'HeyGen query');if(!r.ok||!data.success)throw providerResponseError(r,data);return withProviderTransportTrace(data.data,r);}
+export async function submitH3TurboVideo(req: { model: string; prompt: string; images: string[]; audios: string[]; videos?: string[]; seconds?: string; frames?: number; seed?: number; resolution: string; ratio: string }, transport: ProviderSubmissionTransport = {}) {
+  const r = await fetch('/api/proxy/video/h3-lowprice/submit', {
+    method: 'POST', headers: providerSubmissionHeaders(transport), body: JSON.stringify(req), signal: transport.signal,
+  });
+  const data = await safeJsonResponse(r, 'H3 Lowprice提交');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data as { taskId: string; model: string; taskType: string }, r);
+}
+
+export async function queryH3TurboVideo(taskId: string, transport: ProviderSubmissionTransport & {model?:string} = {}): Promise<HappyHorseQueryResult> {
+  const r = await fetch(`/api/proxy/video/h3-lowprice/status/${encodeURIComponent(taskId)}${transport.model?'?model='+encodeURIComponent(transport.model):''}`, { signal: transport.signal });
+  const data = await safeJsonResponse(r, 'H3 Lowprice查询');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data, r);
+}
+
+export async function submitMuseVideo(req: { model: 'zhenzhen-video-muse'; prompt: string; images: string[]; size: string }, transport: ProviderSubmissionTransport = {}) {
+  const r = await fetch('/api/proxy/video/muse/submit', {
+    method: 'POST', headers: providerSubmissionHeaders(transport), body: JSON.stringify(req), signal: transport.signal,
+  });
+  const data = await safeJsonResponse(r, 'Muse Video提交');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data as { taskId: string; model: string; taskType: string }, r);
+}
+
+export async function queryMuseVideo(taskId: string, transport: ProviderSubmissionTransport = {}): Promise<HappyHorseQueryResult> {
+  const r = await fetch(`/api/proxy/video/muse/status/${encodeURIComponent(taskId)}`, { signal: transport.signal });
+  const data = await safeJsonResponse(r, 'Muse Video查询');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data, r);
+}
+
+export async function submitTopazVideo(req: TopazVideoSubmitRequest, transport: ProviderSubmissionTransport = {}) {
+  const r = await fetch('/api/proxy/video/topaz/submit', {
+    method: 'POST', headers: providerSubmissionHeaders(transport), body: JSON.stringify(req), signal: transport.signal,
+  });
+  const data = await safeJsonResponse(r, 'Topaz 视频修复提交');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data as { taskId: string; model: string; taskType: string }, r);
+}
+
+export async function queryTopazVideo(taskId: string, transport: ProviderSubmissionTransport = {}): Promise<HappyHorseQueryResult> {
+  const r = await fetch(`/api/proxy/video/topaz/status/${encodeURIComponent(taskId)}`, { signal: transport.signal });
+  const data = await safeJsonResponse(r, 'Topaz 视频修复查询');
+  if (!r.ok || !data.success) throw providerResponseError(r, data);
+  return withProviderTransportTrace(data.data, r);
 }
 
 export interface Vosr2VideoSubmitRequest {
@@ -1640,17 +1830,34 @@ export async function queryAnimateMotionTransfer(
   return withProviderTransportTrace(data.data, r);
 }
 
-export type Hunyuan3DModel = 'hunyuan3d-v3.1-text-to-3d' | 'hunyuan3d-v3.1-image-to-3d';
+export type Hunyuan3DModel = 'miora-3d' | 'hunyuan3d-v3.1-text-to-3d' | 'hunyuan3d-v3.1-image-to-3d'
+  | 'hitem3d-v2-image-to-3d' | 'hitem3d-v2-multi-image-to-3d' | 'hitem3d-portrait-v2.1-image-to-3d' | 'hitem3d-portrait-v2.1-multi-image-to-3d'
+  | 'meshy-6-global-image-to-3d' | 'meshy-6-global-text-to-3d' | `tripo-${string}`;
 export interface Hunyuan3DSubmitRequest {
   model: Hunyuan3DModel;
-  prompt: string;
-  face_count: number;
-  enable_pbr: boolean;
-  generate_type: 'Normal' | 'Geometry' | 'Sketch';
+  metadata?: Record<string, unknown>;
+  prompt?: string;
+  face_count?: number;
+  enable_pbr?: boolean;
+  generate_type?: 'Normal' | 'Geometry' | 'Sketch';
+  request_type?: 'mesh' | 'both';
+  resolution?: '1536' | '1536pro';
+  face?: number;
+  topology?: 'triangle' | 'quad';
+  target_polycount?: number;
+  symmetry_mode?: 'off' | 'auto' | 'on';
+  should_remesh?: boolean;
+  ta_pose?: boolean;
+  should_texture?: boolean;
+  art_style?: 'realistic' | 'sculpture';
+  enable_prompt_expansion?: boolean;
   images?: string[];
 }
 
 export interface Hunyuan3DQueryResult extends ProviderTransportTrace {
+  files?: Array<{ name: string; type: string; url?: string; downloadError?: boolean }>;
+  tripoTaskId?: string;
+  partNames?: string[];
   status: string;
   progress?: string;
   modelUrl?: string;
@@ -1671,8 +1878,8 @@ export async function submitHunyuan3D(req: Hunyuan3DSubmitRequest, transport: Pr
   return withProviderTransportTrace(data.data, r) as { taskId: string; model: Hunyuan3DModel; taskProvider: 'seedance-nz-3d' } & ProviderTransportTrace;
 }
 
-export async function queryHunyuan3D(taskId: string, transport: ProviderSubmissionTransport = {}): Promise<Hunyuan3DQueryResult> {
-  const r = await fetch(`/api/proxy/3d/seedance-nz/status/${encodeURIComponent(taskId)}`, { signal: transport.signal });
+export async function queryHunyuan3D(taskId: string, transport: ProviderSubmissionTransport & { model?: string } = {}): Promise<Hunyuan3DQueryResult> {
+  const r = await fetch(`/api/proxy/3d/seedance-nz/status/${encodeURIComponent(taskId)}${(transport.model?.startsWith('tripo-') || transport.model === 'miora-3d') ? `?model=${encodeURIComponent(transport.model)}` : ''}`, { signal: transport.signal });
   const data = await safeJsonResponse(r, 'Hunyuan 3D 查询');
   if (!r.ok && !data?.data?.recoverable) throw providerResponseError(r, data);
   return withProviderTransportTrace(data.data || { status: 'failed', error: data?.error }, r);
@@ -1755,7 +1962,7 @@ export async function queryMinimaxH3ContextIr(
 // 完全对齐主项目 gpt-image-2-web 的 runSuno / runSunoCover / runSunoExtend
 // ========================================================================
 export type AudioMode = 'generate' | 'cover' | 'extend';
-export type AudioProviderMode = 'suno' | 'seed-audio' | 'whisper' | 'qwen3-tts' | 'minimax' | 'mureka' | 'lyria';
+export type AudioProviderMode = 'suno' | 'seed-audio' | 'whisper' | 'qwen3-tts' | 'gemini-tts' | 'minimax' | 'mureka' | 'lyria';
 export type SunoPlatform = 'zhenzhen' | 'seedance-nz';
 export type WhisperResponseFormat = 'json' | 'verbose_json' | 'srt' | 'text' | 'vtt';
 
@@ -2139,7 +2346,11 @@ export interface SeedAudioSubmitRequest {
 }
 
 export type SeedanceNzAudioModel =
+  | 'doubao-voice-clone'
+  | 'doubao-seed-icl-2.0'
   | 'doubao-seed-audio-1.0'
+  | 'zhenzhen/gm-2.5-pro-tts' | 'zhenzhen/gm-2.5-flash-tts'
+  | 'qwen-audio-3.1-tts-flash' | 'qwen-audio-3.1-tts-next' | 'qwen-audio-3.1-tts-plus'
   | 'qwen3-tts-flash'
   | 'qwen3-tts-instruct-flash'
   | 'minimax-music-2.6'
@@ -2150,7 +2361,11 @@ export type SeedanceNzAudioModel =
   | 'mureka-v9-bgm';
 
 export interface SeedanceNzAudioSubmitRequest {
+  geminiTts?: Record<string,any>;
   model: SeedanceNzAudioModel;
+  qwenAudio31?: Record<string, string | number | boolean>;
+  doubaoVoice?: Record<string, string | number | boolean>;
+  audioUrl?: string;
   prompt?: string;
   speaker?: string;
   outputFormat?: 'wav' | 'mp3' | 'pcm' | 'ogg_opus' | 'flac';
@@ -2207,7 +2422,7 @@ export interface SeedanceNzAudioQueryResult extends ProviderTransportTrace {
 export async function submitSeedanceNzAudio(
   req: SeedanceNzAudioSubmitRequest,
   transport: ProviderSubmissionTransport = {},
-): Promise<{ taskId: string; model: string } & ProviderTransportTrace> {
+): Promise<{ taskId: string; model: string; outputFormat?: string; sampleRate?: string; channels?: string } & ProviderTransportTrace> {
   const r = await fetch('/api/proxy/audio/seed-audio/submit', {
     method: 'POST',
     headers: providerSubmissionHeaders(transport),
@@ -2222,8 +2437,15 @@ export async function submitSeedanceNzAudio(
 export async function querySeedanceNzAudio(
   taskId: string,
   transport: ProviderSubmissionTransport = {},
+  recipe: { model?: string; outputFormat?: string; sampleRate?: string; channels?: string } = {},
 ): Promise<SeedanceNzAudioQueryResult> {
-  const r = await fetch(`/api/proxy/audio/seed-audio/status/${encodeURIComponent(taskId)}`, { signal: transport.signal });
+  const query = new URLSearchParams();
+  const qwen31 = nov19Models.audio.models.includes(recipe.model || '');
+  if (qwen31 || recipe.model === 'doubao-voice-clone' || recipe.model === 'doubao-seed-icl-2.0') query.set('model', recipe.model!);
+  if ((recipe.model === 'doubao-seed-icl-2.0' || qwen31) && recipe.outputFormat === 'pcm') {
+    query.set('outputFormat', 'pcm'); query.set('sampleRate', recipe.sampleRate || (qwen31 ? recipe.model?.endsWith('-next') ? '48000' : '22050' : '24000'));if(recipe.channels)query.set('channels',recipe.channels);
+  }
+  const r = await fetch(`/api/proxy/audio/seed-audio/status/${encodeURIComponent(taskId)}${query.size ? `?${query}` : ''}`, { signal: transport.signal });
   const data = await safeJsonResponse(r, '贞贞的平价AI小屋音频任务查询');
   if (!r.ok || !data.success) throw providerResponseError(r, data);
   return withProviderTransportTrace(data.data, r);

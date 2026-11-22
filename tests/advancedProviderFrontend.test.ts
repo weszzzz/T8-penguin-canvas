@@ -74,7 +74,7 @@ test('advancedProvidersForNode only exposes enabled providers supported by each 
   ]);
 });
 
-test('advanced provider selection preserves valid saved provider and falls back to zhenzhen safely', () => {
+test('advanced provider selection preserves valid and unavailable source identities without cloud fallback', () => {
   const providers = [
     { id: 'modelscope', label: 'ModelScope', protocol: 'modelscope', enabled: true, imageModels: ['flux-dev'] },
   ] as any;
@@ -96,9 +96,9 @@ test('advanced provider selection preserves valid saved provider and falls back 
     providerId: 'missing',
     providerModel: 'old-model',
   }), {
-    providerSource: 'zhenzhen',
-    providerId: '',
-    providerModel: '',
+    providerSource: 'openai-compatible',
+    providerId: 'missing',
+    providerModel: 'old-model',
     provider: null,
     available: false,
   });
@@ -134,7 +134,7 @@ test('advancedProviderModelOptions uses explicit lists before safe provider defa
       protocol: 'agnes',
       defaults: { videoModel: 'agnes-video-v2.0' },
     } as any, 'video'),
-    ['agnes-video-v2.0'],
+    ['agnes-video-2.5', 'agnes-video-2.5-flash'],
   );
   assert.deepEqual(
     advancedProviderModelOptions({
@@ -377,9 +377,8 @@ test('Agnes provider settings and video node controls are exposed', () => {
   assert.match(settings, /https:\/\/apihub\.agnes-ai\.com\/v1/);
   assert.match(settings, /AGNES_API_KEY_URL = 'https:\/\/platform\.agnes-ai\.com\/settings\/apiKeys'/);
   assert.match(videoNode, /providerSelection\.provider\?\.protocol === 'agnes'/);
-  assert.match(videoNode, /Agnes 视频参数/);
-  assert.match(videoNode, /frameRate/);
-  assert.match(videoNode, /numFrames/);
+  assert.match(videoNode, /AgnesVideoControls/);
+  assert.doesNotMatch(videoNode, /agnesFrameRate|agnesNumFrames/);
 });
 
 test('OpenAI compatible provider settings advertise image edit endpoint', () => {

@@ -317,8 +317,26 @@ interface T8AgentControlCanvasMutation {
   committedAt: string;
 }
 
+interface T8AgentToolsStatus {
+  schema: 't8-agent-tools-status-v1';
+  source: 'project-source' | 'electron-resources';
+  skillVersion: string;
+  cliVersion: string;
+  compatibility: Record<string, string>;
+  sourceDigest: string;
+  installRoot: string;
+  cliRoot: string;
+  state: 'missing' | 'current' | 'outdated' | 'damaged' | 'unmanaged';
+  rollbackAvailable: boolean;
+  changed?: boolean;
+}
+
 interface Window {
   t8pc?: {
+    agentTools?: {
+      status: () => Promise<T8AgentControlIpcResult<T8AgentToolsStatus>>;
+      repair: () => Promise<T8AgentControlIpcResult<T8AgentToolsStatus>>;
+    };
     startupDiagnostics?: {
       record: (event: { component: 'renderer'; phase: string; elapsedMs: number; phaseMs?: number; delayMs?: number }) => void;
       save: () => Promise<{ success: boolean; canceled?: boolean; code?: string }>;
@@ -327,7 +345,7 @@ interface Window {
       status: () => Promise<{ enabled: boolean; path?: string; freeBytes?: number; reserveBytes?: number }>;
       chooseAndRestart: () => Promise<{ success: boolean; canceled?: boolean; error?: string }>;
     };
-    onCanvasCloseRequest?: (callback: (cancelled: () => boolean) => Promise<{
+    onCanvasCloseRequest?: (callback: (cancelled: () => boolean, phase?: () => 'saving' | 'closing' | 'waiting' | 'installing' | 'update-error') => Promise<{
       ok: boolean; reason?: 'running' | 'conflict' | 'save';
     }>) => () => void;
     getInfo: () => Promise<{
@@ -366,6 +384,8 @@ interface Window {
       clear: (profileId: string) => Promise<T8ParseAuthResult>;
     };
     agentControl?: {
+      onActiveContextRequest?: (callback: () => { ready: boolean; projectId?: string | null;
+        canvasId?: string | null; revision?: number }) => () => void;
       getConnectionSummary: () => Promise<T8AgentControlIpcResult<T8AgentControlConnectionSummary>>;
       listPendingPairings: () => Promise<T8AgentControlIpcResult<T8AgentControlPairing[]>>;
       approvePairing: (input: {

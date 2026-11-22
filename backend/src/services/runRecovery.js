@@ -1,12 +1,18 @@
 'use strict';
+const nov19=require('../shared/nov19ModelsContract.json');
 
 const { minimumProviderMediaPollCount } = require('../providers/providerTimeoutPolicy');
+const viduQ4Models = new Set(require('../shared/nb21FluxViduQ4Contract.json').viduQ4.models);
+const nbDoubao = require('../shared/nbLowpriceDoubaoContract.json');
+const motionVideo = require('../shared/motionVideoContract.json');
+const klingV4 = require('../shared/klingV4Contract.json');
 
 const ACTIVE_STATUSES = new Set(['queued', 'running', 'polling']);
 const RECOVERY_KINDS = new Set([
   'runninghub',
   'seedance',
   'seedream-nz',
+  'model3d',
   'wan',
   'happyhorse',
   'hailuo',
@@ -15,6 +21,8 @@ const RECOVERY_KINDS = new Set([
   'upscaler',
   'fashvsr',
   'vosr2',
+  'h3-lowprice', 'heygen', 'muse', 'topaz',
+  'motion',
   'animate',
   'vidu',
   'seed-audio',
@@ -82,12 +90,19 @@ function normalizeRunRecoveryDescriptor(value) {
     statusUrl: boundedText(value.statusUrl, 4096) || null,
     endpoint: boundedText(value.endpoint, 1024) || null,
     model: boundedText(value.model, 240) || null,
+    ...(kind === 'kling' && klingV4.referenceTypes.includes(value.referenceType) ? { referenceType: value.referenceType } : {}),
+    ...(kind === 'motion' && /^seedance-nz:[a-f0-9]{64}$/.test(String(value.connectionRef || '')) ? { connectionRef: String(value.connectionRef) } : {}),
+    ...(nov19.audio.models.includes(value.model) && value.outputFormat==='pcm'?{outputFormat:'pcm',sampleRate:(String(value.model).endsWith('-next')?nov19.audio.nextRates:nov19.audio.systemRates).includes(String(value.sampleRate))?String(value.sampleRate):String(value.model).endsWith('-next')?'48000':'22050',channels:value.channels==='2'&&String(value.model).endsWith('-next')?'2':'1'}:{}),
+    ...(value.model === nbDoubao.audio.iclModel && value.outputFormat === 'pcm' ? {
+      outputFormat: 'pcm', sampleRate: nbDoubao.audio.iclFields.sample_rate.options.includes(String(value.sampleRate)) ? String(value.sampleRate) : '24000',
+    } : {}),
     site: ['cn', 'intl'].includes(boundedText(value.site, 20).toLowerCase()) ? boundedText(value.site, 20).toLowerCase() : null,
     taskProvider: ['seedance-nz', 'zhenzhen-legacy'].includes(boundedText(value.taskProvider, 80)) ? boundedText(value.taskProvider, 80) : null,
     speed: ['relax', 'fast', 'turbo'].includes(boundedText(value.speed, 20).toLowerCase()) ? boundedText(value.speed, 20).toLowerCase() : null,
     pollIntervalMs,
     maxPolls: Math.min(7200, minimumProviderMediaPollCount(pollIntervalMs, value.maxPolls || 1200)),
   };
+  if (kind === 'motion' && (!descriptor.connectionRef || !motionVideo.models.includes(descriptor.model))) return null;
   if (kind === 'suno') return descriptor.taskIds.length ? descriptor : null;
   if (kind === 'image-fal' || kind === 'video-fal') {
     return descriptor.requestId && (descriptor.responseUrl || descriptor.endpoint) ? descriptor : null;
@@ -131,17 +146,30 @@ function recoveryRequest(baseUrl, descriptor) {
   if (descriptor.kind === 'runninghub') return get(`/api/proxy/runninghub/query?taskId=${taskId}&site=${encodeURIComponent(descriptor.site || 'cn')}`);
   if (descriptor.kind === 'seedance') return get(`/api/proxy/seedance/query?taskId=${taskId}&taskProvider=${encodeURIComponent(descriptor.taskProvider || 'seedance-nz')}`);
   if (descriptor.kind === 'seedream-nz') return get(`/api/proxy/image/seedance-nz/status/${taskId}`);
+  if (descriptor.kind === 'model3d') return get(`/api/proxy/3d/seedance-nz/status/${taskId}${(descriptor.model==='miora-3d'||require('../providers/tripo3d').MODELS.includes(descriptor.model)) ? `?model=${encodeURIComponent(descriptor.model)}` : ''}`);
   if (descriptor.kind === 'wan') return get(`/api/proxy/video/wan/status/${taskId}`);
   if (descriptor.kind === 'happyhorse') return get(`/api/proxy/video/happyhorse/status/${taskId}`);
   if (descriptor.kind === 'hailuo') return get(`/api/proxy/video/hailuo/status/${taskId}${descriptor.model ? `?model=${encodeURIComponent(descriptor.model)}` : ''}`);
   if (descriptor.kind === 'flux3') return get(`/api/proxy/video/flux3/status/${taskId}`);
-  if (descriptor.kind === 'kling') return get(`/api/proxy/video/kling/status/${taskId}`);
+  if (descriptor.kind === 'kling') return get(`/api/proxy/video/kling/status/${taskId}${klingV4.models.includes(descriptor.model) ? `?model=${encodeURIComponent(descriptor.model)}${descriptor.referenceType ? `&referenceType=${encodeURIComponent(descriptor.referenceType)}` : ''}` : ''}`);
   if (descriptor.kind === 'upscaler') return get(`/api/proxy/video/upscaler/status/${taskId}`);
   if (descriptor.kind === 'fashvsr') return get(`/api/proxy/video/fashvsr/status/${taskId}`);
   if (descriptor.kind === 'vosr2') return get(`/api/proxy/video/vosr2/status/${taskId}`);
+  if (descriptor.kind === 'h3-lowprice') return get(`/api/proxy/video/h3-lowprice/status/${taskId}?model=${encodeURIComponent(descriptor.model)}`);
+  if (descriptor.kind === 'heygen')return get(`/api/proxy/video/heygen/status/${taskId}?model=${encodeURIComponent(descriptor.model)}`);
+  if (descriptor.kind === 'muse') return get(`/api/proxy/video/muse/status/${taskId}`);
+  if (descriptor.kind === 'topaz') return get(`/api/proxy/video/topaz/status/${taskId}`);
+  if (descriptor.kind === 'motion') return get(`/api/proxy/video/motion/status/${taskId}?${new URLSearchParams({ model: descriptor.model, connectionRef: descriptor.connectionRef })}`);
   if (descriptor.kind === 'animate') return get(`/api/proxy/video/animate/status/${taskId}`);
-  if (descriptor.kind === 'vidu') return get(`/api/proxy/video/vidu/status/${taskId}`);
-  if (descriptor.kind === 'seed-audio') return get(`/api/proxy/audio/seed-audio/status/${taskId}`);
+  if (descriptor.kind === 'vidu') return get(`/api/proxy/video/vidu/status/${taskId}${viduQ4Models.has(descriptor.model) ? `?model=${encodeURIComponent(descriptor.model)}` : ''}`);
+  if (descriptor.kind === 'seed-audio') {
+    const query = new URLSearchParams();
+    if ([...nov19.audio.models,nbDoubao.audio.cloneModel, nbDoubao.audio.iclModel].includes(descriptor.model)) query.set('model', descriptor.model);
+    if ((nov19.audio.models.includes(descriptor.model) || descriptor.model === nbDoubao.audio.iclModel) && descriptor.outputFormat === 'pcm') {
+      query.set('outputFormat', 'pcm'); query.set('sampleRate', descriptor.sampleRate || '24000');if(descriptor.channels)query.set('channels',descriptor.channels);
+    }
+    return get(`/api/proxy/audio/seed-audio/status/${taskId}${query.size ? `?${query}` : ''}`);
+  }
   if (descriptor.kind === 'suno') return get(`/api/proxy/audio/query?clipIds=${encodeURIComponent(descriptor.taskIds.join(','))}&saveLocal=true`);
   if (descriptor.kind === 'image') return get(`/api/proxy/image/status/${taskId}${descriptor.model ? `?model=${encodeURIComponent(descriptor.model)}` : ''}`);
   if (descriptor.kind === 'mj') return get(`/api/proxy/mj/task/${taskId}?speed=${encodeURIComponent(descriptor.speed || 'fast')}`);
@@ -159,14 +187,37 @@ function normalizedState(value) {
 }
 
 function outputKindForDescriptor(descriptor) {
+  if (descriptor.kind==='model3d')return 'model3d';
   if (descriptor.kind === 'seed-audio' || descriptor.kind === 'suno') return 'audio';
-  if (['seedance', 'wan', 'happyhorse', 'hailuo', 'flux3', 'kling', 'upscaler', 'fashvsr', 'vosr2', 'animate', 'vidu', 'video', 'video-fal'].includes(descriptor.kind)) return 'video';
+  if (['seedance', 'wan', 'happyhorse', 'hailuo', 'flux3', 'kling', 'upscaler', 'fashvsr', 'vosr2', 'h3-lowprice', 'heygen', 'muse', 'topaz', 'motion', 'animate', 'vidu', 'video', 'video-fal'].includes(descriptor.kind)) return 'video';
   return 'image';
 }
 
 function normalizeRecoveryPayload(payload, descriptor) {
   const data = payload?.data && typeof payload.data === 'object' ? payload.data : payload;
   let state = normalizedState(data?.status ?? data?.state ?? data?.task_status ?? data?.code);
+  if(descriptor.kind==='model3d'){
+    if (descriptor.model==='miora-3d'||require('../providers/tripo3d').MODELS.includes(descriptor.model)) {
+      const files = Array.isArray(data?.files) ? data.files : [];
+      if (data?.recoverable || state === 'succeeded' && !files.some(file => file.name === 'modelUrl' && file.url)) state = 'pending';
+      return { state, outputs: state === 'succeeded' ? files.filter(file => file.url).map(file => ({
+        kind: require('../providers/tripo3d').IMAGE_FORMATS.has(file.type) ? 'image' : file.type==='mtl'?'text':'model3d', sourceUrl: file.url,
+        filename: `recovered-tripo-${file.name}.${file.type}`,
+        metadata: { fileRole: file.name, format: file.type, tripoTaskId: data.tripoTaskId || '', tripoPartNames: data.partNames || [] },
+      })) : [], error: boundedText(data?.error,4000) || null, providerStatus: boundedText(data?.status,160) || null, usage: data?.usage || {} };
+    }
+    const urls=(Array.isArray(data?.modelUrls)&&data.modelUrls.length?data.modelUrls:Array.isArray(data?.urls)&&data.urls.length?data.urls:[data?.modelUrl]).map(url=>boundedText(url,16384)).filter(Boolean);
+    if(data?.recoverable||state==='succeeded'&&!urls.length)state='pending';
+    return {state,outputs:state==='succeeded'?urls.map((sourceUrl,index)=>({kind:'model3d',sourceUrl,filename:`recovered-model3d-${index+1}.glb` })):[],error:boundedText(data?.error,4000)||null,providerStatus:boundedText(data?.status,160)||null,usage:data?.usage||{}};
+  }
+  if (descriptor.kind === 'kling' && klingV4.auxiliaryModels.includes(descriptor.model)) {
+    let reference; try { reference = JSON.parse(data?.auxiliaryText); } catch { /* missing result remains pending */ }
+    const usable = reference?.schema === klingV4.referenceSchema && reference.model === descriptor.model
+      && (descriptor.model.endsWith('element') ? reference.elementId : reference.voiceId);
+    return { state: data?.recoverable || state === 'succeeded' && !usable ? 'pending' : state,
+      outputs: state === 'succeeded' && usable && !data?.recoverable ? [{ kind: 'text', text: data.auxiliaryText, filename: 'recovered-kling-reference.json' }, ...(data.audioUrl ? [{ kind: 'audio', sourceUrl: data.audioUrl, filename: 'recovered-kling-preview.wav' }] : [])] : [],
+      error: boundedText(data?.failReason || data?.error, 4000) || null, providerStatus: boundedText(data?.status, 160) || null, usage: data?.usage || {} };
+  }
   if (descriptor.kind === 'runninghub') {
     if (String(data?.code) === '0') state = 'succeeded';
     else if (String(data?.code) === '805') state = 'failed';
@@ -181,15 +232,22 @@ function normalizeRecoveryPayload(payload, descriptor) {
     ...(Array.isArray(data?.tracks) ? data.tracks.map((track) => track?.audioUrl) : []),
   ].map((item) => boundedText(item, 16384)).filter(Boolean);
   const kind = outputKindForDescriptor(descriptor);
+  const doubao = descriptor.kind === 'seed-audio' && ['doubao-voice-clone', 'doubao-seed-icl-2.0'].includes(descriptor.model);
+  const orderedAudioUrls = doubao ? (Array.isArray(data?.audioUrls) && data.audioUrls.length ? data.audioUrls
+    : Array.isArray(data?.tracks) && data.tracks.length ? data.tracks.map(track => track?.audioUrl) : [data?.audioUrl])
+    .map(url => boundedText(url, 16384)).filter(Boolean) : null;
+  const speaker = descriptor.model === 'doubao-voice-clone' ? boundedText(data?.resultText, 4096) : '';
+  if (doubao && state === 'succeeded' && (!orderedAudioUrls.length || (descriptor.model === 'doubao-voice-clone' && !speaker))) state = 'failed';
   return {
     state,
-    outputs: [...new Set(rawUrls)].map((sourceUrl, index) => ({
+    outputs: [...(orderedAudioUrls || ((['muse', 'topaz', 'motion'].includes(descriptor.kind) || descriptor.kind === 'kling' && klingV4.videoModels.includes(descriptor.model)) && Array.isArray(data?.videoUrls) && data.videoUrls.length
+      ? data.videoUrls.map((url) => boundedText(url, 16384)).filter(Boolean) : [...new Set(rawUrls)])).map((sourceUrl, index) => ({
       kind,
       sourceUrl,
       filename: `recovered-${descriptor.kind}-${index + 1}`,
-    })),
+    })), ...(speaker ? [{ kind: 'text', text: speaker, filename: 'recovered-doubao-speaker.txt' }] : [])],
     usage: data?.usage && typeof data.usage === 'object' ? data.usage : {},
-    error: boundedText(data?.failReason || data?.error || payload?.error, 4000) || null,
+    error: boundedText(data?.failReason || data?.error || payload?.error, 4000) || (doubao && state === 'failed' ? 'Doubao 原任务未返回完整音频/音色结果，不会重新提交' : null),
     providerStatus: boundedText(data?.status ?? data?.state ?? data?.task_status ?? data?.code, 160) || null,
   };
 }

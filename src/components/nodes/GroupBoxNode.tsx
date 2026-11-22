@@ -6,6 +6,8 @@ import { useThemeStore } from '../../stores/theme';
 import { resolveThemeTemplate } from '../../theme/defaultTemplates';
 import { useGroupBusStore, GROUP_COLORS } from '../../stores/groupBus';
 import { shouldCollectNodeTextOutput } from '../../utils/imageNodeOutputMode';
+import { motionAssetRefs, motionSlotVideos } from '../../utils/motionVideo';
+import { fileNameFromUrl } from '../../utils/mediaCollection';
 
 // 文件名后缀识别(与 OutputNode 一致): 剑中低代价修正「上游用 imageUrl 装视频/音频」兑底
 const isVideoUrl = (u: string) => /\.(mp4|webm|mov|m4v|mkv)(\?|$)/i.test(u);
@@ -95,14 +97,17 @@ const GroupBoxNode = ({ id, data, selected }: NodeProps) => {
 
   // === 聚合组内所有节点的输出供右侧 source handle 传出 ===
   // 计算逻辑与 OutputNode 中继透传保持一致(同一组字段/同一组兼容性)
-  type Collected = { texts: string[]; images: string[]; videos: string[]; audios: string[] };
+  type Collected = { texts: string[]; images: string[]; videos: string[]; audios: string[]; imageNames: Map<string,string> };
   const collected = useMemo<Collected>(() => {
-    const out: Collected = { texts: [], images: [], videos: [], audios: [] };
-    const pushUnique = (arr: string[], v: any) => {
+    const out: Collected = { texts: [], images: [], videos: [], audios: [], imageNames:new Map() };
+    const pushUnique = (arr: string[], v: any, label?: string) => {
       if (typeof v !== 'string') return;
       const s = v.trim();
       if (!s) return;
-      if (arr.indexOf(s) === -1) arr.push(s);
+      if (arr.indexOf(s) === -1) {
+        arr.push(s);
+        if(arr===out.images)out.imageNames.set(s, label || fileNameFromUrl(s));
+      }
     };
     const memberSet = new Set(liveMemberIds);
     for (const n of allNodes as Node[]) {
@@ -110,18 +115,18 @@ const GroupBoxNode = ({ id, data, selected }: NodeProps) => {
       if (n.type === 'groupBox') continue;
       const ud: any = n.data || {};
       if (shouldCollectNodeTextOutput(n.type, n.data)) {
-        // 文本
-        pushUnique(out.texts, ud.outputText);
-        pushUnique(out.texts, ud.reply);
-        pushUnique(out.texts, ud.prompt);
-        pushUnique(out.texts, ud.text);
+        const segments=['textSegments','segments','texts'].find(field=>Array.isArray(ud[field])&&ud[field].length);
+        const values=segments ? ud[segments] : [...new Set([ud.outputText,ud.reply,ud.promptResolved||ud.prompt,ud.text])];
+        // Keep node/segment boundaries and intentional repeated segments; only
+        // aliases of the same node field are coalesced above.
+        values.forEach((value:unknown)=>{if(typeof value==='string'&&value.trim())out.texts.push(value.trim());});
       }
       // 图像 - 单
-      pushUnique(out.images, ud.imageUrl);
+      pushUnique(out.images, ud.imageUrl, ud.fileName);
       // 图像 - 多
       for (const f of ['imageUrls', 'urls', 'generatedImages']) {
         const v = ud[f];
-        if (Array.isArray(v)) v.forEach((u: any) => pushUnique(out.images, u));
+        if (Array.isArray(v)) v.forEach((u: any, index:number) => pushUnique(out.images, u, ud.fileNames?.[index]));
       }
       // 视频 / 音频
       pushUnique(out.videos, ud.videoUrl);
@@ -137,6 +142,8 @@ const GroupBoxNode = ({ id, data, selected }: NodeProps) => {
   }, [allNodes, liveMemberIds]);
 
   const aggregateText = collected.texts.join('\n\n──────\n\n');
+  const motionRefs = useMemo(() => allNodes.filter(n => liveMemberIds.includes(n.id)).flatMap(n => motionAssetRefs(n.data)), [allNodes, liveMemberIds]);
+  const motionVideos = motionSlotVideos([...collected.videos, ...motionRefs.map(ref => ref.url)], motionRefs);
   const memberRuntimeSummary = useMemo(() => {
     const memberSet = new Set(liveMemberIds);
     let running = 0;
@@ -157,16 +164,21 @@ const GroupBoxNode = ({ id, data, selected }: NodeProps) => {
       prompt: aggregateText,
       text: aggregateText,
       reply: aggregateText,
+      textSegments: collected.texts.slice(),
+      fileNames: collected.images.map(url=>collected.imageNames.get(url)||fileNameFromUrl(url)),
       imageUrl: collected.images[0] || '',
       imageUrls: collected.images.slice(),
       urls: collected.images.slice(),
       videoUrl: collected.videos[0] || '',
+      ...(motionRefs.length || (d as any).motionAssetRefs?.length ? { videoUrls: motionVideos, motionAssetRefs: motionRefs } : {}),
       audioUrl: collected.audios[0] || '',
     };
     const cur: any = {
       prompt: (d as any).prompt || '',
       text: (d as any).text || '',
       reply: (d as any).reply || '',
+      textSegments: Array.isArray((d as any).textSegments) ? (d as any).textSegments : [],
+      fileNames: Array.isArray((d as any).fileNames) ? (d as any).fileNames : [],
       imageUrl: (d as any).imageUrl || '',
       imageUrls: Array.isArray((d as any).imageUrls) ? (d as any).imageUrls : [],
       urls: Array.isArray((d as any).urls) ? (d as any).urls : [],
@@ -177,14 +189,16 @@ const GroupBoxNode = ({ id, data, selected }: NodeProps) => {
       cur.prompt !== next.prompt ||
       cur.text !== next.text ||
       cur.reply !== next.reply ||
+      JSON.stringify(cur.textSegments) !== JSON.stringify(next.textSegments) ||
+      JSON.stringify(cur.fileNames) !== JSON.stringify(next.fileNames) ||
       cur.imageUrl !== next.imageUrl ||
       cur.videoUrl !== next.videoUrl ||
       cur.audioUrl !== next.audioUrl ||
       JSON.stringify(cur.imageUrls) !== JSON.stringify(next.imageUrls) ||
       JSON.stringify(cur.urls) !== JSON.stringify(next.urls);
-    if (changed) updateData(next as Partial<GroupBoxData>);
+    if (changed || JSON.stringify((d as any).motionAssetRefs || []) !== JSON.stringify(motionRefs)) updateData(next as Partial<GroupBoxData>);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aggregateText, collected]);
+  }, [aggregateText, collected, motionRefs]);
 
   // 同步 liveMemberIds 回写 data.memberIds, 供 Canvas.onConnect 等外部逻辑读到「实时成员集」
   // (节点拖入/拖出组后会随之更新)

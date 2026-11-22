@@ -10,6 +10,127 @@
 - Windows 专用 `remove-ai-watermarks` / ParseHub Python 离线归档不会塞进 Mac 包；相关本地工具需要用户自行安装兼容 Python 环境。其缺失不得影响普通画布和云端节点启动。
 - 首个未公证预览升级到未来 Developer ID 正式版时，按手动覆盖安装处理；配置正式签名后，后续版本才把 `latest-mac.yml` + ZIP 视为可交付的 Mac 自动更新链路。
 
+## v3.5.5 已发布结果
+
+[构建 44941971769](https://github.com/T8mars/T8-penguin-canvas/actions/runs/44941971769) 从同一正式 Tag 完成构建和三资产完整回下载。保持 ad-hoc 签名预览。Windows 资产追加前后完全一致。[发布专题](release-v3.5.5.md)
+
+## v3.5.4 已发布结果
+
+同正式Tag的[workflow 44385277712](https://github.com/T8mars/T8-penguin-canvas/actions/runs/44385277712)第1次成功；三资产追加、runner完整回下载及本机元数据/两个公开更新清单复核通过，Windows与旧v3.5.3 Tag/资产未变。仍为ad-hoc未公证预览，未因额度延期，见[专题](release-v3.5.4.md)。
+
+## v3.5.3 已发布结果
+
+同正式Tag的[workflow 44041644888](https://github.com/T8mars/T8-penguin-canvas/actions/runs/44041644888)第1次成功；三资产追加、runner完整回下载及本机元数据/两个公开更新清单复核通过，Windows与旧v3.5.2 Tag/资产未变。仍为ad-hoc未公证预览，未因额度延期，见[专题](release-v3.5.3.md)。
+
+## v3.5.2 已发布结果
+
+同正式Tag的[workflow 43099891142](https://github.com/T8mars/T8-penguin-canvas/actions/runs/43099891142)第1次成功；三资产追加、runner完整回下载及本机元数据/两个公开更新清单复核通过，Windows与旧v3.5.1 Tag/资产未变。仍为ad-hoc未公证预览，未因额度延期，见[专题](release-v3.5.2.md)。
+
+## v3.5.1 已发布结果
+
+同正式Tag的[workflow 43052780828](https://github.com/T8mars/T8-penguin-canvas/actions/runs/43052780828)第1次成功；三资产追加、独立完整回下载及两个更新清单通过，Windows与旧v3.5.0 Tag/资产未变。仍为ad-hoc未公证预览，未因额度延期，见[专题](release-v3.5.1.md)。
+
+## v3.5.0 已发布结果
+
+同正式Tag的[workflow 42444923201](https://github.com/T8mars/T8-penguin-canvas/actions/runs/42444923201)第1次成功；三资产追加、独立完整回下载及两个更新清单通过，Windows与旧v3.4.9 Tag/资产未变。仍为ad-hoc未公证预览，未因额度延期，见[专题](release-v3.5.0.md)。
+
+## v3.4.9 已发布结果
+
+同正式Tag的[workflow 42350381819](https://github.com/T8mars/T8-penguin-canvas/actions/runs/42350381819)第1次成功；三资产追加、独立完整回下载与两个更新清单通过，Windows及旧v3.4.8 Tag/资产未变。仍为ad-hoc未公证预览，未因额度延期，见[专题](release-v3.4.9.md)。
+
+## v3.4.8 已发布结果
+
+同正式Tag的[workflow 42077237952](https://github.com/T8mars/T8-penguin-canvas/actions/runs/42077237952)第1次成功；三资产追加、独立完整回下载与两个更新清单通过，Windows及旧v3.4.7 Tag/资产未变。仍为ad-hoc未公证预览，未因额度延期，见[专题](release-v3.4.8.md)。
+
+## v3.4.7 已发布结果
+
+同正式Tag的[workflow 42067997263](https://github.com/T8mars/T8-penguin-canvas/actions/runs/42067997263)第1次成功；三资产追加、独立完整回下载与两个更新清单通过，Windows及旧v3.4.6 Tag/资产未变。仍为ad-hoc未公证预览，未因额度延期，见[专题](release-v3.4.7.md)。
+
+## v3.4.6 已发布结果
+
+同正式Tag的[workflow 41287192858](https://github.com/T8mars/T8-penguin-canvas/actions/runs/41287192858)第1次成功；三资产追加、独立完整回下载与两个更新清单核对通过，Windows及旧v3.4.5 Tag/资产未变。仍为ad-hoc未公证预览，未因额度延期，见[专题](release-v3.4.6.md)。
+
+## v3.4.5 已发布结果
+
+同正式Tag的[workflow 40452372828](https://github.com/T8mars/T8-penguin-canvas/actions/runs/40452372828)第1次成功；三资产追加与独立完整回下载通过，Windows资产及旧v3.4.4 Tag/资产不变。仍为ad-hoc未公证预览，未因额度延期，见[专题](release-v3.4.5.md)。
+
+## v3.4.4 已发布结果
+
+- 同正式Tag的[Apple Silicon workflow 40217823910](https://github.com/T8mars/T8-penguin-canvas/actions/runs/40217823910)第1次执行成功，完成唯一正式构建、ad-hoc签名、三资产追加及runner回下载。
+- 本机独立六资产完整回下载与两个更新清单核对通过，旧v3.4.3 Tag/资产及Mac追加前后Windows资产不变。仍为未Apple公证预览，未因额度延期，见[发布专题](release-v3.4.4.md)。
+
+## v3.4.3 已发布结果
+
+- 同正式Tag的[workflow 40100569806](https://github.com/T8mars/T8-penguin-canvas/actions/runs/40100569806)第1次执行成功：真实arm64唯一正式构建、ad-hoc签名、11文件asar合同、三资产追加与runner完整回下载通过。
+- 本机独立六资产完整回下载、两个更新清单及追加后Windows复核通过。旧v3.4.2 Tag/六资产和追加前后Windows资产不变，详情见[发布专题](release-v3.4.3.md)。
+- 仍为ad-hoc未Apple公证预览，未因额度延期；完整画布、用户现场和F8–F10后补，不视为通过。
+
+## v3.4.2 已发布结果
+
+- 同正式Tag/源码`f01f1c422aa732cad2e53b747f815b39e845de6c`的[workflow 39851318483](https://github.com/T8mars/T8-penguin-canvas/actions/runs/39851318483)第1次执行成功，完成真实arm64正式构建、ad-hoc签名、产物检查/保留及三资产追加上传/回下载。
+- 本机独立六资产完整回下载及两个更新清单通过；Windows追加前后、旧v3.4.1 Tag/六资产不变，精确事实见[发布专题](release-v3.4.2.md)。
+- 仍为ad-hoc未Apple公证预览，未因额度延期；完整画布/安装升级、用户现场及F8–F10按本版授权后补，不视为通过。
+
+## v3.4.1 已发布结果
+
+- 同正式Tag/源码`7d05f7ab1615a983afe9a84bf4ff167be150b3d7`的[workflow 39554486792](https://github.com/T8mars/T8-penguin-canvas/actions/runs/39554486792)首次执行成功：唯一正式构建、ad-hoc签名、产物检查/保留、三资产上传和runner完整回下载通过。
+- 本机独立Windows与Mac三资产均完整回下载通过，两个更新清单匹配；Mac追加前后Windows及旧v3.4.0 Tag/六资产未变，见[发布专题](release-v3.4.1.md)。
+- 仍为ad-hoc未Apple公证预览，未因额度延期；用户现场自动升级、真人配对及F8–F10仍后补，不视为通过。Actions运行时/arm64排队提示未导致失败，未顺带修改依赖。
+
+## v3.4.0 已发布结果
+
+- 同正式Tag/源码`f482ccce24cef89662682e207b37266e945c0f23`的[workflow 39539139604](https://github.com/T8mars/T8-penguin-canvas/actions/runs/39539139604)首次完成唯一正式Mac构建、产物检查、保留及三资产上传。最终runner回下载DMG成功，下载ZIP时连接重置，整体结论仍为failure；未重跑构建或伪记绿色。
+- 本机独立完整下载三项Mac资产通过，与runner本地产物摘要、GitHub size/SHA-256及更新清单一致，完成发布字节复核。Windows独立完整下载通过，Mac追加前后Windows及旧v3.3.9 Tag/六资产未变，见[专题](release-v3.4.0.md)。
+- Mac仍为ad-hoc未公证预览，未因额度延期；安装升级、真人配对、DSH现场及F8–F10仍后补，不视为通过。
+
+## v3.3.9 已发布结果
+
+- 同正式Tag/源码`cfc5d1329f2950432ed3176e32a21f6687f914ac`的[Apple Silicon workflow 39483367869](https://github.com/T8mars/T8-penguin-canvas/actions/runs/39483367869)首次执行成功；唯一正式Mac构建、上传及runner完整回下载通过。
+- 本机独立Mac三资产完整回下载和两个更新清单核对通过；Windows独立完整下载及Mac追加前后ID/size/SHA-256不变，旧v3.3.8 Tag/六资产未变。详见[发布专题](release-v3.3.9.md)。
+- 仍为ad-hoc未公证预览，未因额度延期；真人配对、完整安装升级、用户现场及F8–F10后补，不视为通过。Actions运行时/arm64排队提示未导致失败，未顺带修改CI依赖。
+
+## v3.3.8 已发布结果
+
+- 同正式Tag/源码`feceae4e2da8d785519a3d64edfd23f9a49abcf7`的[Apple Silicon workflow 39476687213](https://github.com/T8mars/T8-penguin-canvas/actions/runs/39476687213)首次执行成功；唯一正式Mac构建、上传和runner完整回下载通过。
+- 本机独立Mac三资产完整回下载通过，Windows独立完整下载及追加前后ID/size/SHA-256复核通过，旧v3.3.7 Tag/六资产未变。六资产和两个更新清单见[专题](release-v3.3.8.md)。
+- 仍为ad-hoc未公证预览，未因额度延期。完整安装升级、用户现场与F8–F10后补，不视为通过；Actions运行时及arm64排队提示未导致失败，未顺带修改CI依赖。
+
+## v3.3.7 已发布结果
+
+- 同正式Tag/源码`dc4893656379c743bd67d5de2de764b7f2d163ff`的[Apple Silicon workflow 39397965921](https://github.com/T8mars/T8-penguin-canvas/actions/runs/39397965921)第二次执行成功；首轮Git检出curl56/early EOF后取消，正式打包和上传均skipped，未生成Mac包。重试没有移动Tag或重复正式构建。
+- runner及本机独立Mac三资产完整回下载通过；Windows独立完整下载及Mac追加前后ID/size/SHA-256复核通过，旧v3.3.6 Tag/六资产未变。六资产及两个更新清单见[专题](release-v3.3.7.md)。
+- Mac仍为ad-hoc未公证预览，未因额度延期；真实DSH配对/审批/付费生成、安装升级、用户现场与F8–F10继续后补，不视为通过。
+
+## v3.3.6 已发布结果
+
+- 同正式Tag/源码 `dadb10e6521dfbca7d888ceec3dbd7d5de7284a2` 的[Apple Silicon workflow 39265271861](https://github.com/T8mars/T8-penguin-canvas/actions/runs/39265271861)成功；runner与本机独立Mac三资产完整回下载通过。Windows也已独立完整下载，追加前后ID/size/SHA-256不变，旧v3.3.5资产与Tag未变。六资产与两个更新清单见[专题](release-v3.3.6.md)。
+- Mac仍为ad-hoc未公证预览，未因额度延期；安装升级、用户现场及F8–F10继续后补，不视为通过。Actions运行时与arm64排队提示未导致失败，未顺带升级CI依赖。
+
+## v3.3.5 已发布结果
+
+- 同正式Tag/源码 `ff02c6e6f9b47d16b94a01fa10833ec9b1b25e53` 的[Apple Silicon workflow 39151023820](https://github.com/T8mars/T8-penguin-canvas/actions/runs/39151023820)成功；runner及本机独立Mac三资产完整回下载通过。Windows也已独立完整下载，追加前后ID/size/SHA-256不变，旧v3.3.4资产与Tag未变。六资产/两个更新清单见[专题](release-v3.3.5.md)。
+- Mac仍为ad-hoc未公证预览，实际正常发布、未因额度延期。Strata本轮冷启动503、其他GPU、LAN、安装升级与F8–F10仍未验收，不由构建绿测抵消。
+
+## v3.3.4 已发布结果
+
+- 同正式Tag/源码 `ca2d49f2d3f320214c50d7d89053e6d9221da0b1` 的[Apple Silicon workflow 38725662348](https://github.com/T8mars/T8-penguin-canvas/actions/runs/38725662348)成功；runner及本机独立Mac三资产完整回下载通过。Windows已独立完整下载，追加前后其ID/size/SHA-256不变，旧v3.3.3资产与Tag也未变。六资产和两个更新清单详情见[专题](release-v3.3.4.md)。
+- Mac仍为ad-hoc未公证预览；额度API404/缺scope不当作不足，实际正常发布、未延期。实体GPU、安装升级、用户现场及F8–F10后补，不记通过。
+
+## v3.3.3 已发布结果
+
+- 同正式 Tag / 源码 `6ec546a248b8ec601be69a1853c57b1a966b0d92` 的 [Apple Silicon workflow 38133936134](https://github.com/T8mars/T8-penguin-canvas/actions/runs/38133936134) 成功；runner 及本机独立 Mac 三资产完整回下载通过，追加后的 Windows 三资产也完整复核且 ID/size/SHA-256 未变。六资产及网络下载重试记录见[专题](release-v3.3.3.md)。
+- Mac 仍为 ad-hoc 未公证预览；额度 API 404 不代表额度不足，本轮正常发布、未延期。安装升级、用户现场及 F8–F10 后补，不记通过。
+
+## v3.3.2 已发布结果
+
+- 同正式 Tag / 源码 `954b717f983853805a943df1d5e77468592bcbf8` 的 [Apple Silicon workflow 38077432260](https://github.com/T8mars/T8-penguin-canvas/actions/runs/38077432260) 成功；runner 及本机独立 Mac 三资产完整回下载通过，追加后的 Windows 三资产也完整复核且 ID/size/SHA-256 未变。六资产详情见[专题](release-v3.3.2.md)。
+- Mac 仍为 ad-hoc 未公证预览；额度 API 404 不代表额度不足，本轮正常发布、未延期。安装升级、用户现场及 F8–F10 后补，不记通过。
+
+## v3.3.1 已发布结果
+
+- 同正式 Tag / 源码 `66b13a38a5129ffe3aac82decaa80b0806701d59` 的 [Apple Silicon workflow 37976089033](https://github.com/T8mars/T8-penguin-canvas/actions/runs/37976089033) 成功；runner 及本机独立 Mac 三资产完整回下载通过，追加后的 Windows 三资产也完整复核且 ID/size/SHA-256 未变。六资产详情见[专题](release-v3.3.1.md)。
+- Mac 仍为 ad-hoc 未公证预览，本轮实际发布成功、未因额度延期；用户安装升级、现场及 F8–F10 后补，不记通过。
+
 ## v3.3.0 已发布结果
 
 - 同正式 Tag / 源码 `f8d01582b1ae0a4e182656de8c4abf51b1eac68c` 的 [Apple Silicon workflow 37728202199](https://github.com/T8mars/T8-penguin-canvas/actions/runs/37728202199) 成功；runner 与本机独立 Mac 三资产完整回下载通过。追加后的 Windows 三资产也独立完整回下载，原 ID/size/SHA-256 未变；精确六资产见[专题](release-v3.3.0.md)。

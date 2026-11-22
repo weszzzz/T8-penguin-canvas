@@ -1,9 +1,24 @@
 import contract from '../../backend/src/shared/generationHistoryInputContract.json';
+import topazContract from '../../backend/src/shared/topazVideoContract.json';
 
 const requiredStrings = ['mainId', 'model', 'videoBuiltinSource', 'ratio', 'resolution',
   'providerSource', 'providerId', 'providerModel'] as const;
 const requiredNumbers = ['duration', 'seed'] as const;
 export const VIDEO_HISTORY_EXTRA_FIELDS: Record<string, { label: string; type: 'boolean' | 'string' | 'number' | 'number-or-api-default' }> = {
+  h3ComfySeed:{label:'H3 Seed',type:'number'},h3ComfyDurationMode:{label:'H3 duration mode',type:'string'},h3ComfyFrames:{label:'H3 frames',type:'number'},seedance25ReferenceTaskType:{label:'Seedance reference task type',type:'string'},
+  seedance25Draft: { label: 'Seedance 2.5 草稿', type: 'boolean' }, seedance25DraftTaskId: { label: 'Seedance 2.5 草稿ID', type: 'string' }, seedance25OutputFormat: { label: 'Seedance 2.5 输出格式', type: 'string' },
+  klingV4ElementName: { label: 'klingV4ElementName', type: 'string' },
+  klingV4Tags: { label: 'klingV4Tags', type: 'string' },
+  klingV4VoiceName: { label: 'klingV4VoiceName', type: 'string' },
+  klingV4Duration: { label: 'klingV4Duration', type: 'number' },
+  klingV4Resolution: { label: 'klingV4Resolution', type: 'string' },
+  klingV4Ratio: { label: 'klingV4Ratio', type: 'string' },
+  klingV4Watermark: { label: 'klingV4Watermark', type: 'string' },
+  klingV4ReferenceType: { label: 'klingV4ReferenceType', type: 'string' },
+  klingV4VoiceSource: { label: 'klingV4VoiceSource', type: 'string' },
+  topazQuality: { label: 'Topaz 修复模型', type: 'string' },
+  viduQ4IsRec: { label: 'Vidu Q4 is_rec', type: 'boolean' },
+  viduQ4Watermark: { label: 'Vidu Q4 watermark', type: 'boolean' },
   soraPrivate: { label: 'Sora 私密模式', type: 'boolean' },
   enhancePrompt: { label: '提示词增强', type: 'boolean' },
   enableUpsample: { label: '视频超采样', type: 'boolean' },
@@ -54,6 +69,7 @@ export function historyVideoBasicSettings(data: Record<string, unknown>): Record
         : typeof settings[key] !== VIDEO_HISTORY_EXTRA_FIELDS[key].type))
       || (typeof settings[key] === 'number' && !Number.isFinite(settings[key])))
     || !['zhenzhen', 'seedance-nz'].includes(settings.videoBuiltinSource as string)
+    || (Object.hasOwn(settings, 'topazQuality') && !topazContract.qualities.includes(settings.topazQuality as string))
     // Only the standard Grok New branch currently captures this optional field.
     // An absent legacy value stays absent; never derive it from today's ratio.
     || (Object.hasOwn(settings, 'size') && !['1280x720', '720x1280'].includes(settings.size as string))

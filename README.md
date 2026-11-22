@@ -10,9 +10,53 @@ https://www.runninghub.cn/?inviteCode=rh-v1121
 My favorite girl Go YounJung
 # 🐧 贞贞的无限画布（企鹅共创版） · T8-penguin-canvas
 
-> AI 节点画布工作流工具 · Web + Electron 桌面端｜v3.3.0
+> AI 节点画布工作流工具 · Web + Electron 桌面端｜v3.5.5
+>
+> 2026-11-22：v3.5.5 新增长图、Gemini TTS、H3 Token、HeyGen 与 Miora 3D 共 10 个平价小屋模型，以及 14 份可导入工作流。进度与验证见[发布专题](docs/release-v3.5.5.md)。
+
+> 2026-11-12：v3.5.2已发布Windows/macOS版：修复创作助手结果发送/查看同步、本地化安装布局误拦截及非生成维护收尾；旧画布与运行保护保留。发布与验证边界见[发布专题](docs/release-v3.5.2.md)。
+
+> 2026-11-12：v3.5.1已发布Windows/macOS版：新增Tripo 3D、Seedream 5.5、草稿转高清、H3/Turbo三个分类及贞贞小屋入口；39份工作流已保存。发布与验证边界见[发布专题](docs/release-v3.5.1.md)。
+
+> 2026-11-08：v3.5.0已发布Windows/macOS版：修复视频排序、素材集同步、文本素材引用和独立输出拖动，增加分镜脚本/图片批量导入；图像模型分类改下拉、Kling4分组、新建七核心节点默认平价且保留旧配置；G2.6新增高清，接入Kling4 Flash及Omni1.2。见[发布记录](docs/release-v3.5.0.md)。
+
+> 2026-11-07：v3.4.9已发布Windows/macOS版：G2.6 LowPrice参考图上限同步为10张，界面、前后端和Agent目录共用合同；真实十图完整出图及17项限定回归通过。见[功能说明](docs/g26-krea-hitem-meshy.md)、[发布记录](docs/release-v3.4.9.md)。
+
+> 2026-11-06：v3.4.8已发布Windows/macOS版：既有3D节点的Meshy Tab恢复文生模型，支持写实／雕塑和提示词扩写；真实GLB、完整临时画布与113项回归通过，新增一份无凭据工作流。见[功能说明](docs/meshy-text-3d.md)、[发布记录](docs/release-v3.4.8.md)。
+
+> 2026-11-06：v3.4.7已发布Windows/macOS版：既有图像增加gpt-image-2.6、z-image、krea，3D增加hitem3d、meshy；十一款可用模型、十六条实网路径和完整开发画布已验证，GIF保留动画、SVG保留原件，附十六份工作流。Meshy文生渠道暂不可用。见[功能说明](docs/g26-krea-hitem-meshy.md)、[发布记录](docs/release-v3.4.7.md)。
+
+> 2026-11-01：v3.4.6已发布Windows/macOS版：新增Hunyuan Image、Muse Image/Video及四个Flux变体，附十一份工作流；十一条实网解码与完整开发画布验证通过。见[功能说明](docs/preview-muse-flux.md)、[发布记录](docs/release-v3.4.6.md)。
+
+> 2026-10-27：v3.4.5已发布Windows/macOS版：原有视频节点的Kling中增加五个Kling 4模型，支持主体/音色ID复用及原任务续查；六条实网与完整开发画布已验证，提供八份工作流，见[功能说明](docs/kling-v4.md)、[发布记录](docs/release-v3.4.5.md)。
+>
+> 2026-10-26：v3.4.4代码动画已发布Windows/macOS版：新增独立标准版/Pro节点、十种风格、放大工作台、分镜和历史版本修订、原任务恢复及四份工作流。开发回归与完整画布受控接口验证通过；实网质量和安装/现场边界见[开发说明](docs/motion-video-development.md)、[发布记录](docs/release-v3.4.4.md)。
+>
+> 2026-10-24：v3.4.3 已发布 Windows/macOS 版：修复右键快速添加菜单在短窗口中被截断的问题，增加原生滚动与边缘适配；Agnes 视频移除退役2.0，改接2.5/Flash新协议，展示完整上游错误。55项回归及72组隔离界面组合通过；两模型实网均返回503队列满，未宣称成功出片，现场证据后补。见[修复与边界](docs/quick-add-agnes25-fix.md)、[发布记录](docs/release-v3.4.3.md)。
 >
 > GitHub：<https://github.com/T8mars/T8-penguin-canvas>
+
+> 2026-10-23：v3.4.2 为平价AI小屋增加图像节点「Moss Image」Tab（`moss-image`）：8种比例、单图编辑及三份无凭据工作流，旧默认不变。文生图和编辑各有真实成功、结果完整解码；首次9:16文生图上游805失败保留，不冒认3/3通过。156项回归与112组控件场景通过；完整画布/安装升级及现场证据后补，见[接入记录](docs/moss-image.md)。
+
+> 2026-10-21：v3.4.1 修复更新保存确认后仍探测后台、恢复连接和发送新API请求的问题；原保存CAS与存储关闭门保留，拒绝/取消后恢复访问。47项限定回归、两项原生Electron组合及类型检查通过，用户现场自动升级证据后补，见[补修说明](docs/auto-update-close-hold-20261021.md)。
+
+> 2026-10-21：v3.4.0 新增只读活动画布定位和`workspace active`，多窗口歧义及加载/重载/关闭不猜目标；保留原Agent选择和权限。87项限定回归与16项打包合同通过，安装/现场证据后补，见[接口合同](docs/agent-active-context.md)。
+
+> 2026-10-21：v3.3.9 新增设置内安装/修复Agent连接工具，从当前桌面导出配套CLI与Skill；九字段和整包校验，同版本内容变化也刷新，保留回退，不自动改信任或配对。95项限定验证含真实Electron临时设置通过，真人批准和安装升级后补，见[配套合同](docs/agent-tools-installed-cli-compat.md)。
+>
+> 2026-10-21：v3.3.8 修复自动更新停在“正在保存画布”：保留真实后台关闭回执，关闭稍慢时自动续装；真正超时或异常时显示只读故障面板，可保存诊断和显式重试。115项限定回归通过，包含真实Electron、临时数据库及真实更新器启动测试NSIS并等待旧进程退出；不代表正式安装升级或用户现场已验收。见[修复与验证边界](docs/auto-update-close-hold-20261021.md)。
+>
+> 2026-10-20：v3.3.7 完善DSH原生接入：有界实例发现、凭据并发事务、单次运行计划、审批/意图与素材放置恢复，修正导入限额声明和无效操作标识预校验；Seedance模糊失败不重放付费写入。193项限定回归与临时SQLite组合通过；真实窗口审批、付费生成及安装升级仍待验，见[接入合同与验证边界](docs/dsh-native-integration-20261020.md)。
+>
+> 2026-10-19：v3.3.5 新增 Strata 本地 LLM 预设，支持模型/视觉发现、图片问答、多轮、流式输出和停止，最长3分钟；只读连接不会加载模型，失效来源不自动切云端。两轮审查修复8项，315项限定回归和最新隔离画布16项通过。真实模型已有前轮验证，但本轮冷启动遇到上游503，用户暂缓排查；LAN、其他GPU及安装升级未验收。见 [Strata 使用与边界](docs/strata-llm.md)。
+>
+> 2026-10-15：v3.3.4 增加素材灵感板、图片编辑版本与对比、独立“3D世界”本地场景节点，以及不覆盖已有编辑的 Story 草稿联动；编辑器按需加载，修复节点松手后文字模糊。平价小屋另增加香蕉低价和豆包音色四模型及九份无凭据工作流。在线世界生成暂不提供，实体显卡与安装升级证据后补。见 [画布体验](docs/artcraft-canvas-ux.md)、[模型与清晰度](docs/nb-lowprice-doubao.md)。
+>
+> 2026-10-11：v3.3.3 为贞贞的平价AI小屋新增 Mai 图像 Tab，包含 `mai-image-2-6` 与 Flash 两模型，支持文生图、最多五张有序参考图、自定义比例/像素与联网检索开关，提供六份无凭据工作流；旧默认不变。六条真实任务及图片完整解码通过，安装升级与用户现场证据后补。见 [模型与工作流](docs/mai-image.md)。
+>
+> 2026-10-11：v3.3.2 为贞贞的平价AI小屋新增独立 Topaz 视频修复 Tab，支持本地 MP4 或公开直链、四档分辨率、五档修复模型及两份无凭据工作流；旧默认与本地 Topaz 不变。一次真实任务和完整解码通过，安装升级与用户现场证据后补。见 [模型与工作流](docs/topaz-video-upscale.md)。
+>
+> 2026-10-10：v3.3.1 为贞贞的平价AI小屋新增香蕉2.1、独立 Flux 图像 Tab 和四个 Vidu Q4 模型，提供精确参数、MP3 参考音频、原任务恢复与八份无凭据工作流；旧模型、默认来源及旧画布不变。八条真实生成及产物完整解码通过，安装升级与用户现场证据后补。见 [模型与工作流](docs/nb21-flux-viduq4.md)。
 
 > 2026-10-08：v3.3.0 修复自动更新先启动安装器、后等待画布保存和后台关闭的竞态；更新先确认保存与关闭，新安装器等待正常退出且不强杀，失败不自动重试。保留现有数据与旧版本资产；安装升级及用户现场证据后补，不宣称所有卸载/文件占用故障已解决。见 [修复说明](docs/auto-update-exit-fix-20261008.md)。
 
@@ -36,12 +80,12 @@ My favorite girl Go YounJung
 
 一个面向 AI 创作的 **节点式画布**：拖拽节点、连线编排、生成图像 / 视频 / 音频、调用 LLM、串接 RunningHub 工作流，叠加批量执行、智能对齐、打组、主题模板与终端日志。Web 浏览器和桌面端均可使用。
 
-![status](https://img.shields.io/badge/version-v3.3.0-brightgreen) ![node](https://img.shields.io/badge/node-83-blue) ![react](https://img.shields.io/badge/react-19-61dafb) ![electron](https://img.shields.io/badge/electron-33-47848f) ![license](https://img.shields.io/badge/license-MIT-yellow)
+![status](https://img.shields.io/badge/version-v3.5.5-brightgreen) ![node](https://img.shields.io/badge/node-85-blue) ![react](https://img.shields.io/badge/react-19-61dafb) ![electron](https://img.shields.io/badge/electron-33-47848f) ![license](https://img.shields.io/badge/license-MIT-yellow)
 
 ## 💻 桌面版下载
 
-- **Windows x64**：在 [v3.3.0 Release](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.3.0) 下载 `T8-PenguinCanvas-Setup-3.3.0.exe`。
-- **macOS Apple Silicon**：在 [v3.3.0 Release](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.3.0) 下载 `T8-PenguinCanvas-3.3.0-mac-arm64.dmg`。支持 M1/M2/M3/M4 等 arm64 Mac，最低 macOS 12，使用 ad-hoc 完整性签名且尚无 Apple Developer ID 公证；首次打开请在 Finder 中右键应用并选择“打开”。Intel Mac 暂不支持。
+- **Windows x64**：在 [v3.5.5 Release](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.5.5) 下载 `T8-PenguinCanvas-Setup-3.5.5.exe`。
+- **macOS Apple Silicon**：在 [v3.5.5 Release](https://github.com/T8mars/T8-penguin-canvas/releases/tag/v3.5.5) 下载 `T8-PenguinCanvas-3.5.5-mac-arm64.dmg`。支持 M1/M2/M3/M4 等 arm64 Mac，最低 macOS 12，使用 ad-hoc 完整性签名且尚无 Apple Developer ID 公证；首次打开请在 Finder 中右键应用并选择“打开”。Intel Mac 暂不支持。
 
 ---
 

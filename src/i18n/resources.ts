@@ -1,3 +1,9 @@
+import {nov21Zh,nov21En} from './nov21Catalog';
+import {nov19Zh,nov19En} from './nov19Catalog';
+import { h3TurboZh, h3TurboEn } from './h3TurboCatalog';
+import { seedream55Zh, seedream55En } from './seedream55Catalog';
+import { previewMuseFluxZh, previewMuseFluxEn } from './previewMuseFluxCatalog';
+import { g26Krea3dZh,g26Krea3dEn } from './g26Krea3dCatalog';
 import electronCatalog from '../../electron/i18n-catalog.json';
 import {
   CREATOR_AGENT_VISIBLE_CATALOG,
@@ -5,8 +11,26 @@ import {
 } from './workbenchVisibleCatalog';
 import { INSPIRATION_VISIBLE_CATALOG } from './inspirationVisibleCatalog';
 import { generationHistoryZh, generationHistoryEn } from './generationHistoryCatalog';
+import { doubaoVoiceZh, doubaoVoiceEn } from './doubaoVoiceCatalog';
+import { creativeUxZh, creativeUxEn } from './creativeUxCatalog';
+import { strataZh, strataEn } from './strataCatalog';
+import { canvasSaveZh, canvasSaveEn } from './canvasSaveCatalog';
+import { agentToolsZh, agentToolsEn } from './agentToolsCatalog';
+import { motionVideoZh, motionVideoEn } from './motionVideoCatalog';
+import { klingV4Zh, klingV4En } from './klingV4Catalog';
+import { tripo3dZh, tripo3dEn } from './tripo3dCatalog';
 
 export const zhCN = {
+  nov21:nov21Zh,
+  nov19:nov19Zh,
+  h3Turbo: h3TurboZh, seedream55: seedream55Zh,
+  tripo: tripo3dZh,
+  previewMuseFlux: previewMuseFluxZh,
+  g26Krea3d:g26Krea3dZh,
+  klingV4: klingV4Zh,
+  motionVideo: motionVideoZh,
+  canvasSave: canvasSaveZh,
+  creativeUx: creativeUxZh,
   workbenches: {
     videoEdit: VIDEO_EDIT_VISIBLE_CATALOG.zh,
     creatorAgent: CREATOR_AGENT_VISIBLE_CATALOG.zh,
@@ -52,6 +76,7 @@ export const zhCN = {
       latestApps: { label: '最新应用', title: '最新应用 · RunningHub 工作流' },
       aix: { label: 'AIX产品', title: 'AIX产品 · T8公司AIX产品' },
       workshop: { label: '贞贞工坊', title: '贞贞工坊 · 海外站与 Discord' },
+      cottage: { label: '贞贞小屋', title: '贞贞的平价AI小屋 · 贞贞的新网站' },
       videoTutorials: { label: '视频教程', title: '视频教程 · 关注 T8 获取免费版本更新' },
       cloudCanvas: { label: '在线画布', title: '云端创作 · 企鹅画布（还送 10 鹅卵石）' },
     },
@@ -63,6 +88,7 @@ export const zhCN = {
       latestApps: { heading: '最新应用 · RunningHub', description: 'T8 每日教学必用平台，每日同步更新最新工作流、AI 应用、节点和模型，并提供免费教学。', china: '国内站 RunningHub.cn', global: '海外站 RunningHub.ai', invitePrefix: '使用邀请码', inviteSuffix: '注册，免费领取1000积分！' },
       aix: { heading: 'AIX 产品', description: 'T8 公司 AIX 产品，欢迎体验。', open: '跳转体验（新窗口打开）' },
       workshop: { heading: '贞贞工坊 · AI 创作社区', description: '访问海外站点，加入 Discord 社区，与全球创作者一起玩转 AI。', global: '海外站 ai.t8star.org', discord: 'Discord 社区群组', noticePrefix: '贞贞的 AI 工坊预计于', noticeDate: '5月27日 — 5月29日', noticeSuffix: '开始恢复注册！' },
+      cottage: { heading: '贞贞的平价AI小屋', description: '贞贞的新网站，所有模型价格比老网站低35%-100%，推荐使用，支持在线画布等特色功能', open: '前往贞贞小屋' },
       videoTutorials: { heading: '视频教程 · T8老师', description: '跳转以下平台观看本画布与最新 AI 教程。', bilibili: '在 B 站订阅（新窗口打开）', youtube: '在 YouTube 订阅（新窗口打开）', followPrefix: '记得关注', followMiddle: '，随时获取', freeUpdates: '免费版本更新', followSuffix: '及最新 AI 教程。' },
       cloudCanvas: { heading: '云端创作 · 企鹅画布', descriptionPrefix: '云端也能爽用', product: '企鹅画布', gift: '还送 10 鹅卵石', open: '立即开通（新窗口打开）', group: '加群 · 加企鹅微信', copied: '已复制', copyTitle: '一键复制微信号', copyPrompt: '复制企鹅微信号：', copy: '复制', thanks: '感谢企鹅在我制作本画布时候的帮助，大家多多支持！' },
     },
@@ -82,6 +108,7 @@ export const zhCN = {
     canvasError: '画布渲染出错了，已被错误边界捕获',
   },
   canvas: {
+    quickAddTitle: '快速添加节点',
     generationHistory: generationHistoryZh,
     state: {
       noCanvasTitle: '🐧 贞贞的无限画布（企鹅共创版）', noCanvas: '请先在左侧创建或选择一个画布',
@@ -157,7 +184,7 @@ export const zhCN = {
   },
   nodes: {
     generation: {
-      advancedSource: '高级来源', platform: '平台', workshop: '贞贞的AI工坊', defaultWorkshop: '默认贞贞工坊', workshopDefault: '贞贞的AI工坊（默认）', budgetHouse: '贞贞的平价AI小屋', externalModel: '外部模型', model: '模型', apiSource: 'API 来源', modelRegion: '模型地区', specificModel: '具体模型', unselectedModel: '未选模型',
+      advancedSource: '高级来源', platform: '平台', workshop: '贞贞的AI工坊', defaultWorkshop: '贞贞工坊', workshopDefault: '贞贞的AI工坊', budgetHouse: '贞贞的平价AI小屋', externalModel: '外部模型', model: '模型', modelType: '模型类型', flashVideoHint: '3–{{max}}秒；最多{{images}}张图片或{{videos}}个视频，不能混传。参考视频模式仍发送所选时长；不支持主体/音色ID或原始音频。', flashVideoReferences: '请选择最多{{images}}张图片或{{videos}}个视频，不能混传，也不支持主体/音色ID和原始音频。', apiSource: 'API 来源', modelRegion: '模型地区', specificModel: '具体模型', unselectedModel: '未选模型',
       seedreamNz: {
         domestic: '国内模型', overseas: '海外模型', actualModel: '实际模型：{{model}}',
         limits: '提示词 5–{{count}} 字符；参考图最多 10 张，每张不超过 {{mb}} MB。',
@@ -174,6 +201,49 @@ export const zhCN = {
       previousFailed: '本次生成未成功，上一版预览仍保留。',
       previousIdle: '可修改设置后重新生成，上一版预览仍保留。',
       previousHistoryHint: '其他已保存版本可从节点上方的“历史”查看。',
+      agnes: {
+        title: 'Agnes 2.5 视频参数', mode: '生成模式', auto: '自动（按素材选择）', text: '文生视频', keyframe: '首尾帧（按图片顺序）', reference: '多模态参考',
+        hint: '2.5 使用时长、分辨率档位和比例，不发送宽高或帧数。参考素材必须为公网 URL；本地文件请先上传到公开存储。标准版按量计费，Flash 当前为限时免费且仅支持 720P。',
+        migrated: '视频 2.0 已退役；此节点已兼容为 2.5，旧帧数参数不再发送。',
+      },
+      moss: {
+        description: 'Moss Image：必填提示词，最多 1 张参考图，8 种比例（默认 9:16）；无分辨率、Seed 或批量参数。',
+        promptRequired: 'Moss Image 提示词不能为空',
+        tooManyImages: 'Moss Image 最多支持 1 张参考图，请移除多余图片',
+        invalidRatio: 'Moss Image 不支持该比例，请选择完整选项',
+      },
+      mai: {
+        description: 'Mai 2.6 / Flash：必填提示词（上游约 32000 Token），最多 5 张有序参考图；单张 PNG 输出，无 Seed。',
+        referenceSizing: '已连接参考图：由模型按参考图比例选择约 1M 像素，文生图尺寸设置不发送。',
+        autoAspect: '自动选择文生图画幅', webGrounding: '通过 Bing 检索当前信息',
+        customRatio: '自定义比例', customPixels: '自定义像素',
+        pixelLimits: '每边至少 768，总像素不超过 2359296；提交时向下取整为 32 的倍数。',
+        invalidModel: '不支持的 Mai 模型', promptRequired: 'Mai 提示词不能为空',
+        tooManyImages: 'Mai 最多支持 5 张参考图，请移除多余图片',
+        invalidBoolean: 'Mai 自动画幅和联网检索必须为开关值',
+        invalidPixels: 'Mai 宽高必须为整数且每边至少 768，总像素不能超过 2359296',
+        invalidResolution: 'Mai 分辨率只支持 1K 或 2K', invalidRatio: 'Mai 比例必须为 1:4 至 4:1 的正整数宽高比',
+      },
+      nbLowpricePromptLimit: 'NB Lowprice 提示词必须为 1–5000 字符',
+      newBudgetModels: {
+        bananaDescription: 'Nano Banana 2.1：5–5000 字符，1K/2K/4K、auto/标准比例、最多 14 张有序参考图，单图输出。',
+        nbLowpriceDescription: 'NB Pro / 2.1 Lowprice：1–5000 字符，1K/2K/4K，最多 14 张有序参考图，单图输出；Pro 不支持极端比例。',
+        bananaPrompt: 'Nano Banana 2.1 提示词必须为 5–5000 字符',
+        inputImageRatio: '原图比例（无需设置）',
+        fluxDescription: 'FLUX 3：文生图或最多 10 张参考图编辑，单图输出；支持 768sq/1K/1.5K/2K/4K。',
+        grounding: '启用 grounding', safetyTolerance: '安全容忍度（0–4）',
+        tooManyImages: '最多支持 {{count}} 张参考图，请移除多余图片',
+        viduDescription: 'Vidu Q4：图生视频恰好 1 张图，比例由输入图决定、提示词可选；参考生视频需要提示词和 1–15 张图，可加最多 3 段音频（自动转 MP3）。',
+        viduReferences: 'Vidu Q4：图生需恰好 1 张图，参考生需 1–15 张图、最多 3 段音频；不接受参考视频',
+        generateAudio: '生成音频', isRec: '启用 is_rec（官方默认开启）', watermark: '添加水印',
+      },
+      topaz: {
+        restorationModel: '修复模型', videoUrl: '公开 MP4 直链（与素材输入二选一）',
+        urlPlaceholder: '连接或拖入视频时留空',
+        inputRequired: 'Topaz 需要恰好 1 个 MP4；素材输入与公开直链不能同时使用',
+        description: '连接或拖入一条 MP4，或填写公开直链。选择修复模型和目标分辨率；按总像素预算保留原始宽高比，无需提示词、时长或 Seed。',
+        channel: '贞贞的平价AI小屋 · Topaz-Upscale-LowPirce · 720p / 1080p / 2K / 4K',
+      },
       gptImage25: {
         channel: '贞贞的AI工坊 · GPT Image 2.5',
         description: '无参考图为文生图；有参考图为编辑，按连接/上传顺序最多输入 14 张；单次可输出 1–10 张。',
@@ -293,7 +363,7 @@ export const zhCN = {
       },
     },
     text: {
-      title: '文本', promptTitle: '文本节点 Prompt', placeholder: '输入提示词...', downstream: '输出到下游节点',
+      title: '文本', promptTitle: '文本节点 Prompt', placeholder: '输入提示词...', downstream: '输出到下游节点', useUpstream: '使用上游文本（编辑后切换为本地）', inputCycle:'上游存在反馈回路，当前保留本地文本；请移出上游组或断开回接连线。',
       characters: '{{count}} 字符', offscreen: '{{count}} 字符 · 高性能离屏预览', rhSequence: 'RH 节点序号',
       rhHint: '可选：填 RH 应用 nodeInfoList 里的节点序号，下游 RH 节点会按这个 RH# 自动绑定文本参数',
     },
@@ -308,8 +378,8 @@ export const zhCN = {
     },
     llm: {
       title: 'LLM / Vision', sessions: '{{count}} 条会话', offscreen: '{{model}} · {{count}} 条会话 · 高性能离屏预览', newSession: '新会话', clearSession: '清空会话 / 新建',
-      advancedSource: '高级来源', platform: '平台', defaultSource: '贞贞的AI工坊-独立LLM Key（默认）', budgetSource: '贞贞的平价AI小屋', externalModel: '外部模型', budgetModel: '平价小屋模型',
-      budgetHelp: '使用“贞贞的平价AI小屋 API Key”，接口为 api.seedance.nz。', missingProvider: '当前画布记录的扩展平台未启用或不存在，已临时回到默认来源。',
+      advancedSource: '高级来源', platform: '平台', defaultSource: '贞贞的AI工坊-独立LLM Key', budgetSource: '贞贞的平价AI小屋', externalModel: '外部模型', budgetModel: '平价小屋模型',
+      budgetHelp: '使用“贞贞的平价AI小屋 API Key”，接口为 api.seedance.nz。', missingProvider: '保存的扩展来源或模型不可用；运行已阻断，不会切换默认来源。',
       model: '模型', customModel: 'Custom / 自定义', customPlaceholder: '填写贞贞工坊支持的模型名称', stream: '流式', systemPrompt: '系统提示词', systemPromptTitle: 'LLM 系统提示词', systemPlaceholder: '设定 AI 角色和行为...',
       loadPreset: '加载预设', presetPlaceholder: '— 预设 —', savePreset: '保存当前为预设', deletePreset: '删除预设', deletePresetPrompt: '删除预设（输入名字）：',
       userInput: '用户输入（优先取上游）', userInputTitle: 'LLM 用户输入', userInputPlaceholder: '备用：无上游连接时使用', videoInput: '视频传入', videoInputTitle: 'LLM 视频传入方式', frames: '关键帧优先', nativeVideo: '原视频 Base64',
@@ -319,6 +389,7 @@ export const zhCN = {
     },
     image: { title: '图像', promptTitle: '图像 Prompt', imageOnlyAria: '仅输出图片结果', imageOnly: '仅输出图片结果（不输出 Prompt）', resultAlt: '生成结果', generatedImage: '生成图像', qwen21ModeHint: '同一模型自动区分文生图/图生图；参考图可选 0–10 张，固定单图输出。', qwen21FieldsHint: '仅发送 Prompt、参考图、比例、分辨率与可选 Seed，不复用 Qwen 3.0 参数。', qwen21SeedHint: '-1 表示不发送 seed；范围 0–9007199254740991。' },
     audio: {
+      doubaoVoice: doubaoVoiceZh,
       sunoV6Hint: 'V6 / wild / mini：歌词最多 5000 字符，标签最多 1000 字符，歌曲最长 8 分钟（非固定时长）。旧版本请求由工坊转为 V6 基础版；旧画布选项保留。',
       sunoV6PromptLimit: 'Suno V6 歌词 / 提示词最多 5000 字符（含上游输入）。',
       sunoV6TagsLimit: 'Suno V6 风格标签最多 1000 字符。',
@@ -329,7 +400,7 @@ export const zhCN = {
       sunoNegativeTags: '排除风格（negative_tags）', sunoNegativeTagsPlaceholder: '例如：harsh vocals, distortion', sunoStyleWeight: '风格权重', sunoWeirdness: '创意度', sunoAudioWeight: '音频权重', sunoAutoLyrics: '自动改写歌词', sunoMaxMode: 'Max 模式（双倍计费）', sunoPersonaIdOptional: 'persona_id（可选）', sunoPersonaIdPlaceholder: '留空则不使用 Persona', sunoTargetDuration: '目标时长（10–360 秒）', sunoVariety: '变化度', sunoExtendContinueMinimum: 'upload-extend 的 continue_at 必须至少为 1 秒。', sunoExtendSourceDurationHint: '提交前会读取源音频真实时长；续写起点必须严格小于源时长。', sunoSingleReferenceRequired: '{{action}} 必须且只能提供 1 段参考音频；当前 {{count}} 段。', sunoCreateModelUpstreamTitle: '上游素材 · 6–24 段有序训练音频', sunoSingleUpstreamTitle: '上游素材 · 仅 1 段参考音频', sunoRemoveReference: '移除这段参考音频', sunoImportModelReferences: '批量导入训练音频（6–24 段）', sunoImportSingleReference: '导入 1 段 Suno 参考音频',
       title: '音频', titleWithProvider: '音频 · {{provider}}', sunoPlatform: 'Suno API 平台', workshopLegacy: '贞贞的AI工坊（原有）', mode: '模式', version: '版本', sunoActions: 'Suno 操作（34 项）', flowMusicActions: 'Lyria / Flow Music 操作（9 项）', generationVersion: '生成版本', defaultVersion: '默认版本',
       lyrics: '歌词', lyricsRequirement: '歌词（曲风提示词与歌词至少一个非空）', fullLyricsPlaceholder: '支持完整歌词与段落标签', songTitle: '标题', titleOptional: '标题（可选）', styleTags: '风格 Tags', styleOptional: '风格（可选）', customMode: '自定义模式', instrumental: '纯音乐', vocalGenderOptional: '人声性别（可选）', male: '男声', female: '女声',
-      qwenModel: 'Qwen3-TTS 模型', minimaxModel: 'MiniMax 模型', murekaModel: 'Mureka 模型', voiceId: '音色 ID', voiceIdOptional: '音色 ID（可选）', language: '语言', expressionInstruction: '表达指令（中文或英文，可选）', expressionPlaceholder: '例如：温柔、自然、语速稍慢', optimizeInstruction: '由上游优化非空表达指令', optimizeLyrics: '自动生成/优化歌词',
+      qwenModel: 'Qwen-TTS 模型', minimaxModel: 'MiniMax 模型', murekaModel: 'Mureka 模型', voiceId: '音色 ID', voiceIdOptional: '音色 ID（可选）', language: '语言', expressionInstruction: '表达指令（中文或英文，可选）', expressionPlaceholder: '例如：温柔、自然、语速稍慢', optimizeInstruction: '由上游优化非空表达指令', optimizeLyrics: '自动生成/优化歌词',
       speechRate: '语速', volume: '音量', pitch: '音高', format: '格式', sampleRate: '采样率', bitrate: '码率', languageBoost: '语言增强', generationCount: '生成数量', promptTitle: '音频歌词 / 提示词', startTranscription: '开始转写', execute: '执行 {{action}}', createCloneVoice: '创建克隆音色', generateAudio: '生成音频', transcribing: '正在转写...', submitting: '提交任务...', polling: '轮询中 {{progress}}', transcriptResult: '转写结果', resultFiles: '结果文件', downloadFile: '下载文件 {{index}}',
     },
     video: { title: '视频', flashTitle: 'FlashVSR 视频超分', promptTitle: '视频 Prompt', generateVideo: '生成视频', startUpscale: '开始超分', generateAudio: '生成音频', generatedVideo: '生成视频', submitting: '提交中', queued: '排队中', dragHint: '按住 Ctrl 拖拽到其他节点', wan30I2vHint: 'Wan 3.0 I2V 使用第 1 张首帧图和可选第 2 张尾帧图；提示词可选。', wan30R2vHint: 'Wan 3.0 R2V 必须填写提示词；最多 10 图、5 视频、5 音频，并可附加文件或网页 URL。', wan30BudgetHint: '贞贞的平价AI小屋 · auto / 2-30 秒 · 480P / 720P / 1080P', wan30Thinking: '启用思考（仅 Global 标准版支持）', wan30FileUrl: '文件 URL（可选）', wan30WebUrl: '网页 URL（可选）', wan30Seed: 'Seed（0-2147483647）', wan30LocalPromptRequired: '本地 Prompt（必填）', animateContract: 'Animate Motion Transfer · 必须恰好一图一视频 · 不发送 Prompt、音频或 Seed', animateSourceHint: '可连接/拖入本地素材，也可在下面直接粘贴公网 URL；同类来源不能重复。', animateImageUrl: '图片公网 URL（与连接图片二选一）', animateVideoUrl: '动作视频公网 URL（与连接视频二选一）', animateResolution: '分辨率', animateRatio: '比例（adaptive 或 W:H）', animateMaxFrames: 'max_frames（0=上游默认）', animate1080Limit: '1080p 最长 10 秒：max_frames ≤ frame_rate × 10。', minimaxH3Controls: '素材角色与音频控制', minimaxH3FirstFrame: '第 1 图作首帧', minimaxH3LastFrame: '下一图作尾帧', minimaxH3DriveAudio: '第 1 音频作驱动', minimaxH3RoleHint: '未分配为关键帧的图片会作为参考图；未分配为驱动的音频会作为参考音频。', minimaxH3VideoStart: '视频 {{index}} 起始秒', minimaxH3AudioMode: '音频模式', minimaxH3ApiDefault: 'API 默认', minimaxH3LockSource: '锁定源音频', minimaxH3RemixSource: '重混源音频', minimaxH3ReferenceOnly: '仅作参考', minimaxH3NativeAudio: '原生音频', minimaxH3DriveAsReference: '驱动音频同时作参考', minimaxH3Yes: '是', minimaxH3No: '否', minimaxH3Denoise: '音频降噪强度 · {{value}}', minimaxH3LockedValue: '0（锁定）' },
@@ -519,8 +590,10 @@ export const zhCN = {
     },
   },
   settings: {
+    strata: strataZh,
+    agentTools: agentToolsZh,
     startupDiagnostics: { title: '启动诊断', save: '保存启动日志', saving: '正在保存…', hint: '复现启动卡顿后保存日志并发给作者。包含本次和上次启动的阶段、耗时与异常阶段，不包含 API Key、提示词或画布内容。', browserHint: '浏览器版只能保存本次前端启动阶段；不包含桌面主进程或数据库日志。', saved: '日志已保存，请把 .log 文件发给作者。', canceled: '已取消保存。', failed: '日志保存失败，请重试并确认保存位置可写。' },
-    mediaDefaults: { title: '新建媒体节点默认来源', hint: '仅在新建空白节点时应用，保存设置不会改动任何现有节点。', imageSource: '图像 / 图像编辑', videoSource: '视频', 'product-default': '跟随产品默认', zhenzhen: '贞贞的 AI 工坊', 'seedance-nz': '贞贞的平价 AI 小屋', bothBudget: '两项都设为平价小屋', scope: '支持通用图像、图像编辑与视频节点。复制、导入、模板、历史恢复及专用 Seedance / RH / ComfyUI / 故事节点保留自身设置。明确选择的模型或来源优先。', keyHint: '可先保存和新建；生成前请填写平价小屋 API Key，不会自动改用工坊或其他来源。', retry: '重新加载设置', notReady: '默认来源设置尚未加载成功，请在 API 设置中重试后再新建媒体节点。', saveFailed: '保存失败或回读未确认，请重试；默认来源尚未确认生效。' },
+    mediaDefaults: { title: '新建核心节点默认来源', hint: '仅在新建空白节点时应用，保存设置不会改动任何现有节点。', imageSource: '图像 / 图像编辑', videoSource: '视频', llmSource: 'LLM', audioSource: '音频', seedanceSource: 'Seedance 2.0', directorSource: '导演分镜台', 'product-default': '跟随产品默认（平价小屋）', zhenzhen: '贞贞的 AI 工坊', 'seedance-nz': '贞贞的平价 AI 小屋', bothBudget: '全部设为平价小屋', scope: '支持图像、图像编辑、视频、LLM、音频、Seedance 2.0 和导演分镜台。仅新建时应用；旧节点、复制、导入、模板及历史恢复保留原设置。明确选择的模型或来源优先。', keyHint: '可先保存和新建；生成前请填写平价小屋 API Key，不会自动改用工坊或其他来源。', retry: '重新加载设置', notReady: '默认来源设置尚未加载成功，请在 API 设置中重试后再新建媒体节点。', saveFailed: '保存失败或回读未确认，请重试；默认来源尚未确认生效。' },
     title: 'API Key 设置（通用 + 分类独立）', subtitle: '留空表示保持后端已存的 Key 不变 · 输入新值即覆盖 · 点眼睛可预览明文。',
     creatorSetup: { title: '设置创作助手', subtitle: '保存后即可回到对话；首次发送时会验证 API Key。', providerTitle: '设置贞贞的平价AI小屋', providerHint: '输入一个 API Key，用于对话、图像和视频；当前输入和素材不会丢失。', endpointReady: '服务器地址已自动设置', connect: '保存并返回', keyRequired: '请先输入 API Key，当前输入和素材会继续保留。' },
     state: { configured: '已配置 {{configured}}/{{total}}', enabled: '已启用', disabled: '未启用', enabledCount: '已启用 {{enabled}}/{{total}}', configuredCount: '已配置 {{count}}', keysCount: '密钥 {{count}}', default: '默认', expand: '展开', collapse: '收起' },
@@ -530,7 +603,7 @@ export const zhCN = {
     },
     classified: { title: '分类独立 API Key【可选】', collapsedHelp: '不必担心：未填项会自动 fallback 到贞贞工坊通用 Key，新手可直接保存忽略此区块。', expandedHelp: '为不同模型系列单独配置 Key；未填则自动 fallback 到贞贞工坊通用 Key。后端会根据调用的模型名/路由自动选择。' },
     keys: {
-      zhenzhen: { label: '贞贞的AI工坊（海外） API Key', description: '· 通用后备 · 用于图像/视频/音频生成' }, zhenzhenBudget: { label: '贞贞的平价AI小屋 API Key', description: '· 主力 API · 用于平价小屋 LLM、视频、Seedream/Qwen/Wan/Grok 图像，以及 Seed Audio、Qwen3-TTS、MiniMax、Mureka 音频' }, rhCn: { label: 'RH APIKEY国内', description: '· runninghub.cn 国内站应用' }, rhIntl: { label: 'RH APIKEY海外', description: '· runninghub.ai 海外站应用' }, llm: { label: 'LLM 独立 API Key', description: '· 额度隔离 · 用于 LLM/Vision' },
+      zhenzhen: { label: '贞贞的AI工坊（海外） API Key', description: '· 通用后备 · 用于图像/视频/音频生成' }, zhenzhenBudget: { label: '贞贞的平价AI小屋 API Key', description: '· 主力 API · 用于平价小屋 LLM、视频、Seedream/Qwen/Wan/Grok 图像，以及 Seed Audio、Qwen-TTS、MiniMax、Mureka 音频' }, rhCn: { label: 'RH APIKEY国内', description: '· runninghub.cn 国内站应用' }, rhIntl: { label: 'RH APIKEY海外', description: '· runninghub.ai 海外站应用' }, llm: { label: 'LLM 独立 API Key', description: '· 额度隔离 · 用于 LLM/Vision' },
       gptImage: { label: 'gpt-image 系列', description: 'GPT2 / gpt-image-1 等图像任务专用' }, nanoBanana: { label: 'nano-banana 系列', description: 'nano-banana / nano-banana-pro 专用' }, midjourney: { label: 'mj 系列', description: 'Midjourney (turbo/fast/relax) 专用' }, veo: { label: 'veo 系列', description: 'Veo 系列视频专用' }, sora: { label: 'sora2 系列', description: 'Sora2 FAL / Zhenzhen API 视频专用' }, grok: { label: 'grok 系列', description: 'Grok Image / Grok Imagine Video 专用' }, seedance: { label: 'seedance 系列', description: 'Seedance 视频专用' }, suno: { label: 'suno 系列', description: 'Suno 音乐专用' },
       hide: '隐藏', showPlaintext: '显示明文', cancelClear: '取消清空', clear: '清空', pendingClear: '保存后清空', saved: '✓ 已保存 {{masked}}', fallback: '未设置 · 使用通用 Key', clearFallbackPlaceholder: '已标记清空，保存后回到通用 Key', clearRemovePlaceholder: '已标记清空，保存后移除该 Key', keepPlaceholder: '留空保持不变 / 输入新值覆盖', fallbackPlaceholder: '留空则使用通用 Key / 输入独立 Key', inputPlaceholder: '请输入 sk-...', nothingToClear: '当前没有可清空的分类独立 Key', clearClassified: '清空该分类独立 Key', lockedBase: 'Base URL 锁定: {{url}}', sameBaseIndependent: 'Base URL 锁定: {{url}}（与贞贞同地址，Key 独立）',
     },
@@ -539,7 +612,7 @@ export const zhCN = {
       'openai-compatible': { label: 'OpenAI 兼容', subtitle: '接入兼容 OpenAI 格式的图像 / 视频 / LLM 服务', description: '适合接入你自己的中转站、One API、New API 或其他兼容 /v1/chat/completions、/v1/images/generations、/v1/images/edits、/v1/videos/generations 的服务。', connectionHint: 'Base URL 填到 /v1 这一层，例如 https://api.example.com/v1；Key 留空会保留后端已保存的密钥。', modelHint: '每行一个模型名。只填你确实要在节点里选择的模型，空白时会使用内置兜底示例。' },
       modelscope: { label: 'ModelScope', subtitle: '接入 ModelScope 的异步图像任务与兼容聊天接口', description: '适合把 ModelScope 上的图像模型加入图像节点，也可以给 LLM 节点填入可用的聊天模型。', connectionHint: 'Base URL 通常使用 ModelScope API 地址；Token 填 ModelScope 访问令牌。', modelHint: '图像模型建议填写 ModelScope 模型 ID，例如 owner/model-name；聊天模型按平台实际模型名填写。' },
       volcengine: { label: '火山引擎', subtitle: '接入火山方舟 / Seedream / Seedance', description: '适合用火山引擎做 Seedream 图像、Seedance 视频或方舟聊天模型。生成调用使用方舟 Ark API Key，不使用 Access Key ID / Secret Access Key；使用 Seedance2.0 前需要先在火山方舟控制台开通对应模型服务。', connectionHint: 'Base URL 填火山方舟 API 地址；Seedream / Seedance / LLM 生成必须填方舟 Ark API Key。Access Key ID / Secret Access Key 是另一类凭证，请放到下方火山 AK/SK 高级项。', modelHint: '图像、视频、聊天模型分别按火山控制台里的模型接入点填写，每行一个。Seedance2.0 / Seedance2.0 Fast 如果未在方舟控制台开通，提交会返回 ModelNotOpen / HTTP 404。' },
-      agnes: { label: 'Agnes AI', subtitle: '接入 Agnes AI 免费模型 API', description: '适合用 Agnes AI 的免费额度接入 LLM、图像和视频节点。LLM 使用 OpenAI 兼容 /v1/chat/completions 并按长响应等待；图像使用 Agnes 的 OpenAI JSON 图片接口；视频使用 /v1/videos 提交并由 /agnesapi 查询结果。', connectionHint: 'Base URL 默认使用 https://apihub.agnes-ai.com/v1；API Key 可在 Agnes 平台的 API Keys 页面创建。填好 Key、启用平台并保存后，在节点的“高级来源”里选择 Agnes AI。', modelHint: '默认模型：LLM agnes-2.0-flash；图像 agnes-image-2.1-flash / agnes-image-2.0-flash；视频 agnes-video-v2.0。图像尺寸跟随图像节点比例/尺寸，视频比例/时长/分辨率会自动换算为 Agnes 宽高和帧数；本机参考图会自动转成可提交给远端任务的 base64 图片内容。' },
+      agnes: { label: 'Agnes AI', subtitle: '接入 Agnes AI 多模态 API', description: '接入 Agnes AI 的 LLM、图像和视频节点；收费与额度以模型及账户为准。LLM 使用 OpenAI 兼容 /v1/chat/completions 并按长响应等待；图像使用 Agnes 的 OpenAI JSON 图片接口；视频使用 /v1/videos 提交并由 /agnesapi 查询结果。', connectionHint: 'Base URL 默认使用 https://apihub.agnes-ai.com/v1；API Key 可在 Agnes 平台的 API Keys 页面创建。填好 Key、启用平台并保存后，在节点的“高级来源”里选择 Agnes AI。', modelHint: '默认 LLM/图像模型不变；视频已升级 Agnes Video 2.5 / 2.5 Flash，2.0 已退役。视频使用 seconds、size、aspect_ratio 和 mode，不发送宽高/帧数。参考素材必须为公网 URL，本地文件须先上传到公开存储；标准版按量计费，Flash 当前限时免费。' },
       comfyui: { label: 'ComfyUI', subtitle: '接入 ComfyUI 工作流', description: '默认适合把本机 ComfyUI 的 API Workflow 接到图像节点；开启高危远端开关或由后端环境启用后，也可接入其他可信 ComfyUI 地址。', connectionHint: '默认填写本机 ComfyUI，例如 http://127.0.0.1:8188；如需其他地址，可开启下方高危开关，或由后端设置 T8_COMFYUI_ALLOW_REMOTE=1。多个实例可一行一个。', modelHint: '图像节点里选择的是工作流 ID/名称，不需要填写模型列表。' },
       'jimeng-cli': { label: '即梦 CLI', subtitle: '通过本地 dreamina / 即梦 CLI 调用图像和视频', description: '适合已经在本机配置好即梦 CLI 的用户。它不走 API Key，而是调用本地命令并轮询任务结果。', connectionHint: '填写 dreamina 可执行文件路径；如果 CLI 装在 WSL 里，再打开 WSL 并填写发行版名称。', modelHint: '当前节点按即梦 CLI v1.4.14 适配。图像支持 seedream-5.0-pro（CLI 参数 5.0Pro）、seedream-5.0、seedream-4.7 等；视频支持 seedance2.0fast_vip、seedance2.0_vip（720P/1080P/4K）、seedance2.0mini、seedance1.5pro、seedance1.0fast。每行一个。' },
     },
@@ -614,6 +687,16 @@ export const zhCN = {
 } as const;
 
 export const enUS = {
+  nov21:nov21En,
+  nov19:nov19En,
+  h3Turbo: h3TurboEn, seedream55: seedream55En,
+  tripo: tripo3dEn,
+  previewMuseFlux: previewMuseFluxEn,
+  g26Krea3d:g26Krea3dEn,
+  klingV4: klingV4En,
+  motionVideo: motionVideoEn,
+  canvasSave: canvasSaveEn,
+  creativeUx: creativeUxEn,
   workbenches: {
     videoEdit: VIDEO_EDIT_VISIBLE_CATALOG.en,
     creatorAgent: CREATOR_AGENT_VISIBLE_CATALOG.en,
@@ -659,6 +742,7 @@ export const enUS = {
       latestApps: { label: 'Latest Apps', title: 'Latest Apps · RunningHub workflows' },
       aix: { label: 'AIX Products', title: 'AIX Products · products from T8' },
       workshop: { label: 'Zhenzhen Hub', title: 'Zhenzhen Hub · global site and Discord' },
+      cottage: { label: 'Zhenzhen Cottage', title: "Zhenzhen's Affordable AI Cottage · new website" },
       videoTutorials: { label: 'Video Guides', title: 'Video Guides · follow T8 for free updates' },
       cloudCanvas: { label: 'Cloud Canvas', title: 'Cloud creation · Penguin Canvas (includes 10 pebbles)' },
     },
@@ -670,6 +754,7 @@ export const enUS = {
       latestApps: { heading: 'Latest Apps · RunningHub', description: 'A core platform for T8 daily tutorials, updated every day with recent workflows, AI apps, nodes, models, and free lessons.', china: 'China site · RunningHub.cn', global: 'Global site · RunningHub.ai', invitePrefix: 'Use invite code', inviteSuffix: 'to register and receive 1,000 free credits.' },
       aix: { heading: 'AIX Products', description: 'Explore AIX products from T8.', open: 'Open AIX in a new window' },
       workshop: { heading: 'Zhenzhen Hub · AI Creator Community', description: 'Visit the global site and join the Discord community to create with people around the world.', global: 'Global site · ai.t8star.org', discord: 'Discord community', noticePrefix: 'Zhenzhen AI Workshop expects registration to resume', noticeDate: 'May 27–29', noticeSuffix: '.' },
+      cottage: { heading: "Zhenzhen's Affordable AI Cottage", description: "Zhenzhen's new website, with all models priced 35%-100% lower than the old website. Recommended, with features including an online canvas.", open: 'Visit Zhenzhen Cottage' },
       videoTutorials: { heading: 'Video Guides · T8', description: 'Open one of these platforms for Penguin Canvas and recent AI tutorials.', bilibili: 'Follow on Bilibili (opens a new window)', youtube: 'Follow on YouTube (opens a new window)', followPrefix: 'Follow', followMiddle: ' to receive', freeUpdates: 'free version updates', followSuffix: 'and recent AI tutorials.' },
       cloudCanvas: { heading: 'Cloud Creation · Penguin Canvas', descriptionPrefix: 'Use', product: 'Penguin Canvas', gift: 'Includes 10 pebbles', open: 'Get started (opens a new window)', group: 'Join the group · add Penguin on WeChat', copied: 'Copied', copyTitle: 'Copy WeChat ID', copyPrompt: 'Copy Penguin WeChat ID:', copy: 'Copy', thanks: 'Thanks to Penguin for helping build this canvas. Your support is appreciated!' },
     },
@@ -689,6 +774,7 @@ export const enUS = {
     canvasError: 'Canvas rendering failed and was caught by the error boundary',
   },
   canvas: {
+    quickAddTitle: 'Quick add node',
     generationHistory: generationHistoryEn,
     state: {
       noCanvasTitle: "🐧 Zhenzhen's Infinite Canvas (Penguin Co-creation Edition)", noCanvas: 'Create or select a canvas from the sidebar.',
@@ -764,7 +850,7 @@ export const enUS = {
   },
   nodes: {
     generation: {
-      advancedSource: 'Advanced source', platform: 'Platform', workshop: 'Zhenzhen AI Workshop', defaultWorkshop: 'Default Zhenzhen Workshop', workshopDefault: 'Zhenzhen AI Workshop (default)', budgetHouse: 'Zhenzhen Budget AI House', externalModel: 'External model', model: 'Model', apiSource: 'API source', modelRegion: 'Model region', specificModel: 'Specific model', unselectedModel: 'No model selected',
+      advancedSource: 'Advanced source', platform: 'Platform', workshop: 'Zhenzhen AI Workshop', defaultWorkshop: 'Zhenzhen Workshop', workshopDefault: 'Zhenzhen AI Workshop', budgetHouse: 'Zhenzhen Budget AI House', externalModel: 'External model', model: 'Model', modelType: 'Model type', flashVideoHint: '3–{{max}} seconds; up to {{images}} images OR {{videos}} videos. Video references retain the selected duration. No element/voice IDs or raw audio.', flashVideoReferences: 'Use up to {{images}} images OR {{videos}} videos, without mixing. Element/voice IDs and raw audio are unsupported.', apiSource: 'API source', modelRegion: 'Model region', specificModel: 'Specific model', unselectedModel: 'No model selected',
       seedreamNz: {
         domestic: 'Domestic model', overseas: 'Overseas model', actualModel: 'Actual model: {{model}}',
         limits: 'Prompt: 5–{{count}} characters. Up to 10 reference images, at most {{mb}} MB each.',
@@ -781,6 +867,49 @@ export const enUS = {
       previousFailed: 'This generation did not succeed. The previous preview is still available.',
       previousIdle: 'You can edit the settings and generate again. The previous preview is still available.',
       previousHistoryHint: 'View other saved versions in History above the selected node.',
+      agnes: {
+        title: 'Agnes 2.5 video settings', mode: 'Generation mode', auto: 'Auto (based on media)', text: 'Text to video', keyframe: 'First/last frames (image order)', reference: 'Multimodal reference',
+        hint: '2.5 uses duration, resolution tier and aspect ratio, not width/height or frame count. References require public URLs; upload local files to public storage first. Standard is metered; Flash is currently promotional and 720P only.',
+        migrated: 'Video 2.0 is retired. This node now uses 2.5; legacy frame parameters are not sent.',
+      },
+      moss: {
+        description: 'Moss Image: required prompt, up to 1 reference and 8 ratios (default 9:16); no resolution, seed or batch parameters.',
+        promptRequired: 'Moss Image requires a prompt',
+        tooManyImages: 'Moss Image supports at most 1 reference. Remove the extras.',
+        invalidRatio: 'Unsupported Moss Image ratio. Select one of the listed options.',
+      },
+      mai: {
+        description: 'Mai 2.6 / Flash: required prompt (upstream limit approximately 32,000 tokens), up to 5 ordered references; one PNG, no seed.',
+        referenceSizing: 'References connected: the model selects about 1M pixels using the reference ratio. Text-generation sizing is not sent.',
+        autoAspect: 'Automatically select the text-generation ratio', webGrounding: 'Search current information with Bing',
+        customRatio: 'Custom ratio', customPixels: 'Custom pixels',
+        pixelLimits: 'Each side must be at least 768; at most 2,359,296 pixels. Dimensions are rounded down to multiples of 32.',
+        invalidModel: 'Unsupported Mai model', promptRequired: 'Mai requires a prompt',
+        tooManyImages: 'Mai supports up to 5 references. Remove the extras.',
+        invalidBoolean: 'Mai automatic ratio and web grounding must be boolean switches',
+        invalidPixels: 'Mai requires integer dimensions of at least 768 per side and at most 2,359,296 total pixels',
+        invalidResolution: 'Mai supports only 1K or 2K', invalidRatio: 'Mai requires a positive integer ratio between 1:4 and 4:1',
+      },
+      nbLowpricePromptLimit: 'NB Lowprice requires a prompt of 1–5,000 characters',
+      newBudgetModels: {
+        bananaDescription: 'Nano Banana 2.1: 5–5,000 characters, 1K/2K/4K, auto/standard ratios, up to 14 ordered references, one output.',
+        nbLowpriceDescription: 'NB Pro / 2.1 Lowprice: 1–5,000 characters, 1K/2K/4K, up to 14 ordered references and one output. Pro excludes extreme ratios.',
+        bananaPrompt: 'Nano Banana 2.1 requires a prompt of 5–5,000 characters',
+        inputImageRatio: 'Input image ratio (automatic)',
+        fluxDescription: 'FLUX 3: text generation or editing with up to 10 references, one output; 768sq/1K/1.5K/2K/4K.',
+        grounding: 'Enable grounding', safetyTolerance: 'Safety tolerance (0–4)',
+        tooManyImages: 'Up to {{count}} reference images are supported. Remove the extras.',
+        viduDescription: 'Vidu Q4: I2V requires exactly one image, uses its ratio, and allows an empty prompt. R2V requires a prompt and 1–15 images; optionally add up to 3 audios (converted to MP3).',
+        viduReferences: 'Vidu Q4: I2V needs exactly 1 image; R2V needs 1–15 images and up to 3 audios. Reference videos are not supported.',
+        generateAudio: 'Generate audio', isRec: 'Enable is_rec (official default: on)', watermark: 'Add watermark',
+      },
+      topaz: {
+        restorationModel: 'Restoration model', videoUrl: 'Public MP4 URL (instead of material input)',
+        urlPlaceholder: 'Leave empty when connecting or dropping a video',
+        inputRequired: 'Topaz requires exactly one MP4. Do not combine a material input with a public URL.',
+        description: 'Connect or drop one MP4, or enter a public URL. Select a restoration model and output pixel budget; the source aspect ratio is preserved. No prompt, duration, or seed is sent.',
+        channel: 'Zhenzhen Budget AI House · Topaz-Upscale-LowPirce · 720p / 1080p / 2K / 4K',
+      },
       gptImage25: {
         channel: 'Zhenzhen AI Workshop · GPT Image 2.5',
         description: 'No references generates from text; adding references switches to editing. Up to 14 ordered inputs and 1–10 outputs are supported.',
@@ -900,7 +1029,7 @@ export const enUS = {
       },
     },
     text: {
-      title: 'Text', promptTitle: 'Text node prompt', placeholder: 'Enter a prompt...', downstream: 'Output to downstream nodes',
+      title: 'Text', promptTitle: 'Text node prompt', placeholder: 'Enter a prompt...', downstream: 'Output to downstream nodes', useUpstream: 'Use upstream text (editing switches to local)', inputCycle:'An upstream feedback loop was detected. Local text is preserved; move outside the upstream group or remove its feedback connection.',
       characters: '{{count}} characters', offscreen: '{{count}} characters · offscreen performance preview', rhSequence: 'RH node sequence',
       rhHint: 'Optional: enter the node sequence from the RH app nodeInfoList so downstream RH nodes can bind this text by RH#.',
     },
@@ -915,8 +1044,8 @@ export const enUS = {
     },
     llm: {
       title: 'LLM / Vision', sessions: '{{count}} messages', offscreen: '{{model}} · {{count}} messages · offscreen performance preview', newSession: 'New chat', clearSession: 'Clear chat / start new',
-      advancedSource: 'Advanced source', platform: 'Platform', defaultSource: 'Zhenzhen AI Workshop · standalone LLM key (default)', budgetSource: 'Zhenzhen Budget AI House', externalModel: 'External model', budgetModel: 'Budget-house model',
-      budgetHelp: 'Uses the Zhenzhen Budget AI House API key through api.seedance.nz.', missingProvider: 'The extended platform stored by this canvas is disabled or missing, so the default source is active temporarily.',
+      advancedSource: 'Advanced source', platform: 'Platform', defaultSource: 'Zhenzhen AI Workshop · standalone LLM key', budgetSource: 'Zhenzhen Budget AI House', externalModel: 'External model', budgetModel: 'Budget-house model',
+      budgetHelp: 'Uses the Zhenzhen Budget AI House API key through api.seedance.nz.', missingProvider: 'The saved external source or model is unavailable. Execution is blocked; the default source is not used.',
       model: 'Model', customModel: 'Custom', customPlaceholder: 'Enter a model supported by Zhenzhen AI Workshop', stream: 'Streaming', systemPrompt: 'System prompt', systemPromptTitle: 'LLM system prompt', systemPlaceholder: 'Define the AI role and behavior...',
       loadPreset: 'Load preset', presetPlaceholder: '— Preset —', savePreset: 'Save current preset', deletePreset: 'Delete preset', deletePresetPrompt: 'Delete preset (enter its name):',
       userInput: 'User input (upstream takes priority)', userInputTitle: 'LLM user input', userInputPlaceholder: 'Fallback when no upstream text is connected', videoInput: 'Video input', videoInputTitle: 'LLM video input mode', frames: 'Keyframes first', nativeVideo: 'Native video Base64',
@@ -926,6 +1055,7 @@ export const enUS = {
     },
     image: { title: 'Image', promptTitle: 'Image prompt', imageOnlyAria: 'Output images only', imageOnly: 'Output images only (omit the prompt)', resultAlt: 'Generated result', generatedImage: 'Generated image', qwen21ModeHint: 'The model automatically switches between text-to-image and image-to-image; use 0–10 references and receive exactly one image.', qwen21FieldsHint: 'Sends only the prompt, references, aspect ratio, resolution, and optional seed; Qwen 3.0 fields are not reused.', qwen21SeedHint: '-1 omits the seed; the supported range is 0–9007199254740991.' },
     audio: {
+      doubaoVoice: doubaoVoiceEn,
       sunoV6Hint: 'V6 / wild / mini: up to 5,000 prompt characters, 1,000 tag characters and 8 minutes per song (not a fixed duration). Workshop redirects legacy models to V6 base; saved selections are preserved.',
       sunoV6PromptLimit: 'Suno V6 lyrics / prompt may contain at most 5,000 characters, including upstream input.',
       sunoV6TagsLimit: 'Suno V6 style tags may contain at most 1,000 characters.',
@@ -936,7 +1066,7 @@ export const enUS = {
       sunoNegativeTags: 'Negative styles (negative_tags)', sunoNegativeTagsPlaceholder: 'For example: harsh vocals, distortion', sunoStyleWeight: 'Style weight', sunoWeirdness: 'Weirdness', sunoAudioWeight: 'Audio weight', sunoAutoLyrics: 'Rewrite lyrics automatically', sunoMaxMode: 'Max mode (double price)', sunoPersonaIdOptional: 'persona_id (optional)', sunoPersonaIdPlaceholder: 'Leave blank to omit Persona', sunoTargetDuration: 'Target duration (10–360 sec)', sunoVariety: 'Variety', sunoExtendContinueMinimum: 'upload-extend continue_at must be at least 1 second.', sunoExtendSourceDurationHint: 'The source duration is probed before submit; continue_at must be strictly shorter than the source.', sunoSingleReferenceRequired: '{{action}} requires exactly one reference audio; {{count}} are selected.', sunoCreateModelUpstreamTitle: 'Upstream · 6–24 ordered training audios', sunoSingleUpstreamTitle: 'Upstream · exactly one reference audio', sunoRemoveReference: 'Remove this reference audio', sunoImportModelReferences: 'Import training audios in bulk (6–24)', sunoImportSingleReference: 'Import one Suno reference audio',
       title: 'Audio', titleWithProvider: 'Audio · {{provider}}', sunoPlatform: 'Suno API platform', workshopLegacy: 'Zhenzhen AI Workshop (legacy)', mode: 'Mode', version: 'Version', sunoActions: 'Suno actions (34)', flowMusicActions: 'Lyria / Flow Music actions (9)', generationVersion: 'Generation version', defaultVersion: 'Default version',
       lyrics: 'Lyrics', lyricsRequirement: 'Lyrics (style prompt or lyrics must be provided)', fullLyricsPlaceholder: 'Full lyrics and section tags are supported', songTitle: 'Title', titleOptional: 'Title (optional)', styleTags: 'Style tags', styleOptional: 'Style (optional)', customMode: 'Custom mode', instrumental: 'Instrumental', vocalGenderOptional: 'Vocal gender (optional)', male: 'Male', female: 'Female',
-      qwenModel: 'Qwen3-TTS model', minimaxModel: 'MiniMax model', murekaModel: 'Mureka model', voiceId: 'Voice ID', voiceIdOptional: 'Voice ID (optional)', language: 'Language', expressionInstruction: 'Expression instruction (Chinese or English, optional)', expressionPlaceholder: 'For example: gentle, natural, and slightly slower', optimizeInstruction: 'Optimize a non-empty expression instruction from upstream', optimizeLyrics: 'Generate or optimize lyrics automatically',
+      qwenModel: 'Qwen-TTS model', minimaxModel: 'MiniMax model', murekaModel: 'Mureka model', voiceId: 'Voice ID', voiceIdOptional: 'Voice ID (optional)', language: 'Language', expressionInstruction: 'Expression instruction (Chinese or English, optional)', expressionPlaceholder: 'For example: gentle, natural, and slightly slower', optimizeInstruction: 'Optimize a non-empty expression instruction from upstream', optimizeLyrics: 'Generate or optimize lyrics automatically',
       speechRate: 'Speech rate', volume: 'Volume', pitch: 'Pitch', format: 'Format', sampleRate: 'Sample rate', bitrate: 'Bitrate', languageBoost: 'Language boost', generationCount: 'Generation count', promptTitle: 'Audio lyrics / prompt', startTranscription: 'Start transcription', execute: 'Run {{action}}', createCloneVoice: 'Create cloned voice', generateAudio: 'Generate audio', transcribing: 'Transcribing...', submitting: 'Submitting task...', polling: 'Polling {{progress}}', transcriptResult: 'Transcription result', resultFiles: 'Result files', downloadFile: 'Download file {{index}}',
     },
     video: { title: 'Video', flashTitle: 'FlashVSR video upscale', promptTitle: 'Video prompt', generateVideo: 'Generate video', startUpscale: 'Start upscaling', generateAudio: 'Generate audio', generatedVideo: 'Generated video', submitting: 'Submitting', queued: 'Queued', dragHint: 'Hold Ctrl and drag to another node', wan30I2vHint: 'Wan 3.0 I2V uses image 1 as the first frame and optional image 2 as the last frame; the prompt is optional.', wan30R2vHint: 'Wan 3.0 R2V requires a prompt; it accepts up to 10 images, 5 videos, and 5 audio files, plus an optional file or web URL.', wan30BudgetHint: 'Zhenzhen Budget AI House · auto / 2–30 sec · 480P / 720P / 1080P', wan30Thinking: 'Enable thinking (Global standard models only)', wan30FileUrl: 'File URL (optional)', wan30WebUrl: 'Web URL (optional)', wan30Seed: 'Seed (0–2147483647)', wan30LocalPromptRequired: 'Local prompt (required)', animateContract: 'Animate Motion Transfer · exactly one image and one motion video · no prompt, audio, or seed', animateSourceHint: 'Connect or drop local media, or paste public URLs below; do not provide the same media type twice.', animateImageUrl: 'Public image URL (choose this or a connected image)', animateVideoUrl: 'Public motion-video URL (choose this or a connected video)', animateResolution: 'Resolution', animateRatio: 'Aspect ratio (adaptive or W:H)', animateMaxFrames: 'max_frames (0 = provider default)', animate1080Limit: '1080p supports up to 10 seconds: max_frames ≤ frame_rate × 10.', minimaxH3Controls: 'Media roles and audio controls', minimaxH3FirstFrame: 'Use image 1 as first frame', minimaxH3LastFrame: 'Use next image as last frame', minimaxH3DriveAudio: 'Use audio 1 as drive audio', minimaxH3RoleHint: 'Images not assigned as keyframes become reference images; audio not assigned as drive audio becomes reference audio.', minimaxH3VideoStart: 'Video {{index}} start (seconds)', minimaxH3AudioMode: 'Audio mode', minimaxH3ApiDefault: 'API default', minimaxH3LockSource: 'Lock source audio', minimaxH3RemixSource: 'Remix source audio', minimaxH3ReferenceOnly: 'Reference only', minimaxH3NativeAudio: 'Native audio', minimaxH3DriveAsReference: 'Also use drive audio as reference', minimaxH3Yes: 'Yes', minimaxH3No: 'No', minimaxH3Denoise: 'Audio denoise strength · {{value}}', minimaxH3LockedValue: '0 (locked)' },
@@ -1122,8 +1252,10 @@ export const enUS = {
     },
   },
   settings: {
+    strata: strataEn,
+    agentTools: agentToolsEn,
     startupDiagnostics: { title: 'Startup diagnostics', save: 'Save startup log', saving: 'Saving…', hint: 'Save the log after reproducing a slow launch and send it to the author. It includes current/previous startup stages, timings and failure stages, but no API keys, prompts or canvas content.', browserHint: 'Browser mode exports only the current renderer startup stages, without desktop main-process or database logs.', saved: 'Log saved. Send the .log file to the author.', canceled: 'Save canceled.', failed: 'Could not save the log. Retry and check that the destination is writable.' },
-    mediaDefaults: { title: 'Default source for new media nodes', hint: 'Applied only when creating blank nodes. Saving does not change existing nodes.', imageSource: 'Image / image edit', videoSource: 'Video', 'product-default': 'Product default', zhenzhen: 'Zhenzhen AI Workshop', 'seedance-nz': 'Zhenzhen Budget AI House', bothBudget: 'Use Budget AI House for both', scope: 'Supports generic image, image-edit and video nodes. Copies, imports, templates, history recovery and dedicated Seedance / RH / ComfyUI / story nodes keep their own settings. Explicit model or source choices take priority.', keyHint: 'You can save and create nodes now. Add the Budget AI House API key before generation; no automatic fallback to another source.', retry: 'Reload settings', notReady: 'Default-source settings have not loaded successfully. Retry in API settings before creating media nodes.', saveFailed: 'Save failed or read-back was not confirmed. Retry; the default source has not been verified.' },
+    mediaDefaults: { title: 'Default source for new core nodes', hint: 'Applied only when creating blank nodes. Saving does not change existing nodes.', imageSource: 'Image / image edit', videoSource: 'Video', llmSource: 'LLM', audioSource: 'Audio', seedanceSource: 'Seedance 2.0', directorSource: 'Director storyboard', 'product-default': 'Product default (Budget AI House)', zhenzhen: 'Zhenzhen AI Workshop', 'seedance-nz': 'Zhenzhen Budget AI House', bothBudget: 'Use Budget AI House for all', scope: 'Supports image, image edit, video, LLM, audio, Seedance 2.0 and Director storyboard. Applies only to blank new nodes; existing nodes, copies, imports, templates and history recovery retain their settings. Explicit model or source choices take priority.', keyHint: 'You can save and create nodes now. Add the Budget AI House API key before generation; no automatic fallback to another source.', retry: 'Reload settings', notReady: 'Default-source settings have not loaded successfully. Retry in API settings before creating media nodes.', saveFailed: 'Save failed or read-back was not confirmed. Retry; the default source has not been verified.' },
     title: 'API key settings (shared + per category)', subtitle: 'Leave a field empty to keep the saved backend key · Enter a new value to replace it · Use the eye button to reveal it.',
     creatorSetup: { title: 'Set up Creator Agent', subtitle: 'Save and return to your conversation. The API key is verified on first send.', providerTitle: 'Set up Zhenzhen Budget AI House', providerHint: 'Enter one API key for chat, image, and video. Your current text and media will stay in place.', endpointReady: 'Server address is already set', connect: 'Save and return', keyRequired: 'Enter an API key first. Your text and media will stay in place.' },
     state: { configured: '{{configured}}/{{total}} configured', enabled: 'Enabled', disabled: 'Disabled', enabledCount: '{{enabled}}/{{total}} enabled', configuredCount: '{{count}} configured', keysCount: '{{count}} keys', default: 'Default', expand: 'Expand', collapse: 'Collapse' },
@@ -1133,7 +1265,7 @@ export const enUS = {
     },
     classified: { title: 'Per-category API keys [optional]', collapsedHelp: "Unfilled entries automatically fall back to Zhenzhen AI Workshop's shared key. New users can safely skip this section.", expandedHelp: "Configure a separate key for each model family. Unfilled entries fall back to Zhenzhen AI Workshop's shared key; the backend selects one from the model and route." },
     keys: {
-      zhenzhen: { label: 'Zhenzhen AI Workshop (global) API key', description: '· Shared fallback · image, video, and audio generation' }, zhenzhenBudget: { label: 'Zhenzhen Budget AI House API key', description: '· Primary API · budget-house LLM/video, Seedream/Qwen/Wan/Grok images, and Seed Audio/Qwen3-TTS/MiniMax/Mureka audio' }, rhCn: { label: 'RunningHub China API key', description: '· runninghub.cn applications' }, rhIntl: { label: 'RunningHub global API key', description: '· runninghub.ai applications' }, llm: { label: 'Standalone LLM API key', description: '· Separate quota · LLM/Vision' },
+      zhenzhen: { label: 'Zhenzhen AI Workshop (global) API key', description: '· Shared fallback · image, video, and audio generation' }, zhenzhenBudget: { label: 'Zhenzhen Budget AI House API key', description: '· Primary API · budget-house LLM/video, Seedream/Qwen/Wan/Grok images, and Seed Audio/Qwen-TTS/MiniMax/Mureka audio' }, rhCn: { label: 'RunningHub China API key', description: '· runninghub.cn applications' }, rhIntl: { label: 'RunningHub global API key', description: '· runninghub.ai applications' }, llm: { label: 'Standalone LLM API key', description: '· Separate quota · LLM/Vision' },
       gptImage: { label: 'gpt-image family', description: 'Dedicated to GPT2 / gpt-image-1 image tasks' }, nanoBanana: { label: 'nano-banana family', description: 'Dedicated to nano-banana / nano-banana-pro' }, midjourney: { label: 'mj family', description: 'Dedicated to Midjourney turbo/fast/relax' }, veo: { label: 'veo family', description: 'Dedicated to Veo video models' }, sora: { label: 'sora2 family', description: 'Dedicated to Sora2 FAL / Zhenzhen API video' }, grok: { label: 'grok family', description: 'Dedicated to Grok Image / Grok Imagine Video' }, seedance: { label: 'seedance family', description: 'Dedicated to Seedance video' }, suno: { label: 'suno family', description: 'Dedicated to Suno music' },
       hide: 'Hide', showPlaintext: 'Show plaintext', cancelClear: 'Cancel clear', clear: 'Clear', pendingClear: 'Will clear on save', saved: '✓ Saved {{masked}}', fallback: 'Not configured · using shared key', clearFallbackPlaceholder: 'Marked for clearing; saving restores the shared key', clearRemovePlaceholder: 'Marked for clearing; saving removes this key', keepPlaceholder: 'Leave empty to keep / enter a replacement', fallbackPlaceholder: 'Leave empty for shared key / enter a dedicated key', inputPlaceholder: 'Enter sk-...', nothingToClear: 'No per-category key can be cleared', clearClassified: 'Clear this per-category key', lockedBase: 'Base URL locked: {{url}}', sameBaseIndependent: 'Base URL locked: {{url}} (same endpoint, separate key)',
     },
@@ -1142,7 +1274,7 @@ export const enUS = {
       'openai-compatible': { label: 'OpenAI-compatible', subtitle: 'Connect OpenAI-compatible image, video, and LLM services', description: 'Use your own gateway, One API, New API, or another service compatible with /v1/chat/completions, /v1/images/generations, /v1/images/edits, or /v1/videos/generations.', connectionHint: 'Set Base URL at the /v1 level, for example https://api.example.com/v1. Leave the key empty to preserve the saved backend secret.', modelHint: 'Enter one model per line. Include only models you intend to select in nodes; an empty list uses built-in examples.' },
       modelscope: { label: 'ModelScope', subtitle: 'Connect ModelScope asynchronous image tasks and compatible chat', description: 'Add ModelScope image models to the image node and supported chat models to the LLM node.', connectionHint: 'Normally use the ModelScope API address as Base URL and enter a ModelScope access token.', modelHint: 'For image models, use a ModelScope model ID such as owner/model-name. Use the actual platform model name for chat.' },
       volcengine: { label: 'Volcengine', subtitle: 'Connect Volcengine Ark, Seedream, and Seedance', description: 'Use Volcengine for Seedream images, Seedance video, or Ark chat. Generation uses an Ark API key, not an Access Key ID / Secret Access Key. Enable the corresponding Ark service before using Seedance 2.0.', connectionHint: 'Set the Ark API Base URL and enter an Ark API key for Seedream, Seedance, or LLM generation. Put Access Key ID / Secret Access Key credentials in the optional AK/SK section below.', modelHint: 'Enter image, video, and chat endpoint IDs from the Volcengine console, one per line. An unopened Seedance 2.0 service returns ModelNotOpen / HTTP 404.' },
-      agnes: { label: 'Agnes AI', subtitle: 'Connect the Agnes AI free-model API', description: 'Use Agnes AI quotas for LLM, image, and video nodes. Chat uses the OpenAI-compatible endpoint, images use the Agnes OpenAI JSON interface, and video submits to /v1/videos before polling /agnesapi.', connectionHint: 'Keep the default https://apihub.agnes-ai.com/v1 Base URL and create an API key on Agnes. Enable and save it, then choose Agnes AI as the advanced source in a node.', modelHint: 'Defaults: agnes-2.0-flash for LLM, agnes-image-2.1-flash / agnes-image-2.0-flash for image, and agnes-video-v2.0 for video. Node size, duration, and references are converted automatically.' },
+      agnes: { label: 'Agnes AI', subtitle: 'Connect the Agnes AI multimodal API', description: 'Use Agnes AI quotas for LLM, image, and video nodes. Chat uses the OpenAI-compatible endpoint, images use the Agnes OpenAI JSON interface, and video submits to /v1/videos before polling /agnesapi.', connectionHint: 'Keep the default https://apihub.agnes-ai.com/v1 Base URL and create an API key on Agnes. Enable and save it, then choose Agnes AI as the advanced source in a node.', modelHint: 'LLM/image defaults are unchanged. Video uses Agnes Video 2.5 / 2.5 Flash; 2.0 is retired. Video sends seconds, size, aspect_ratio and mode, not width/height or frames. References require public URLs; upload local files to public storage first. Standard is metered; Flash is currently promotional.' },
       comfyui: { label: 'ComfyUI', subtitle: 'Connect a ComfyUI workflow', description: 'Connect a local ComfyUI API Workflow to the image node by default. Trusted remote endpoints require the explicit high-risk switch or T8_COMFYUI_ALLOW_REMOTE=1.', connectionHint: 'Use a local endpoint such as http://127.0.0.1:8188 by default. Enter one instance per line; enable remote access only for trusted services.', modelHint: 'The image node selects a workflow ID/name, so no model list is required.' },
       'jimeng-cli': { label: 'Jimeng CLI', subtitle: 'Run image and video through local dreamina / Jimeng CLI', description: 'For users who have configured Jimeng CLI locally. It invokes a local command and polls tasks instead of using an API key.', connectionHint: 'Enter the dreamina executable path. If installed in WSL, enable WSL and enter its distribution name.', modelHint: 'Adapted to Jimeng CLI v1.4.14. Supported image and video models include Seedream 5.x/4.7 and Seedance 2.0/1.x variants; enter one per line.' },
     },

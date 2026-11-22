@@ -1,8 +1,11 @@
+import { isPreviewImage, isFluxVariant } from './previewMuseFlux.ts';
 import type { Edge, Node } from '@xyflow/react';
-import { IMAGE_MODELS, VIDEO_MODELS, isFalModel, isFalVideoModel } from '../providers/models.ts';
+import { readMotionPending, motionVersions } from './motionVideo.ts';
+import { IMAGE_MODELS, VIDEO_MODELS, isFalModel, isFalVideoModel, isMaiImageModel, MAI_IMAGE_TAB, ZHENZHEN_IMAGE_NB_21_MODEL, FLUX3_IMAGE_MODEL } from '../providers/models.ts';
+import { MOSS_IMAGE_MODEL } from '../providers/models.ts';
 import type { ApiSettings, AdvancedProviderConfig } from '../types/canvas.ts';
 import type { AssetRef, CollaborationExecutionPolicySnapshot } from '../types/project.ts';
-import { advancedProviderModelOptions, hasAdvancedProviderSecret } from './advancedProviders.ts';
+import { advancedProviderModelOptions, advancedProviderCredentialReady } from './advancedProviders.ts';
 import {
   secondaryProviderActionCapabilityHint,
   secondaryProviderActionFromNodeData,
@@ -139,7 +142,7 @@ function configuredSecret(value: unknown) {
 }
 
 function advancedProviderKeyConfigured(provider: AdvancedProviderConfig) {
-  return provider.hasApiKey === true || hasAdvancedProviderSecret(provider.apiKey);
+  return advancedProviderCredentialReady(provider);
 }
 
 export function workflowProvidersFromSettings(settings: ApiSettings): WorkflowProviderDiagnostic[] {
@@ -319,6 +322,21 @@ function builtInCredentialNotice(node: Node, settings: ApiSettings): RunPrefligh
   }
   const { source } = selectedProviderFields(node);
 
+  if (node.type === 'video' && data.klingV4Pending != null) {
+    return configuredSecret(settings.zhenzhenSd2ApiKey) ? null : capabilityNotice(node, 'provider.seedance-nz-credential-missing', missingDomesticCredentialMessage());
+  }
+  if (node.type === 'model-3d') return configuredSecret(settings.zhenzhenSd2ApiKey) ? null : capabilityNotice(node, 'provider.seedance-nz-credential-missing', missingDomesticCredentialMessage());
+  if (node.type === 'code-animation') {
+    let pending;
+    try { pending = readMotionPending(data.motionPending); }
+    catch { return capabilityNotice(node, 'provider.motion-pending-invalid', '待恢复动画任务信息不完整，请从生成历史找回；不会重新提交。'); }
+    if (!pending && data.motionOperation === 'revise' && !motionVersions(data.motionVersions).some(v => v.id === data.motionBaseVersionId)) {
+      return capabilityNotice(node, 'provider.motion-base-missing', '请选择一个已完成的代码动画版本后再修改。');
+    }
+    return configuredSecret(settings.zhenzhenSd2ApiKey) ? null
+      : capabilityNotice(node, 'provider.seedance-nz-credential-missing', missingDomesticCredentialMessage());
+  }
+
   if (node.type === 'story') {
     const mode = String(data.storyRunMode || 'all');
     const project = data.storyProject && typeof data.storyProject === 'object'
@@ -350,6 +368,11 @@ function builtInCredentialNotice(node: Node, settings: ApiSettings): RunPrefligh
 
   if (node.type === 'image') {
     const { definition, apiModel } = imageModelSelection(data);
+    if (definition?.paramKind === 'kling-image' || definition?.paramKind === 'h3-turbo-image' || isPreviewImage(apiModel) || isFluxVariant(apiModel) || definition?.id === MOSS_IMAGE_MODEL || apiModel === MOSS_IMAGE_MODEL || definition?.id === MAI_IMAGE_TAB || isMaiImageModel(apiModel) || definition?.id === FLUX3_IMAGE_MODEL || data.apiModel === ZHENZHEN_IMAGE_NB_21_MODEL) {
+      return configuredSecret(settings.zhenzhenSd2ApiKey)
+        ? null
+        : capabilityNotice(node, 'provider.seedance-nz-credential-missing', missingDomesticCredentialMessage());
+    }
     if (definition?.paramKind === 'seedream-v5' && data.seedreamApiSource === 'seedance-nz') {
       return configuredSecret(settings.zhenzhenSd2ApiKey)
         ? null
@@ -369,7 +392,7 @@ function builtInCredentialNotice(node: Node, settings: ApiSettings): RunPrefligh
 
   if (node.type === 'video') {
     const { definition, apiModel } = videoModelSelection(data);
-    if (definition?.kind === 'happyhorse' || definition?.kind === 'hailuo' || definition?.kind === 'kling' || definition?.kind === 'upscaler' || definition?.kind === 'vidu' || definition?.kind === 'wan') {
+    if (definition?.kind === 'heygen' || definition?.kind === 'h3-lowprice' || definition?.kind === 'muse' || definition?.kind === 'happyhorse' || definition?.kind === 'hailuo' || definition?.kind === 'kling' || definition?.kind === 'upscaler' || definition?.kind === 'vidu' || definition?.kind === 'wan') {
       return configuredSecret(settings.zhenzhenSd2ApiKey)
         ? null
         : capabilityNotice(node, 'provider.seedance-nz-credential-missing', missingDomesticCredentialMessage());
@@ -402,7 +425,7 @@ function builtInCredentialNotice(node: Node, settings: ApiSettings): RunPrefligh
 
   if (node.type === 'audio') {
     if (
-      ['seed-audio', 'whisper', 'qwen3-tts', 'minimax', 'mureka'].includes(String(data.audioProviderMode || ''))
+      ['seed-audio', 'whisper', 'qwen3-tts', 'gemini-tts', 'minimax', 'mureka'].includes(String(data.audioProviderMode || ''))
       || (data.audioProviderMode === 'suno' && data.sunoPlatform === 'seedance-nz')
     ) {
       return configuredSecret(settings.zhenzhenSd2ApiKey)

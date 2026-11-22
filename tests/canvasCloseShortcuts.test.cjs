@@ -27,9 +27,9 @@ function fixture() {
     compilerOptions: { target: ts.ScriptTarget.ES2022 },
   }).outputText;
   const handlers = vm.runInNewContext(code, context);
-  const fire = (action, capture = false) => {
+  const fire = (action, capture = false, target = { tagName: 'BODY' }) => {
     const state = { prevented: false, stopped: false };
-    handlers[capture ? 'onClipboardKeyCapture' : 'onKey']({ action, target: { tagName: 'BODY' },
+    handlers[capture ? 'onClipboardKeyCapture' : 'onKey']({ action, target,
       preventDefault() { state.prevented = true; }, stopImmediatePropagation() { state.stopped = true; } });
     return state;
   };
@@ -61,6 +61,14 @@ test('held keyboard capture stops library delete listeners, not only our own sho
   assert.deepEqual(f.fire('canvas.delete', true), { prevented: false, stopped: false });
 });
 
+test('active portal dialog keys pass the inert window gate without authorizing background commands', () => {
+  const f = fixture(); f.root.inert = true;
+  const dialog = { closest: () => null }, target = { tagName: 'BUTTON', closest: () => dialog };
+  assert.deepEqual(f.fire('unassigned-key', true, target), { prevented: false, stopped: false });
+  assert.deepEqual(f.fire('canvas.delete', true), { prevented: true, stopped: true });
+  assert.deepEqual(f.calls, []);
+});
+
 test('external media paste is rejected before reading files while canvas is held', () => {
   const source = fs.readFileSync(require.resolve('../src/components/Canvas.tsx'), 'utf8');
   const begin = source.indexOf('    const onPaste = (e: ClipboardEvent) => {');
@@ -77,4 +85,14 @@ test('external media paste is rejected before reading files while canvas is held
   });
   handler({}); assert.equal(collected, 0);
   root.inert = false; handler({}); assert.equal(collected, 1);
+});
+
+for (const action of ['copy', 'paste-links', 'paste']) test(`save-conflict portal ${action} keys do not run a canvas command behind the focused controls`, () => {
+  const f = fixture();
+  const portal = {};
+  const target = { tagName: 'BUTTON', closest: selector => selector === '[data-canvas-save-conflict="true"]' ? portal : null };
+  f.fire(`canvas.${action}`, true, target); f.drain();
+  assert.deepEqual(f.calls, [], 'portal keyboard bubbling cannot undo a command already run by the window capture listener');
+  f.fire(`canvas.${action}`, true); f.drain();
+  assert.equal(f.calls.length, 1, 'ordinary canvas clipboard shortcuts must stay enabled');
 });

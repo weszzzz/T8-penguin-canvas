@@ -68,7 +68,7 @@ const DEFAULT_AGNES_IMAGE_MODELS = [
 ];
 
 const DEFAULT_AGNES_VIDEO_MODELS = [
-  'agnes-video-v2.0',
+  ...require('../shared/agnesVideoContract.json').models,
 ];
 
 const DEFAULT_AGNES_CHAT_MODELS = [
@@ -490,6 +490,13 @@ function normalizeProvider(raw, previous = null) {
     chatModels: normalizeModelList(raw.chatModels || raw.chat_models),
     defaults: normalizePlainObject(raw.defaults),
   };
+  if (raw.profile === 'strata' && protocol === 'openai-compatible') {
+    provider.profile = 'strata';
+    provider.authMode = raw.authMode === 'none' ? 'none' : 'bearer';
+    provider.imageModels = [];
+    provider.videoModels = [];
+    if (raw.clearApiKey === true) provider.apiKey = '';
+  }
 
   if (protocol === 'comfyui' && normalizeBoolean(raw.allowRemote, false)) {
     provider.allowRemote = true;
@@ -532,9 +539,13 @@ function normalizeProvider(raw, previous = null) {
     provider.jimengConfig = normalizeJimengConfig(raw.jimengConfig || raw.jimeng_config);
   }
 
+  if (protocol === 'agnes') {
+    provider.videoModels = mergeModelLists(DEFAULT_AGNES_VIDEO_MODELS, provider.videoModels)
+      .filter((model) => model !== 'agnes-video-v2.0');
+    if (provider.defaults?.videoModel === 'agnes-video-v2.0') provider.defaults.videoModel = DEFAULT_AGNES_VIDEO_MODELS[0];
+  }
   if (id === 'agnes' && protocol === 'agnes') {
     provider.imageModels = mergeModelLists(DEFAULT_AGNES_IMAGE_MODELS, provider.imageModels);
-    provider.videoModels = mergeModelLists(DEFAULT_AGNES_VIDEO_MODELS, provider.videoModels);
     provider.chatModels = mergeModelLists(DEFAULT_AGNES_CHAT_MODELS, provider.chatModels);
     provider.defaults = {
       imageModel: DEFAULT_AGNES_IMAGE_MODELS[0],

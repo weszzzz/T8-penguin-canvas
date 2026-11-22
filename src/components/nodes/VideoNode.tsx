@@ -1,11 +1,30 @@
+import {NOV21,buildHeygenRequest} from '../../utils/nov21Models';
+import {HeygenControls} from './Nov21Controls';
+import {submitHeygenVideo,queryHeygenVideo} from '../../services/generation';
+import { H3_TURBO, buildH3VideoRequest } from '../../utils/h3Turbo';
+import { SD25_FLASH, seedance25Limits } from '../../utils/seedance25Flash';
+import Seedance25ReferenceControls from './Seedance25ReferenceControls';
+import H3ComfyControls from './H3ComfyControls';
+import { submitH3TurboVideo, queryH3TurboVideo } from '../../services/generation';
+import Seedance25DraftControls from './Seedance25DraftControls';
+import { SEEDREAM55_DRAFT, resolveSeedance25Draft } from '../../utils/seedream55Draft';
+import { useSeedance25DraftSource } from './useSeedance25DraftSource';
+import { submitMuseVideo, queryMuseVideo } from '../../services/generation';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import KlingV4Controls from './KlingV4Controls';
+import { flashVideoProfile, KLING_FLASH_MODEL, validFlashVideoReferences } from '../../utils/flashVideo';
+import { captureKlingV4, executeKlingV4, readKlingV4Pending, isKlingV4Model, isKlingV4Aux, klingV4Reference, klingV4Settings } from '../../utils/klingV4';
+import { useCanvasStore } from '../../stores/canvas';
+import AgnesVideoControls from './AgnesVideoControls';
+import { AGNES_VIDEO } from '../../utils/agnesVideo';
 import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react';
 import { AlertCircle, Loader2, Video as VideoIcon, Sparkles, Square, X } from 'lucide-react';
 import { useCanvasNodeRenderMode } from '../CanvasNodeRenderMode';
 import historyInputContract from '../../../backend/src/shared/generationHistoryInputContract.json';
 import {
   VIDEO_MODELS,
+  isViduQ4Model, NB_FLUX_VIDU_CONTRACT,
   inferVideoBuiltinSource,
   isZhenzhenApimartVideoModel,
   videoModelOptionsForSource,
@@ -20,6 +39,7 @@ import {
   ZHENZHEN_VIDEO_V31_QUALITY_MODEL,
   FASHVSR_VIDEO_UPSCALE_MODEL,
   VOSR2_VIDEO_UPSCALE_MODEL,
+  TOPAZ_VIDEO_CONTRACT, TOPAZ_VIDEO_UPSCALE_MODEL,
   ANIMATE_MOTION_TRANSFER_MODEL,
   ANIMATE_MOTION_TRANSFER_POSE_METHODS,
   MINIMAX_H3_V2_MODEL,
@@ -59,6 +79,7 @@ import {
   queryFashVsr,
   submitVosr2Video,
   queryVosr2Video,
+  submitTopazVideo, queryTopazVideo, type TopazVideoSubmitRequest,
   submitAnimateMotionTransfer,
   queryAnimateMotionTransfer,
   submitVidu,
@@ -78,6 +99,7 @@ import {
   type KlingModel,
   type UpscalerResolution,
   type ViduQ3Model,
+  type ViduSubmitRequest,
   type WanSubmitRequest,
 } from '../../services/generation';
 import { useUpdateNodeData } from './useUpdateNodeData';
@@ -87,6 +109,7 @@ import { useRunTrigger } from '../../hooks/useRunTrigger';
 import { requestCanvasNodeRun } from '../../utils/canvasRunRequest';
 import { assertFreshGenerationCompleted, beginVideoRegeneration, completeVideoRegeneration } from '../../utils/generationResultRetention';
 import PreviousGenerationNotice from './PreviousGenerationNotice';
+import TopazVideoControls from './TopazVideoControls';
 import { collectRunOutputAssets } from '../../utils/runProviderTrace';
 import type { RunNodeLifecycleReporter } from '../../types/project';
 import { logBus } from '../../stores/logs';
@@ -119,10 +142,6 @@ import {
 import { LocalNodeAddonSlot } from 'virtual:t8-local-extensions';
 import JimengCliHelpButton from './JimengCliHelpButton';
 import {
-  SEEDANCE25_MULTI_MAX_AUDIOS,
-  SEEDANCE25_MULTI_MAX_IMAGES,
-  SEEDANCE25_MULTI_MAX_TOTAL,
-  SEEDANCE25_MULTI_MAX_VIDEOS,
   SEEDANCE25_DEFAULT_DURATION,
   SEEDANCE25_DEFAULT_RESOLUTION,
 } from '../../config/seedance';
@@ -188,10 +207,19 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
   const hasAutoOutput = useHasAutoOutput(id);
   const { getEdges, getNodes } = useReactFlow();
   const [error, setError] = useState<string | null>(null);
+  const [klingWaiting, setKlingWaiting] = useState(false);
   const pollTimer = useRef<number | null>(null);
   const pollRejectRef = useRef<((reason?: any) => void) | null>(null);
   const generationRunRef = useRef(0);
   const src = `video:${id.slice(0, 6)}`;
+  const klingOrigin = useRef({ canvasId: useCanvasStore.getState().activeId, entityUid: (getNodes().find(n => n.id === id) as any)?.entityUid });
+  const klingMounted = useRef(true);
+  useEffect(() => { klingMounted.current = true; return () => { klingMounted.current = false; }; }, []);
+  const patchKling = (patch: Record<string, unknown>) => {
+    const state = useCanvasStore.getState(), node = getNodes().find(n => n.id === id);
+    if (klingMounted.current && state.activeId === klingOrigin.current.canvasId && (node as any)?.entityUid === klingOrigin.current.entityUid
+      && state.canvases.find(c => c.id === state.activeId)?.status !== 'archived') update(patch);
+  };
 
   // 主题适配 (默认科技风深色, 传递给聚合预览区)
   const { theme, style: themeStyle } = useThemeStore();
@@ -240,8 +268,8 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
   const jimengImageLimit = jimengSeedanceMode === 'multiframe'
     ? JIMENG_CLI_MULTIFRAME.images
     : jimengSeedanceLimits.images;
-  const agnesFrameRate = Number(providerParams.frameRate ?? providerParams.frame_rate ?? 24) || 24;
-  const agnesNumFrames = providerParams.numFrames ?? providerParams.num_frames ?? '';
+  const isAgnesFlash = isAgnesExternalSelected && externalProviderModel === 'agnes-video-2.5-flash';
+  const agnesMigrated = isAgnesExternalSelected && d?.providerModel === AGNES_VIDEO.retiredModel;
   const updateProviderParams = (patch: Record<string, any>) => update({ providerParams: { ...providerParams, ...patch } });
   // 主模型 id (对应 VIDEO_MODELS 项)
   const rawModel = typeof d?.model === 'string' ? d.model : '';
@@ -282,16 +310,33 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     ? rawModel
     : builtinApiModelOptions[0]?.value || modelDef.apiModelOptions[0].value;
   const activeModelOption = builtinApiModelOptions.find((option) => option.value === apiModel);
+  const isH3Lowprice = !isExternalSelected && modelDef.kind === 'h3-lowprice';
+  const h3Spec = isH3Lowprice ? H3_TURBO.profile(apiModel) : undefined;
+  const isHeygen=!isExternalSelected && modelDef.kind==='heygen';
+  const isMuse = !isExternalSelected && modelDef.kind === 'muse';
   const isHappyHorse = !isExternalSelected && modelDef.kind === 'happyhorse';
   const isHailuo = !isExternalSelected && modelDef.kind === 'hailuo';
   const isFlux3 = !isExternalSelected && modelDef.kind === 'flux3';
   const isSeedance25 = !isExternalSelected && modelDef.kind === 'seedance25';
-  const isKling = !isExternalSelected && modelDef.kind === 'kling';
+  const isSeedance25Flash = isSeedance25 && SD25_FLASH.isFlash(apiModel);
+  const sd25Limits = seedance25Limits(apiModel);
+  const isSeedance25Draft = isSeedance25 && SEEDREAM55_DRAFT.isDraft(apiModel);
+  const draftSources = useSeedance25DraftSource(id);
+  const flashProfile = !isExternalSelected ? flashVideoProfile(apiModel) : undefined;
+  const isFlashVideo = Boolean(flashProfile);
+  const isKling = !isExternalSelected && modelDef.kind === 'kling' && !isFlashVideo;
+  const isKlingV4 = Boolean(d.klingV4Pending) || isKling && isKlingV4Model(apiModel);
+  const klingV4Model = d.klingV4Pending?.model || apiModel;
+  const klingV4Aux = isKlingV4 && isKlingV4Aux(klingV4Model);
   const isUpscaler = !isExternalSelected && modelDef.kind === 'upscaler';
   const isFashVsr = isUpscaler && apiModel === FASHVSR_VIDEO_UPSCALE_MODEL;
   const isVosr2 = isUpscaler && apiModel === VOSR2_VIDEO_UPSCALE_MODEL;
+  const isTopaz = isUpscaler && apiModel === TOPAZ_VIDEO_UPSCALE_MODEL;
+  const topazQuality = TOPAZ_VIDEO_CONTRACT.qualities.includes(d?.topazQuality) ? d.topazQuality : TOPAZ_VIDEO_CONTRACT.defaultQuality;
+  const topazVideoUrl = typeof d?.topazVideoUrl === 'string' ? d.topazVideoUrl.trim() : '';
   const isAnimate = !isExternalSelected && modelDef.kind === 'animate' && apiModel === ANIMATE_MOTION_TRANSFER_MODEL;
   const isVidu = !isExternalSelected && modelDef.kind === 'vidu';
+  const isViduQ4 = isVidu && isViduQ4Model(apiModel);
   const isWan = !isExternalSelected && modelDef.kind === 'wan';
   const isWan30 = isWan && apiModel.startsWith('wan-3.0-');
   const wan30Mode: 'i2v' | 'r2v' = (WAN30_I2V_MODELS as readonly string[]).includes(apiModel)
@@ -328,7 +373,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
   const flux3Mode = apiModel.endsWith('-draft-enhance')
     ? 'draft-enhance'
     : apiModel.endsWith('-v2v') ? 'v2v' : apiModel.endsWith('-i2v') ? 'i2v' : 't2v';
-  const seedance25Mode = apiModel.endsWith('-multi') ? 'multi' : apiModel.endsWith('-i2v') ? 'i2v' : 't2v';
+  const seedance25Mode = isSeedance25Draft ? 'draft' : apiModel.endsWith('-multi') ? 'multi' : apiModel.endsWith('-i2v') ? 'i2v' : 't2v';
   const klingMode = apiModel.endsWith('-edit')
     ? 'edit'
     : apiModel.endsWith('-r2v')
@@ -345,20 +390,21 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
         : apiModel.endsWith('-i2v')
           ? 'i2v'
           : 't2v';
-  const isViduUpstreamUnavailable = isVidu && (viduMode === 'r2v' || viduMode === 'short-play');
+  const isViduUpstreamUnavailable = isVidu && !isViduQ4 && (viduMode === 'r2v' || viduMode === 'short-play');
   const isKlingUpstreamUnavailable = isKling && ['kling-o3-std-r2v', 'kling-o3-pro-r2v'].includes(apiModel);
   const isSeedanceNzVideo = !isExternalSelected && videoBuiltinSource === 'seedance-nz';
   // 各参数(跳过着调用 update 默认值)
-  const apimartRatioOptions = isApimartGrok
+  const apimartRatioOptions = flashProfile ? flashProfile.ratios : isApimartGrok
     ? ['16:9', '9:16', '1:1', '3:2', '2:3']
     : ['16:9', '9:16'];
   const rawRatio: string = d?.ratio || activeModelOption?.defaultRatio || modelDef.defaultRatio;
-  const ratio: string = isApimartBudgetVideo && !apimartRatioOptions.includes(rawRatio) ? '16:9' : rawRatio;
+  const ratio: string = isAgnesExternalSelected && !AGNES_VIDEO.ratios.includes(rawRatio) ? '16:9'
+    : isApimartBudgetVideo && !apimartRatioOptions.includes(rawRatio) ? '16:9' : rawRatio;
   const rawDuration: number = d?.duration
     ?? activeModelOption?.defaultDuration
     ?? modelDef.defaultDuration
     ?? (activeModelOption?.durations?.[0] || modelDef.durations?.[0] || 0);
-  const duration: number = isApimartV31
+  const duration: number = flashProfile ? Number.isInteger(rawDuration) && rawDuration >= 3 && rawDuration <= flashProfile.maxSeconds ? rawDuration : 3 : isMuse ? 10 : isAgnesExternalSelected ? Math.max(4, Math.min(12, Math.round(Number(rawDuration) || 5))) : isApimartV31
     ? 8
     : isApimartGrok
       ? Math.max(6, Math.min(30, Number(rawDuration) || 6))
@@ -367,7 +413,9 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
           : rawDuration;
   const rawResolution: string = d?.resolution
     || (isJimengSeedanceSelected ? '720p' : activeModelOption?.defaultResolution || modelDef.defaultResolution || '');
-  const resolution: string = isApimartOmni
+  const resolution: string = flashProfile ? flashProfile.resolutions.includes(rawResolution) ? rawResolution : '720p' : isMuse ? '720p' : isAgnesExternalSelected
+    ? isAgnesFlash ? '720P' : AGNES_VIDEO.sizes.includes(rawResolution.toUpperCase()) ? rawResolution.toUpperCase() : '720P'
+    : isApimartOmni
     ? '720p'
     : isApimartOmniLowprice && !['720p', '1080p', '4k'].includes(rawResolution.toLowerCase())
       ? '720p'
@@ -396,16 +444,20 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
   const flux3DraftCacheResult = typeof d?.flux3DraftCacheResult === 'string' ? d.flux3DraftCacheResult : '';
   const klingDuration: 5 | 10 = Number(duration) === 10 ? 10 : 5;
   const klingNegativePrompt: string = typeof d?.klingNegativePrompt === 'string' ? d.klingNegativePrompt : '';
-  const viduDuration = viduMode === 'short-play'
+  const viduDuration = isViduQ4 ? Math.max(3, Math.min(16, Math.trunc(Number(duration) || 5))) : viduMode === 'short-play'
     ? Math.max(8, Math.min(12, Number(duration) || 8))
     : Math.max(4, Math.min(15, Number(duration) || 4));
-  const viduResolution: 'default' | '720p' | '1080p' = viduMode === 'short-play'
+  const viduResolution = isViduQ4
+    ? NB_FLUX_VIDU_CONTRACT.viduQ4.resolutions.includes(resolution) ? resolution : '720p'
+    : viduMode === 'short-play'
     ? '1080p'
     : resolution === '720p' || resolution === '1080p' ? resolution : 'default';
-  const viduRatio = viduMode === 'short-play'
+  const viduRatio = isViduQ4 ? (NB_FLUX_VIDU_CONTRACT.viduQ4.ratios.includes(ratio) ? ratio : '16:9') : viduMode === 'short-play'
     ? ratio === '16:9' ? '16:9' : '9:16'
     : ratio;
   const viduSeed: number = Number.isInteger(d?.viduSeed) ? d.viduSeed : -1;
+  const viduQ4IsRec = d?.viduQ4IsRec !== false;
+  const viduQ4Watermark = d?.viduQ4Watermark === true;
   const viduScriptName: string = typeof d?.viduScriptName === 'string' ? d.viduScriptName : 'Vidu short play';
   const viduStyle: string = typeof d?.viduStyle === 'string' ? d.viduStyle : 'realistic';
   const viduAssetType: 'character' | 'scene' | 'prop' = ['character', 'scene', 'prop'].includes(d?.viduAssetType)
@@ -473,20 +525,20 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
   const isSoraZhenzhen = !isExternalSelected && modelDef.kind === 'sora' && !isFal;
   const isVeoOmni = !isExternalSelected && apiModel === 'veo-omni-10s';
   const showBuiltinFalControls = !isExternalSelected && isFal && !!falReg;
-  const showGenericVideoControls = isExternalSelected || !isFal;
-  const ratioOptions = isJimengSeedanceSelected
+  const showGenericVideoControls = !isHeygen && (isExternalSelected || !isFal) && !isSeedance25Draft;
+  const ratioOptions = h3Spec ? H3_TURBO.ratios(h3Spec, resolution) : isSeedance25Flash && seedance25Mode === 'i2v' ? ['adaptive'] : isJimengSeedanceSelected
     ? ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9']
     : isAgnesExternalSelected
-    ? ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9']
+    ? AGNES_VIDEO.ratios
     : isApimartBudgetVideo
     ? apimartRatioOptions
     : isGrok15New
     ? ['16:9', '9:16']
     : activeModelOption?.ratios || modelDef.ratios;
-  const durationOptions = isJimengSeedanceSelected
+  const durationOptions = h3Spec?.frames && d.h3ComfyDurationMode === 'frames' ? [] : flashProfile ? Array.from({length:flashProfile.maxSeconds-2},(_,index)=>index+3) : isJimengSeedanceSelected
     ? jimengSeedanceDurationOptions(externalProviderModel)
     : isAgnesExternalSelected
-    ? [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 18]
+    ? AGNES_VIDEO.durations
     : isApimartOmni
     ? []
     : isApimartOmniLowprice
@@ -502,10 +554,10 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     : isHailuo && !isHailuoH3 && !isHailuoH3Max && resolution === '1080p'
     ? [6]
     : activeModelOption?.durations || modelDef.durations || [];
-  const resolutionOptions = isJimengSeedanceSelected
+  const resolutionOptions = flashProfile ? flashProfile.resolutions : isJimengSeedanceSelected
     ? jimengSeedanceResolutionOptions(externalProviderModel, jimengSeedanceMode === 'multiframe')
     : isAgnesExternalSelected
-    ? ['480p', '720p', '1080p']
+    ? isAgnesFlash ? ['720P'] : AGNES_VIDEO.sizes
     : isApimartOmni
     ? ['720p']
     : isApimartOmniLowprice
@@ -623,16 +675,17 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     [localRefImages, localRefVideos, localRefAudios, id],
   );
   const maxMentionRefs =
-    isUpscaler
+    isHeygen ? 0 : isH3Lowprice ? h3Spec.maxImages : flashProfile ? flashProfile.maxImages : isMuse ? 9 : isAgnesExternalSelected ? isAgnesFlash ? AGNES_VIDEO.limits.flashImages : AGNES_VIDEO.limits.images : isUpscaler
       ? 0
       : isWan
       ? isWan30 ? wan30Mode === 'i2v' ? 2 : 10 : 1
+      : isKlingV4 ? klingV4Model === 'kling-v4-omni' ? 10 : klingV4Model === 'kling-v4-custom-element' ? d.klingV4ReferenceType === 'video_refer' ? 0 : 4 : klingV4Model === 'kling-v4-i2v' ? 2 : 0
       : isKling
       ? klingMode === 'i2v' ? 2 : klingMode === 'r2v' ? 4 : 0
       : isVidu
-      ? viduMode === 't2v' ? 0 : viduMode === 'i2v' ? 1 : viduMode === 'start-end' ? 2 : viduMode === 'r2v' ? 9 : 14
+      ? viduMode === 't2v' ? 0 : viduMode === 'i2v' ? 1 : viduMode === 'start-end' ? 2 : viduMode === 'r2v' ? isViduQ4 ? 15 : 9 : 14
       : isSeedance25
-      ? seedance25Mode === 't2v' ? 0 : seedance25Mode === 'i2v' ? 2 : SEEDANCE25_MULTI_MAX_IMAGES
+      ? seedance25Mode === 't2v' ? 0 : seedance25Mode === 'i2v' ? 2 : sd25Limits.images
       : isFlux3
       ? flux3Mode === 'i2v' ? 10 : 0
       : isHailuo
@@ -668,7 +721,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
         ? 1
         : falReg.maxRefImages
       : modelDef.maxRefImages;
-  const maxMentionVideos = isUpscaler
+  const maxMentionVideos = isHeygen ? 0 : h3Spec ? h3Spec.maxVideos || 0 : flashProfile ? flashProfile.maxVideos : isKlingV4 ? klingV4Model === 'kling-v4-omni' ? 5 : klingV4Model === 'kling-v4-custom-element' && d.klingV4ReferenceType === 'video_refer' ? 1 : 0 : isAgnesExternalSelected ? isAgnesFlash ? 0 : 1 : isUpscaler
     ? 1
     : isAnimate
     ? 1
@@ -677,7 +730,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     : isKling && klingMode === 'edit'
     ? 1
     : isSeedance25 && seedance25Mode === 'multi'
-    ? SEEDANCE25_MULTI_MAX_VIDEOS
+    ? sd25Limits.videos
     : isFlux3 && flux3Mode === 'v2v'
     ? 1
     : isMinimaxH3V2
@@ -689,10 +742,10 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     : isApimartOmniLowprice && apimartOmniLowpriceMode === 'reference_video'
     ? 1
     : isJimengSeedanceSelected ? jimengSeedanceLimits.videos : 0;
-  const maxMentionAudios = isMinimaxH3V2
+  const maxMentionAudios = isHeygen ? 1 : isH3Lowprice ? h3Spec.maxAudios : isKlingV4 ? klingV4Model === 'kling-v4-custom-voice' && d.klingV4VoiceSource !== 'video_id' ? 1 : 0 : isAgnesExternalSelected ? 3 : isViduQ4 && viduMode === 'r2v' ? 3 : isMinimaxH3V2
     ? 4
     : isSeedance25 && seedance25Mode === 'multi'
-    ? SEEDANCE25_MULTI_MAX_AUDIOS
+    ? sd25Limits.audios
     : isWan30 && wan30Mode === 'r2v'
     ? 5
     : isMinimaxH3OwAudioDrive
@@ -708,7 +761,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     ],
     [orderedImages, orderedVideos, orderedAudios, localRefMaterials, maxMentionRefs, maxMentionVideos, maxMentionAudios],
   );
-  const supportsActiveMaterials = isFlux3
+  const supportsActiveMaterials = isHeygen || isFlashVideo || isAgnesExternalSelected ? true : isFlux3
     ? flux3Mode === 'i2v' || flux3Mode === 'v2v'
     : isSeedance25
     ? seedance25Mode !== 't2v'
@@ -716,7 +769,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
 
   // 分组动态跟随子模型: Seedance / 即梦 CLI 支持 image/video/audio, 其他 (grok/veo/sora) 仅 image
   const previewGroups = useMemo<ReadonlyArray<'text' | 'image' | 'video' | 'audio'>>(
-    () => (modelDef.kind === 'seedance' || isJimengSeedanceSelected
+    () => (isHeygen ? ['text','audio'] : isH3Lowprice ? ['text','image','video','audio'] : isFlashVideo ? ['text', 'image', 'video'] : isKlingV4 ? ['text', 'image', 'video', 'audio'] : isAgnesExternalSelected ? ['text', 'image', 'video', 'audio'] : modelDef.kind === 'seedance' || isJimengSeedanceSelected
       ? ['text', 'image', 'video', 'audio']
       : isApimartOmni
         ? ['text', 'image', 'video']
@@ -738,6 +791,8 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
         ? ['text', 'video']
       : isFlux3 && flux3Mode === 'i2v'
         ? ['text', 'image']
+      : isViduQ4 && viduMode === 'r2v'
+        ? ['text', 'image', 'audio']
       : isMinimaxH3V2
         ? ['text', 'image', 'video', 'audio']
       : isMinimaxH3OwAudioDrive
@@ -745,15 +800,19 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       : isHailuoH3 && hailuoMode === 'multi'
         ? ['text', 'image', 'video', 'audio']
         : ['text', 'image']),
-    [modelDef.kind, isJimengSeedanceSelected, isApimartOmni, isApimartOmniLowprice, apimartOmniLowpriceMode, isAnimate, isUpscaler, isWan30, wan30Mode, isKling, klingMode, isSeedance25, seedance25Mode, isFlux3, flux3Mode, isMinimaxH3V2, isMinimaxH3OwAudioDrive, isHailuoH3, hailuoMode],
+    [isHeygen, isH3Lowprice, isFlashVideo, isKlingV4, isAgnesExternalSelected, modelDef.kind, isJimengSeedanceSelected, isApimartOmni, isApimartOmniLowprice, apimartOmniLowpriceMode, isAnimate, isUpscaler, isWan30, wan30Mode, isKling, klingMode, isSeedance25, seedance25Mode, isFlux3, flux3Mode, isViduQ4, viduMode, isMinimaxH3V2, isMinimaxH3OwAudioDrive, isHailuoH3, hailuoMode],
   );
 
   // 收集上游 prompt + 参考图/视频/音频 (按用户拖拽顺序), 合并本地拖入素材
   const collectUpstream = (): { prompt: string; imageUrls: string[]; videoUrls: string[]; audioUrls: string[] } => {
-    const prompts = orderedTexts.map((t) => t.url).filter((s) => !!s);
+    const prompts = orderedTexts.map((t) => t.url).filter((s) => !!s && (!isKlingV4 || !klingV4Reference(s)));
     const upImageUrls = orderedImages.map((m) => m.url).filter((s) => !!s);
     const upVideoUrls = orderedVideos.map((m) => m.url).filter((s) => !!s);
-    const upAudioUrls = orderedAudios.map((m) => m.url).filter((s) => !!s);
+    const auxiliarySourceIds = new Set(isKlingV4 && klingV4Model !== 'kling-v4-custom-voice'
+      ? orderedTexts.filter(m => klingV4Reference(m.url)).map(m => m.sourceNodeId) : []);
+    // A connected voice result includes an ID and an optional preview. Omni and
+    // element association consume its ID; unrelated raw audio is still rejected.
+    const upAudioUrls = orderedAudios.filter(m => !auxiliarySourceIds.has(m.sourceNodeId)).map((m) => m.url).filter((s) => !!s);
     const dedupe = (items: string[]) => {
       const out: string[] = [];
       for (const item of items) if (item && !out.includes(item)) out.push(item);
@@ -761,9 +820,9 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     };
     return {
       prompt: prompts.join('\n').trim(),
-      imageUrls: dedupe([...upImageUrls, ...localRefImages]),
-      videoUrls: dedupe([...upVideoUrls, ...localRefVideos]),
-      audioUrls: dedupe([...upAudioUrls, ...localRefAudios]),
+      imageUrls: isSeedance25Flash || isH3Lowprice || isFlashVideo || isMuse || isKlingV4 || isViduQ4 || isAgnesExternalSelected ? [...upImageUrls, ...localRefImages] : dedupe([...upImageUrls, ...localRefImages]),
+      videoUrls: isSeedance25Flash || isH3Lowprice || isFlashVideo || isKlingV4 || isAgnesExternalSelected ? [...upVideoUrls, ...localRefVideos] : isTopaz ? [...upVideoUrls, ...localRefVideos, ...(topazVideoUrl ? [topazVideoUrl] : [])] : dedupe([...upVideoUrls, ...localRefVideos]),
+      audioUrls: isSeedance25Flash || isH3Lowprice || isKlingV4 || isViduQ4 || isAgnesExternalSelected ? [...upAudioUrls, ...localRefAudios] : dedupe([...upAudioUrls, ...localRefAudios]),
     };
   };
 
@@ -818,6 +877,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       ratio: def.defaultRatio,
       duration: def.defaultDuration ?? def.durations?.[0],
       resolution: def.defaultResolution || '',
+      ...(nextModel === TOPAZ_VIDEO_UPSCALE_MODEL ? { topazQuality: TOPAZ_VIDEO_CONTRACT.defaultQuality } : {}),
       ...(nextModel === 'grok-imagine-video-1.5' ? { gkfMode: 'image_to_video' } : {}),
       ...(isGrokVideo15NewModel(nextModel) ? { ratio: '16:9', resolution: '' } : {}),
       ...(nextModel.startsWith('vidu-q3-') ? { viduSeed: -1 } : {}),
@@ -919,14 +979,14 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
             : isKling
               ? await queryKling(tid)
             : isUpscaler
-              ? isVosr2 ? await queryVosr2Video(tid) : isFashVsr ? await queryFashVsr(tid) : await queryUpscaler(tid)
+              ? isTopaz ? await queryTopazVideo(tid, { signal: reporter?.signal }) : isVosr2 ? await queryVosr2Video(tid) : isFashVsr ? await queryFashVsr(tid) : await queryUpscaler(tid)
             : isVidu
-              ? await queryVidu(tid)
+              ? await queryVidu(tid, apiModel)
             : isHappyHorse
               ? await queryHappyHorse(tid)
             : isApimartBudgetVideo
               ? await querySeedance(tid, 'seedance-nz')
-              : await queryVideo(tid, apiModel);
+              : isHeygen ? await queryHeygenVideo(tid,apiModel,{signal:reporter?.signal}) : isH3Lowprice ? await queryH3TurboVideo(tid, {signal: reporter?.signal,model:apiModel}) : isMuse ? await queryMuseVideo(tid, {signal: reporter?.signal}) : await queryVideo(tid, apiModel);
           const normalizedStatus = String(r.status || '').trim().toUpperCase();
           const currentProgress = String(r.progress ?? '');
           await reporter?.polling({
@@ -934,7 +994,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
             model: apiModel,
             taskId: tid,
             recovery: {
-              kind: isWan ? 'wan' : isAnimate ? 'animate' : isSeedance25 ? 'seedance' : isFlux3 ? 'flux3' : isHailuo ? 'hailuo' : isKling ? 'kling' : isVosr2 ? 'vosr2' : isFashVsr ? 'fashvsr' : isUpscaler ? 'upscaler' : isVidu ? 'vidu' : isHappyHorse ? 'happyhorse' : isApimartBudgetVideo ? 'seedance' : 'video',
+              kind: isHeygen ? 'heygen' : isH3Lowprice ? 'h3-lowprice' : isMuse ? 'muse' : isWan ? 'wan' : isAnimate ? 'animate' : isSeedance25 ? 'seedance' : isFlux3 ? 'flux3' : isHailuo ? 'hailuo' : isKling ? 'kling' : isTopaz ? 'topaz' : isVosr2 ? 'vosr2' : isFashVsr ? 'fashvsr' : isUpscaler ? 'upscaler' : isVidu ? 'vidu' : isHappyHorse ? 'happyhorse' : isApimartBudgetVideo ? 'seedance' : 'video',
               taskId: tid, model: apiModel, pollIntervalMs: POLL_INT, maxPolls: MAX,
             },
             requestId: r.requestId,
@@ -969,16 +1029,18 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
             const completedDraftCache = isFlux3 ? String((r as any).draftCache || '').trim() : '';
             stopPoll();
             const completedPatch = {
-              ...completeVideoRegeneration([r.videoUrl], completedPrompt),
+              ...completeVideoRegeneration(isTopaz && 'videoUrls' in r && r.videoUrls?.length ? r.videoUrls : [r.videoUrl], completedPrompt),
               progress: '100%',
               provider: isSeedanceNzVideo ? 'seedance-nz' : 'zhenzhen',
               apiModel,
+              ...(isSeedance25 ? { lastFrameUrl: (r as any).lastFrameUrl || '' } : {}),
               taskId: tid,
               requestId: r.requestId,
               transportHttpStatus: r.transportHttpStatus,
               upstreamHttpStatus: r.upstreamHttpStatus,
               usage: r.usage,
               pollCount: elapsed,
+              ...(isSeedance25 && !isSeedance25Draft ? { seedance25DraftTaskIdResult: d.seedance25Draft === true ? String((r as any).draftTaskId || tid) : '', seedance25DraftSourceModel: d.seedance25Draft === true ? apiModel : '' } : {}),
               ...(isFlux3 ? { flux3DraftCacheResult: completedDraftCache || null } : {}),
             };
             await reporter?.providerResponse({
@@ -999,6 +1061,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
             }
             pollRejectRef.current = null;
             update(completedPatch);
+            if (isSeedance25 && (r as any).lastFrameUrl) await reporter?.output({ assets: [{ kind: 'video', sourceUrl: r.videoUrl }, { kind: 'image', sourceUrl: (r as any).lastFrameUrl }], outputCount: 2 });
             logBus.success(`任务完成 → ${r.videoUrl}`, src);
             taskCompletionSound.notifyComplete(id, 'video');
             resolve(completedPatch.videoUrls);
@@ -1205,9 +1268,23 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
   };
 
   const handleGenerate = async (reporter?: RunNodeLifecycleReporter) => {
-    if (status === 'submitting' || status === 'polling' || reporter?.signal?.aborted) return;
+    if ((isKlingV4 ? klingWaiting : status === 'submitting' || status === 'polling') || reporter?.signal?.aborted) return;
+    if (savedExternalMissing) {
+      const message = translate('settings:strata.sourceUnavailable');
+      setError(message); update({ status: 'error', error: message });
+      return;
+    }
     setError(null);
     const { prompt: upstreamPrompt, imageUrls, videoUrls, audioUrls } = collectUpstream();
+    if (isFlashVideo && (!validFlashVideoReferences(apiModel, imageUrls, videoUrls, audioUrls) || orderedTexts.some(material => klingV4Reference(material.url)))) {
+      setError(translate('nodes:generation.flashVideoReferences', {images:flashProfile!.maxImages,videos:flashProfile!.maxVideos}));
+      return;
+    }
+    if (isViduQ4 && (imageUrls.length < 1 || imageUrls.length > (viduMode === 'i2v' ? 1 : 15)
+      || videoUrls.length > 0 || (viduMode === 'r2v' && audioUrls.length > 3))) {
+      setError(translate('nodes:generation.newBudgetModels.viduReferences'));
+      return;
+    }
     const resolvedLocalPrompt = resolveMediaMentions(localPrompt, promptMentions, mentionMaterials);
     const finalPrompt = (upstreamPrompt || resolvedLocalPrompt || '').trim();
     const animateImageSources = [...new Set([...imageUrls, animateImageUrl].filter(Boolean))];
@@ -1225,17 +1302,18 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       ? audioUrls.slice(minimaxH3DriveAudioEnabled ? 1 : 0)
       : [];
     if (
-      !finalPrompt
+      !finalPrompt && !(isHeygen && audioUrls.length === 1)
+      && !isKlingV4
       && !isAnimate
       && !(isWan && (!isWan30 || wan30Mode === 'i2v'))
       && !isUpscaler
       && !(isHappyHorse && happyHorseMode !== 't2v')
       && !(isHailuo && hailuoMode === 'i2v' && !isHailuoH3Max)
       && !isMinimaxH3OwAudioDrive
-      && !(isSeedance25 && seedance25Mode === 'i2v')
+      && !(isSeedance25 && (seedance25Mode === 'i2v' || isSeedance25Draft))
       && !(isFlux3 && flux3Mode === 'draft-enhance')
       && !(isKling && klingMode === 'i2v')
-      && !(isVidu && !['t2v', 'short-play'].includes(viduMode))
+      && !(isVidu && !['t2v', 'short-play'].includes(viduMode) && (!isViduQ4 || viduMode === 'i2v'))
       && !(isApimartOmni && (imageUrls.length > 0 || videoUrls.length > 0))
       && !(isJimengSeedanceSelected
         && jimengSeedanceMode === 'omni'
@@ -1315,6 +1393,9 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       logBus.error(`生成中止: ${hailuoLabel} 图生视频缺少首帧图`, src);
       return;
     }
+    if (isSeedance25 && !isSeedance25Draft) {
+      try { SD25_FLASH.validate({model:apiModel,refImages:imageUrls,videos:videoUrls,audios:audioUrls,duration,resolution,ratio,draft:d.seedance25Draft,omni_reference_task_type:seedance25Mode === 'multi' ? d.seedance25ReferenceTaskType || 'auto' : 'auto'}); } catch { setError(translate('h3Turbo:invalid')); return; }
+    }
     if (isSeedance25 && seedance25Mode === 't2v'
       && (imageUrls.length > 0 || videoUrls.length > 0 || audioUrls.length > 0)) {
       setError('Seedance 2.5 文生视频不接受参考素材，请断开图片、视频和音频');
@@ -1341,20 +1422,20 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     }
     if (isSeedance25 && seedance25Mode === 'multi') {
       const total = imageUrls.length + videoUrls.length + audioUrls.length;
-      if (imageUrls.length > SEEDANCE25_MULTI_MAX_IMAGES) {
-        setError(`Seedance 2.5 多模态参考最多支持 ${SEEDANCE25_MULTI_MAX_IMAGES} 张图片`);
+      if (imageUrls.length > sd25Limits.images) {
+        setError(`Seedance 2.5 多模态参考最多支持 ${sd25Limits.images} 张图片`);
         return;
       }
-      if (videoUrls.length > SEEDANCE25_MULTI_MAX_VIDEOS) {
-        setError(`Seedance 2.5 多模态参考最多支持 ${SEEDANCE25_MULTI_MAX_VIDEOS} 个视频`);
+      if (videoUrls.length > sd25Limits.videos) {
+        setError(`Seedance 2.5 多模态参考最多支持 ${sd25Limits.videos} 个视频`);
         return;
       }
-      if (audioUrls.length > SEEDANCE25_MULTI_MAX_AUDIOS) {
-        setError(`Seedance 2.5 多模态参考最多支持 ${SEEDANCE25_MULTI_MAX_AUDIOS} 个音频`);
+      if (audioUrls.length > sd25Limits.audios) {
+        setError(`Seedance 2.5 多模态参考最多支持 ${sd25Limits.audios} 个音频`);
         return;
       }
-      if (total > SEEDANCE25_MULTI_MAX_TOTAL) {
-        setError(`Seedance 2.5 多模态参考素材合计最多 ${SEEDANCE25_MULTI_MAX_TOTAL} 个`);
+      if (total > sd25Limits.total) {
+        setError(`Seedance 2.5 多模态参考素材合计最多 ${sd25Limits.total} 个`);
         return;
       }
     }
@@ -1461,8 +1542,15 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       logBus.error('生成中止: Kling 视频编辑缺少输入视频', src);
       return;
     }
+    if(isHeygen){try{buildHeygenRequest(apiModel,finalPrompt,imageUrls,audioUrls,videoUrls,d);}catch(error:any){setError(error.message);return;}}
+    if (isH3Lowprice) {
+      try { buildH3VideoRequest(apiModel,finalPrompt,imageUrls,audioUrls,videoUrls,d,duration,resolution,ratio); } catch { setError(translate('h3Turbo:invalid')); return; }
+    }
+    if (isMuse && (imageUrls.length > 9 || videoUrls.length || audioUrls.length)) {
+      setError(translate('previewMuseFlux:museReferences')); return;
+    }
     if (isUpscaler && videoUrls.length !== 1) {
-      setError(isVosr2
+      setError(isTopaz ? translate('nodes:generation.topaz.inputRequired') : isVosr2
         ? translate('nodes:generation.vosr2.videoInputRequired')
         : isFashVsr
         ? 'FlashVSR 必须连接或拖入且只能保留 1 个 480P、3-15 秒视频'
@@ -1618,7 +1706,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
         : isSeedanceNzVideo
           ? 'seedance-nz'
           : 'zhenzhen';
-    const traceModel = isExternalSelected && providerSelection.provider ? externalProviderModel : apiModel;
+    const traceModel = isKlingV4 ? klingV4Model : isExternalSelected && providerSelection.provider ? externalProviderModel : apiModel;
     const onExecutionAbort = () => {
       if (isCurrentGenerationRun(runId)) stopLocalGeneration();
     };
@@ -1627,12 +1715,34 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       await reporter?.providerRequest({ provider: traceProvider, model: traceModel });
       if (!isCurrentGenerationRun(runId) || reporter?.signal?.aborted) return;
       taskCompletionSound.primeAudio();
+      if (isKlingV4) {
+        if (!reporter) throw Error('Kling 4运行需要共享运行记录');
+        const pending = readKlingV4Pending(d.klingV4Pending);
+        if (!pending && d.klingV4AcceptanceUnknown) throw Error(translate('klingV4:unknown'));
+        const request = pending?.request || captureKlingV4(d, klingV4Model, finalPrompt, { imageUrls, videoUrls, audioUrls }, orderedTexts.map(t => t.url));
+        setKlingWaiting(true);
+        patchKling({ ...beginVideoRegeneration(d), status: 'submitting', error: '' });
+        const output = await executeKlingV4(request, reporter, {
+          pending: value => patchKling({ klingV4Pending: value, klingV4AcceptanceUnknown: false, taskId: value.taskId, status: 'polling' }),
+          stage: stage => patchKling({ progress: translate(`klingV4:${stage}`) }),
+        }, pending);
+        if (isKlingV4Aux(output.model)) patchKling({ status: 'success', error: '', progress: '', taskId: null, klingV4Pending: null,
+          klingV4Result: { model: output.model, elementId: output.elementId, voiceId: output.voiceId, referenceType: output.referenceType, audioUrl: output.audioUrl },
+          outputText: output.auxiliaryText, texts: [output.auxiliaryText], reply: '', videoUrl: '', videoUrls: [], audioUrl: output.audioUrl || '',
+        });
+        else patchKling({ ...completeVideoRegeneration(output.videoUrls || [], request.prompt), taskId: null, klingV4Pending: null,
+          klingV4Result: null, outputText: '', texts: [], reply: '', audioUrl: '',
+        });
+        taskCompletionSound.notifyComplete(id, 'video');
+        return { klingV4Handled: true as const };
+      }
       update(beginVideoRegeneration(d));
       if (isExternalSelected && providerSelection.provider) {
         const providerModel = externalProviderModel;
-        const refs = imageUrls.slice(0, Math.max(1, maxMentionRefs || modelDef.maxRefImages || 8));
-        const videoRefs = videoUrls.slice(0, maxMentionVideos);
-        const audioRefs = audioUrls.slice(0, maxMentionAudios);
+        // Agnes validates all ordered inputs before POST; never silently discard excess references.
+        const refs = isAgnesExternalSelected ? imageUrls : imageUrls.slice(0, Math.max(1, maxMentionRefs || modelDef.maxRefImages || 8));
+        const videoRefs = isAgnesExternalSelected ? videoUrls : videoUrls.slice(0, maxMentionVideos);
+        const audioRefs = isAgnesExternalSelected ? audioUrls : audioUrls.slice(0, maxMentionAudios);
         logBus.info(
           isJimengSeedanceSelected
             ? `扩展平台视频提交: ${providerSelection.provider.label || providerSelection.provider.id} · ${providerModel} · 图${refs.length}/视${videoRefs.length}/音${audioRefs.length}`
@@ -1648,7 +1758,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
           ratio,
           duration,
           resolution,
-          seed: seed > 0 ? seed : undefined,
+          seed: (isSeedance25Flash ? seed >= 0 : seed > 0) ? seed : undefined,
           images: refs,
           videos: videoRefs,
           audios: audioRefs,
@@ -1746,8 +1856,8 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       }
 
       if (isApimartBudgetVideo) {
-        const apimartImages = imageUrls.slice(0, maxMentionRefs);
-        const apimartVideos = (isApimartOmni || (isApimartOmniLowprice && apimartOmniLowpriceMode === 'reference_video')) ? videoUrls.slice(0, 1) : [];
+        const apimartImages = isFlashVideo ? imageUrls : imageUrls.slice(0, maxMentionRefs);
+        const apimartVideos = isFlashVideo ? videoUrls : (isApimartOmni || (isApimartOmniLowprice && apimartOmniLowpriceMode === 'reference_video')) ? videoUrls.slice(0, 1) : [];
         logBus.info(
           `提交平价AI小屋视频: ${apiModel} · ${isApimartOmni ? '时长由模型决定' : `${duration}s`} · ${resolution} · ${ratio} · 图${apimartImages.length}/视${apimartVideos.length}`,
           src,
@@ -1791,10 +1901,23 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
         return await startPolling(result.taskId, runId, reporter, isUpscaler ? '' : finalPrompt);
       }
 
+      if (isSeedance25Draft) {
+        let request;
+        try {
+          if (upstream.images.length || upstream.audios.length || localRefImages.length || localRefVideos.length || localRefAudios.length || upstream.videos.some(item => !draftSources.some(source => source.sourceNodeId === item.sourceNodeId))) throw Object.assign(new Error('draftReferences'), { code: 'draftReferences' });
+          request = { model: apiModel, draft_task_id: resolveSeedance25Draft(apiModel, d, draftSources), output_format: d.seedance25OutputFormat || 'mp4', return_last_frame: returnLastFrame };
+          SEEDREAM55_DRAFT.buildDraft(request);
+        } catch (error: any) { throw new Error(translate(`seedream55:errors.${error.code}`)); }
+        const result = await submitSeedance({ ...request, taskProvider: 'seedance-nz' }, { submissionKey: reporter?.providerSubmissionKey, signal: reporter?.signal });
+        await reporter?.providerSubmitted({ provider: traceProvider, ...result, model: apiModel, upstreamTaskId: result.taskId });
+        if (!isCurrentGenerationRun(runId) || reporter?.signal?.aborted) return;
+        update({ status: 'polling', taskId: result.taskId, provider: 'seedance-nz', apiModel });
+        return await startPolling(result.taskId, runId, reporter, '');
+      }
       if (isSeedance25) {
-        const seedance25Images = imageUrls.slice(0, seedance25Mode === 'i2v' ? 2 : seedance25Mode === 'multi' ? SEEDANCE25_MULTI_MAX_IMAGES : 0);
-        const seedance25Videos = seedance25Mode === 'multi' ? videoUrls.slice(0, SEEDANCE25_MULTI_MAX_VIDEOS) : [];
-        const seedance25Audios = seedance25Mode === 'multi' ? audioUrls.slice(0, SEEDANCE25_MULTI_MAX_AUDIOS) : [];
+        const seedance25Images = seedance25Mode === 't2v' ? [] : imageUrls;
+        const seedance25Videos = seedance25Mode === 'multi' ? videoUrls : [];
+        const seedance25Audios = seedance25Mode === 'multi' ? audioUrls : [];
         logBus.info(
           `提交 Seedance 2.5: ${apiModel} · ${duration === -1 ? '自动时长' : `${duration}s`} · ${resolution} · ${ratio} · 图${seedance25Images.length}/视${seedance25Videos.length}/音${seedance25Audios.length}`,
           src,
@@ -1806,6 +1929,8 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
           ratio,
           resolution,
           generate_audio: generateAudio,
+          draft: !isSeedance25Flash && d.seedance25Draft === true,
+          omni_reference_task_type: seedance25Mode === 'multi' ? d.seedance25ReferenceTaskType || 'auto' : 'auto',
           return_last_frame: returnLastFrame,
           seed: seed > 0 ? seed : undefined,
           ...(seedance25Mode === 'i2v'
@@ -2102,7 +2227,37 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
         return await startPolling(result.taskId, runId, reporter, isUpscaler ? '' : finalPrompt);
       }
 
+      if (isH3Lowprice || isHeygen) {
+        const result = isHeygen ? await submitHeygenVideo(buildHeygenRequest(apiModel,finalPrompt,imageUrls,audioUrls,videoUrls,d),{submissionKey:reporter?.providerSubmissionKey,signal:reporter?.signal}) : await submitH3TurboVideo(buildH3VideoRequest(apiModel,finalPrompt,imageUrls,audioUrls,videoUrls,d,duration,resolution,ratio),{submissionKey:reporter?.providerSubmissionKey,signal:reporter?.signal});
+        if (!isCurrentGenerationRun(runId) || reporter?.signal?.aborted) return;
+        await reporter?.providerSubmitted({provider:traceProvider,model:apiModel,upstreamTaskId:result.taskId,requestId:result.requestId,transportHttpStatus:result.transportHttpStatus,upstreamHttpStatus:result.upstreamHttpStatus,usage:result.usage,httpStatusSource:'local-backend'});
+        if (!isCurrentGenerationRun(runId) || reporter?.signal?.aborted) return;
+        update({status:'polling',taskId:result.taskId,progress:'0%',provider:'seedance-nz',apiModel});
+        return await startPolling(result.taskId,runId,reporter,finalPrompt);
+      }
+      if (isMuse) {
+        const result = await submitMuseVideo({ model: 'zhenzhen-video-muse', prompt: finalPrompt, images: imageUrls, size: ratio }, {submissionKey: reporter?.providerSubmissionKey, signal: reporter?.signal});
+        if (!isCurrentGenerationRun(runId) || reporter?.signal?.aborted) return;
+        await reporter?.providerSubmitted({provider:traceProvider,model:traceModel,upstreamTaskId:result.taskId,requestId:result.requestId,
+          transportHttpStatus:result.transportHttpStatus,upstreamHttpStatus:result.upstreamHttpStatus,usage:result.usage,httpStatusSource:'local-backend'});
+        if (!isCurrentGenerationRun(runId) || reporter?.signal?.aborted) return;
+        update({status:'polling',taskId:result.taskId,progress:'0%'});
+        return await startPolling(result.taskId,runId,reporter,finalPrompt);
+      }
       if (isUpscaler) {
+        if (isTopaz) {
+          logBus.info(`提交 Topaz: ${resolution} · ${topazQuality}`, src);
+          const result = await submitTopazVideo({ model: 'Topaz-Upscale-LowPirce', videos: videoUrls,
+            resolution: resolution as TopazVideoSubmitRequest['resolution'], quality: topazQuality,
+          }, { submissionKey: reporter?.providerSubmissionKey, signal: reporter?.signal });
+          if (!isCurrentGenerationRun(runId) || reporter?.signal?.aborted) return;
+          await reporter?.providerSubmitted({ provider: traceProvider, model: traceModel, upstreamTaskId: result.taskId,
+            requestId: result.requestId, transportHttpStatus: result.transportHttpStatus, upstreamHttpStatus: result.upstreamHttpStatus,
+            usage: result.usage, httpStatusSource: 'local-backend' });
+          if (!isCurrentGenerationRun(runId) || reporter?.signal?.aborted) return;
+          update({ status: 'polling', taskId: result.taskId, progress: '0%' });
+          return await startPolling(result.taskId, runId, reporter, '');
+        }
         if (isVosr2) {
           logBus.info('提交 Vosr2: 单个视频，固定输出 2K', src);
           const result = await submitVosr2Video({
@@ -2176,9 +2331,9 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       if (isVidu) {
         const viduImages = viduMode === 't2v'
           ? []
-          : imageUrls.slice(0, viduMode === 'i2v' ? 1 : viduMode === 'start-end' ? 2 : viduMode === 'r2v' ? 9 : 14);
+          : isViduQ4 ? imageUrls : imageUrls.slice(0, viduMode === 'i2v' ? 1 : viduMode === 'start-end' ? 2 : viduMode === 'r2v' ? 9 : 14);
         logBus.info(
-          `提交 Vidu Q3: ${apiModel} · ${viduDuration}s · ${viduResolution} · ${viduRatio} · refs=${viduImages.length}`,
+          `提交 Vidu: ${apiModel} · ${viduDuration}s · ${viduResolution} · ${viduRatio} · refs=${viduImages.length}`,
           src,
         );
         const result = await submitVidu({
@@ -2186,8 +2341,10 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
           prompt: finalPrompt || undefined,
           duration: viduDuration,
           ratio: viduRatio,
-          resolution: viduResolution,
-          seed: viduSeed,
+          resolution: viduResolution as ViduSubmitRequest['resolution'],
+          seed: isViduQ4 ? undefined : viduSeed,
+          ...(isViduQ4 ? { generateAudio, isRec: viduQ4IsRec, watermark: viduQ4Watermark,
+            audios: viduMode === 'r2v' ? audioUrls : undefined } : {}),
           images: viduImages.length ? viduImages : undefined,
           ...(viduMode === 'short-play'
             ? {
@@ -2212,7 +2369,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
         });
         if (!isCurrentGenerationRun(runId) || reporter?.signal?.aborted) return;
         update({ status: 'polling', taskId: result.taskId, progress: '0%' });
-        logBus.info('Vidu Q3 任务已提交，开始轮询', src);
+        logBus.info('Vidu 任务已提交，开始轮询', src);
         return await startPolling(result.taskId, runId, reporter, isUpscaler ? '' : finalPrompt);
       }
 
@@ -2453,10 +2610,14 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       // v1.2.9.11: await 让 useRunTrigger 等到任务真正完成才 markDone
       return await startPolling(r.taskId, runId, reporter, finalPrompt);
     } catch (e: any) {
+      if (isKlingV4 && e?.klingV4AcceptanceUnknown) patchKling({ klingV4AcceptanceUnknown: true });
       if (!isCurrentGenerationRun(runId) || reporter?.signal?.aborted) return;
       const msg = normalizeProviderErrorMessage(e, '提交失败');
       setError(msg);
-      update({ status: 'error', error: msg });
+      if (isKlingV4) patchKling({ status: 'error', error: msg,
+        ...(e?.klingV4AcceptanceUnknown ? { klingV4AcceptanceUnknown: true } : {}), ...(e?.klingV4Terminal ? { klingV4Pending: null, taskId: null } : {}),
+      });
+      else update({ status: 'error', error: msg });
       await reporter?.providerResponse({
         provider: traceProvider,
         model: traceModel,
@@ -2471,6 +2632,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       logBus.error(`提交失败: ${msg}`, src);
       throw e;
     } finally {
+      if (isKlingV4 && klingMounted.current) setKlingWaiting(false);
       reporter?.signal?.removeEventListener('abort', onExecutionAbort);
     }
   };
@@ -2491,8 +2653,9 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
   };
   const cancelRunTrigger = useRunTrigger(id, async (reporter) => {
     const completed = await handleGenerate(reporter);
-    assertFreshGenerationCompleted(Boolean(completed?.length));
-    const assets = collectRunOutputAssets({ videoUrls: completed });
+    if (completed && !Array.isArray(completed) && completed.klingV4Handled) return;
+    assertFreshGenerationCompleted(Boolean(Array.isArray(completed) && completed.length));
+    const assets = collectRunOutputAssets({ videoUrls: Array.isArray(completed) ? completed : [] });
     assertFreshGenerationCompleted(assets.length > 0);
     await reporter.output({ status: 'succeeded', outputCount: assets.length, assets });
   }, 'video', {
@@ -2501,11 +2664,13 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
       const { prompt: upstreamPrompt, imageUrls, videoUrls, audioUrls } = collectUpstream();
       const resolvedLocalPrompt = resolveMediaMentions(localPrompt, promptMentions, mentionMaterials);
       const finalPrompt = (upstreamPrompt || resolvedLocalPrompt || '').trim();
+      const klingRequest = isKlingV4 ? readKlingV4Pending(d.klingV4Pending)?.request || captureKlingV4(d, klingV4Model, finalPrompt, { imageUrls, videoUrls, audioUrls }, orderedTexts.map(t => t.url)) : null;
       // This is the common frontend input before branch-specific slicing,
       // conversion and options. It is not a complete Provider request or a
       // license to restore unrecorded options using today's defaults.
       return { schema: historyInputContract.videoInputContextSchema, origin: 'frontend-common-context',
         prompt: finalPrompt, localRefImages: [...imageUrls], localRefVideos: [...videoUrls], localRefAudios: [...audioUrls],
+        ...(klingRequest ? { prompt: klingRequest.prompt || '', klingV4Request: klingRequest } : {}),
         // Video start offsets belong to the archived reference slots, not to
         // arbitrary current videos. Capture for full-input recovery only.
         ...(!isExternalSelected && isHailuo && isMinimaxH3V2 ? {
@@ -2516,6 +2681,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
           providerSource: isExternalSelected ? providerSelection.providerSource : 'zhenzhen',
           providerId: isExternalSelected ? providerSelection.providerId : '',
           providerModel: isExternalSelected ? externalProviderModel : '',
+          ...(klingRequest ? { ...klingV4Settings(klingRequest), mainId: 'kling-v3.0', model: klingRequest.model, videoBuiltinSource: 'seedance-nz', providerSource: 'zhenzhen', providerId: '', providerModel: '', ratio: klingRequest.ratio || '', duration: klingRequest.duration || 0, resolution: klingRequest.resolution || '', seed: -1 } : {}),
           ...(!isExternalSelected && !isFal && videoBuiltinSource === 'zhenzhen' ? {
             ...(isGrok15New ? { size: grok15NewSize } : {}),
             ...(modelDef.kind === 'sora' ? { soraPrivate } : {}),
@@ -2530,10 +2696,13 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
             ...(falReg.paramKind === 'sora-fal' ? { soraMode, soraRatio, soraDuration, soraResolution, soraDeleteVideo, soraBlockIp } : {}),
           } : {}),
           ...(!isExternalSelected ? {
+            ...(h3Spec?.video ? {h3ComfySeed:d.h3ComfySeed ?? -1,h3ComfyDurationMode:d.h3ComfyDurationMode || 'seconds',h3ComfyFrames:d.h3ComfyFrames ?? 124} : {}),
+            ...(isSeedance25 ? {seedance25ReferenceTaskType:d.seedance25ReferenceTaskType || 'auto'} : {}),
+            ...(isTopaz ? { topazQuality } : {}),
             ...(isApimartBudgetVideo && isApimartOmniLowprice ? { apimartOmniLowpriceMode, apimartOmniLowpriceNsfwCheck } : {}),
-            ...(isSeedance25 ? { generateAudio, returnLastFrame } : {}),
-            ...(isKling && klingMode !== 'edit' ? { klingNegativePrompt } : {}),
-            ...(isVidu ? { viduSeed,
+            ...(isSeedance25 ? { generateAudio, returnLastFrame, seedance25Draft: d.seedance25Draft ?? false, seedance25DraftTaskId: isSeedance25Draft ? resolveSeedance25Draft(apiModel, d, draftSources) : d.seedance25DraftTaskId || '', seedance25OutputFormat: d.seedance25OutputFormat || 'mp4' } : {}),
+            ...(isKling && !isKlingV4 && klingMode !== 'edit' ? { klingNegativePrompt } : {}),
+            ...(isVidu ? { ...(isViduQ4 ? { generateAudio, viduQ4IsRec, viduQ4Watermark } : { viduSeed }),
               ...(viduMode === 'short-play' ? { viduScriptName, viduStyle, viduAssetType, viduAssetNamePrefix, viduAssetDescription } : {}),
             } : {}),
             ...(isFlux3 && flux3Mode !== 'draft-enhance' ? { flux3Draft, flux3AudioMode, flux3SafetyTolerance } : {}),
@@ -2549,7 +2718,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
         },
       };
     },
-    shouldReuseResult: (nodeData) => shouldReuseGenerationResult('video', nodeData),
+    shouldReuseResult: (nodeData) => isKlingV4Aux(String(nodeData.model)) ? nodeData.reuseResult === true && Boolean(nodeData.klingV4Result && nodeData.outputText) : shouldReuseGenerationResult('video', nodeData),
   });
 
   // === 跨节点拖拽: source (输出视频可拖出) ===
@@ -2566,7 +2735,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     if (payload.kind === 'image' && payload.url) {
       const cur = Array.isArray(d?.localRefImages) ? d.localRefImages : [];
       if (cur.indexOf(payload.url) !== -1) return;
-      const cap = isAnimate
+      const cap = isAgnesExternalSelected ? maxMentionRefs : isAnimate
         ? 1
         : isWan
         ? 1
@@ -2585,14 +2754,14 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
             : (modelDef.maxRefImages || 7) + 4;
       if (cur.length >= cap) return;
       update({ localRefImages: [...cur, payload.url] });
-    } else if (payload.kind === 'video' && payload.url && (isAnimate || isJimengSeedanceSelected || isApimartOmni || (isApimartOmniLowprice && apimartOmniLowpriceMode === 'reference_video') || isUpscaler || (isFlux3 && flux3Mode === 'v2v') || (isKling && klingMode === 'edit'))) {
+    } else if (payload.kind === 'video' && payload.url && (isFlashVideo || isKlingV4 && maxMentionVideos > 0 || isAgnesExternalSelected || isAnimate || isJimengSeedanceSelected || isApimartOmni || (isApimartOmniLowprice && apimartOmniLowpriceMode === 'reference_video') || isUpscaler || (isFlux3 && flux3Mode === 'v2v') || (isKling && klingMode === 'edit'))) {
       const cur = Array.isArray(d?.localRefVideos) ? d.localRefVideos : [];
-      const cap = isAnimate || isUpscaler || isApimartOmni || isApimartOmniLowprice || (isFlux3 && flux3Mode === 'v2v') || (isKling && klingMode === 'edit') ? 1 : jimengSeedanceLimits.videos;
+      const cap = isFlashVideo || isKlingV4 || isAgnesExternalSelected ? maxMentionVideos : isAnimate || isUpscaler || isApimartOmni || isApimartOmniLowprice || (isFlux3 && flux3Mode === 'v2v') || (isKling && klingMode === 'edit') ? 1 : jimengSeedanceLimits.videos;
       if (cur.indexOf(payload.url) !== -1 || cur.length >= cap) return;
       update({ localRefVideos: [...cur, payload.url] });
-    } else if (payload.kind === 'audio' && payload.url && isJimengSeedanceSelected) {
+    } else if (payload.kind === 'audio' && payload.url && (isKlingV4 && maxMentionAudios > 0 || isAgnesExternalSelected || isJimengSeedanceSelected)) {
       const cur = Array.isArray(d?.localRefAudios) ? d.localRefAudios : [];
-      if (cur.indexOf(payload.url) !== -1 || cur.length >= jimengSeedanceLimits.audios) return;
+      if (cur.indexOf(payload.url) !== -1 || cur.length >= (isKlingV4 || isAgnesExternalSelected ? maxMentionAudios : jimengSeedanceLimits.audios)) return;
       update({ localRefAudios: [...cur, payload.url] });
     } else if (payload.kind === 'text' && typeof payload.text === 'string') {
       update({ prompt: payload.text });
@@ -2600,8 +2769,9 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
   };
   const { dropProps, isAccepting } = useMaterialDropTarget({
     id,
-    accepts: isJimengSeedanceSelected
+    accepts: isFlashVideo ? ['text', 'image', 'video'] : isKlingV4 ? ['text', 'image', 'video', 'audio'] : isJimengSeedanceSelected
       ? ['image', 'video', 'audio', 'text']
+      : isAgnesExternalSelected ? ['image', 'video', 'audio', 'text']
       : isApimartOmni ? ['image', 'video', 'text']
       : isApimartOmniLowprice
         ? apimartOmniLowpriceMode === 'reference_video' ? ['video', 'text'] : apimartOmniLowpriceMode === 'text' ? ['text'] : ['image', 'text']
@@ -2613,11 +2783,11 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
     onDrop: handleDrop,
   });
 
-  const isBusy = status === 'submitting' || status === 'polling';
+  const isBusy = isKlingV4 ? klingWaiting : status === 'submitting' || status === 'polling';
   const refsCount = orderedImages.length + localRefImages.length;
   const videoRefsCount = orderedVideos.length + localRefVideos.length;
   const audioRefsCount = orderedAudios.length + localRefAudios.length;
-  const previewTitle = isWan
+  const previewTitle = isKlingV4 ? translate('klingV4:title') : isWan
     ? `上游素材 · 首帧图 ${Math.min(refsCount, 1)}/1`
     : isUpscaler
     ? `上游素材 · 输入 MP4 ${Math.min(videoRefsCount, 1)}/1`
@@ -2722,6 +2892,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
                 <div>
                   <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.platform')}</label>
                   <select
+                    disabled={Boolean(d.klingV4Pending)}
                     value={isExternalSelected
                       ? providerSelection.providerId
                       : videoBuiltinSource === 'seedance-nz'
@@ -2750,7 +2921,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
                             ratio: '16:9',
                             duration: 5,
                             resolution: '720p',
-                            providerParams: { ...providerParams, frameRate: 24 },
+                            providerParams: { ...providerParams, mode: 'auto' },
                           }
                           : {}),
                       });
@@ -2815,8 +2986,9 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
         {/* 主模型 */}
         {!isExternalSelected && (
         <div>
-          <label className="text-[10px] text-white/50 block mb-1">模型类型</label>
+          <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.modelType')}</label>
           <select
+            disabled={Boolean(d.klingV4Pending)}
             value={modelDef.id}
             onChange={(e) => switchMainModel(e.target.value)}
             className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-white/30"
@@ -2833,6 +3005,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
           <div>
             <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.specificModel')}</label>
             <select
+              disabled={Boolean(d.klingV4Pending)}
               value={apiModel}
               onChange={(e) => {
                 const nextModel = e.target.value;
@@ -2877,8 +3050,9 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
                      : nextModel.startsWith('hailuo-2.3-')
                        ? { ratio: '16:9', duration: 6, resolution: '768p' }
                        : {}),
+                   ...(H3_TURBO.videoModels.includes(nextModel) ? {ratio:H3_TURBO.profile(nextModel).ratios[0],resolution:H3_TURBO.profile(nextModel).defaultResolution,duration:5,h3ComfyDurationMode:'seconds'} : {}),
                    ...(nextModel.startsWith('seedance-2.5-')
-                     ? { ratio: nextModel.endsWith('-i2v') ? 'adaptive' : '16:9', duration: SEEDANCE25_DEFAULT_DURATION, resolution: SEEDANCE25_DEFAULT_RESOLUTION, generateAudio: true, returnLastFrame: false }
+                     ? { ratio: nextModel.endsWith('-i2v') ? 'adaptive' : '16:9', duration: SEEDANCE25_DEFAULT_DURATION, resolution: SEEDANCE25_DEFAULT_RESOLUTION, generateAudio: true, returnLastFrame: false, seedance25Draft:false, seedance25ReferenceTaskType:'auto' }
                      : {}),
                    ...(nextModel.startsWith('flux-3-video-')
                      ? { ratio: 'auto', duration: 5, resolution: 'hd', flux3Draft: false, flux3AudioMode: 'api_default', flux3SafetyTolerance: 'api_default' }
@@ -2888,6 +3062,8 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
                      : {}),
                    ...(nextModel.endsWith('-short-play')
                      ? { ratio: '9:16', duration: 8, resolution: '1080p' }
+                     : isViduQ4Model(nextModel)
+                       ? { ratio: '16:9', duration: 5, resolution: '720p', generateAudio: true, viduQ4IsRec: true, viduQ4Watermark: false }
                      : nextModel.startsWith('vidu-q3-')
                        ? { ratio: '16:9', duration: 4, resolution: 'default' }
                        : {}),
@@ -2895,7 +3071,12 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
               }}
               className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-white/30"
             >
-              {builtinApiModelOptions.map((o) => (
+              {!isExternalSelected && modelDef.kind === 'kling' && <optgroup label={translate('klingV4:title')}>
+                {builtinApiModelOptions.filter((option) => (isKlingV4Model(option.value) || option.value === KLING_FLASH_MODEL)).map((option) => (
+                  <option key={option.value} value={option.value} disabled={option.disabled} className="bg-zinc-900">{option.label}</option>
+                ))}
+              </optgroup>}
+              {builtinApiModelOptions.filter((option) => modelDef.kind !== 'kling' || (!isKlingV4Model(option.value) && option.value !== KLING_FLASH_MODEL)).map((o) => (
                 <option key={o.value} value={o.value} disabled={o.disabled} className="bg-zinc-900">{o.label}</option>
               ))}
             </select>
@@ -3140,7 +3321,10 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
           </div>
         )}
 
-        {isSeedance25 && (
+        {isSeedance25 && !isSeedance25Flash && <Seedance25DraftControls data={d} enhance={isSeedance25Draft} upstreamId={draftSources[0]?.id || d.seedance25DraftTaskIdResult || ''} update={update} />}
+        {isSeedance25 && seedance25Mode === 'multi' && <Seedance25ReferenceControls data={d} update={update}/>}
+        {isSeedance25Flash && <div className="text-xs">{translate('h3Turbo:flashHint')}</div>}
+        {isSeedance25 && !isSeedance25Draft && !isSeedance25Flash && (
           <div className="rounded border border-fuchsia-300/20 bg-fuchsia-400/[0.06] px-2 py-1.5 text-[10px] leading-relaxed text-white/55">
             {seedance25Mode === 't2v'
               ? '文生视频必须填写提示词，不发送任何参考素材。'
@@ -3181,7 +3365,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
               </>
             )}
             <div className="mt-1 text-white/40">
-              {isApimartOmni
+              {flashProfile ? translate('nodes:generation.flashVideoHint', {max:flashProfile.maxSeconds,images:flashProfile.maxImages,videos:flashProfile.maxVideos}) : isApimartOmni
                 ? 'Omni Flash：时长由模型决定，固定 720p；支持 Prompt、最多 16 张图片，或 1 个参考视频。'
                 : isApimartOmniLowprice
                   ? '平价 Omni：4/6/8/10 秒，720p/1080p/4K；支持文生、首帧、1/3 张参考图或 1 个参考视频。参考视频模式不发送 seconds。'
@@ -3329,7 +3513,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
           </div>
         )}
 
-        {isKling && (
+        {isKling && !isKlingV4 && (
           <div className="rounded border border-sky-300/20 bg-sky-400/[0.06] px-2 py-1.5 text-[10px] leading-relaxed text-white/55">
             {klingMode === 't2v'
               ? '文生视频必须填写提示词，不发送参考图。'
@@ -3344,13 +3528,13 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
 
         {isUpscaler && (
           <div className="rounded border border-emerald-300/20 bg-emerald-400/[0.06] px-2 py-1.5 text-[10px] leading-relaxed text-white/55">
-            {isVosr2
+            {isTopaz ? translate('nodes:generation.topaz.description') : isVosr2
               ? translate('nodes:generation.vosr2.videoDescription')
               : isFashVsr
               ? '连接或拖入恰好 1 个 480P、3-15 秒视频；无需 Prompt，也没有分辨率参数，模型按固定协议执行超分。'
               : '连接或拖入恰好 1 个 MP4 视频，选择目标分辨率后执行高清化；无需 Prompt，时长由输入视频读取。'}
             <div className="mt-1 text-white/35">
-              {isVosr2
+              {isTopaz ? translate('nodes:generation.topaz.channel') : isVosr2
                 ? translate('nodes:generation.vosr2.videoChannel')
                 : isFashVsr
                 ? '贞贞的平价AI小屋 API · FlashVSR_video_upscale · 固定 ¥1/次'
@@ -3360,9 +3544,15 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
           </div>
         )}
 
+        {isHeygen && <HeygenControls data={d} update={update}/>}
+        {isH3Lowprice && <H3ComfyControls model={apiModel} data={d} update={update}/>}
+        {isH3Lowprice && !h3Spec?.video && <div className="nodrag nowheel rounded border p-2 text-xs" style={{background:'var(--t8-bg-panel)',color:'var(--t8-text-main)',borderColor:'var(--t8-border)'}}>{translate('h3Turbo:videoHint')}</div>}
+        {isMuse && <div className="nodrag nowheel rounded border p-2 text-xs" style={{background:'var(--t8-bg-panel)',color:'var(--t8-text-main)',borderColor:'var(--t8-border)'}}>{translate('previewMuseFlux:museVideoDescription')}</div>}
+        {isTopaz && <TopazVideoControls quality={topazQuality} videoUrl={topazVideoUrl} update={update} />}
+
         {isVidu && (
           <div className="rounded border border-violet-300/20 bg-violet-400/[0.06] px-2 py-1.5 text-[10px] leading-relaxed text-white/55">
-            {viduMode === 't2v'
+            {isViduQ4 ? translate('nodes:generation.newBudgetModels.viduDescription') : viduMode === 't2v'
               ? '文生视频只提交提示词，不发送参考图。'
               : viduMode === 'i2v'
                 ? '图生视频使用排序后的第 1 张图作为首帧，提示词可选。'
@@ -3372,7 +3562,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
                     ? '参考生视频使用 1-9 张图片，按画布素材顺序提交。'
                     : '短剧成片把 Prompt 作为脚本内容，并使用 1-14 张图片构造参考资产。'}
             <div className="mt-1 text-white/35">
-              贞贞的平价AI小屋 API · 按次计费 · {viduMode === 'short-play' ? '8-12 秒 · 固定 1080p' : '4-15 秒 · default / 720p / 1080p'}
+              {isViduQ4 ? '3–16s · 540p / 720p / 1080p / 2k / 4k' : <>贞贞的平价AI小屋 API · 按次计费 · {viduMode === 'short-play' ? '8-12 秒 · 固定 1080p' : '4-15 秒 · default / 720p / 1080p'}</>}
             </div>
           </div>
         )}
@@ -3804,7 +3994,8 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
           </>
         )}
 
-        {isKling && (
+        {isKlingV4 && <KlingV4Controls data={d} model={klingV4Model} update={patchKling} linkedCount={orderedTexts.filter(t => klingV4Reference(t.url)).length} />}
+        {isKling && !isKlingV4 && (
           <div className="rounded border border-sky-300/20 bg-sky-400/[0.06] p-2 space-y-2">
             <div className={klingMode === 'edit' ? '' : 'grid grid-cols-2 gap-1.5'}>
               {klingMode !== 'edit' && (
@@ -3866,11 +4057,12 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
               <div>
                 <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.aspectRatio')}</label>
                 <select
-                  value={viduRatio}
+                  value={isViduQ4 && viduMode === 'i2v' ? 'input-image' : viduRatio}
+                  disabled={isViduQ4 && viduMode === 'i2v'}
                   onChange={(e) => update({ ratio: e.target.value })}
                   className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-violet-300/40"
                 >
-                  {(viduMode === 'short-play' ? ['9:16', '16:9'] : ratioOptions).map((item) => (
+                  {isViduQ4 && viduMode === 'i2v' ? <option className="bg-zinc-900" value="input-image">{translate('nodes:generation.newBudgetModels.inputImageRatio')}</option> : (isViduQ4 ? NB_FLUX_VIDU_CONTRACT.viduQ4.ratios : viduMode === 'short-play' ? ['9:16', '16:9'] : ratioOptions).map((item) => (
                     <option key={item} value={item} className="bg-zinc-900">{item}</option>
                   ))}
                 </select>
@@ -3882,7 +4074,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
                   onChange={(e) => update({ duration: Number(e.target.value) })}
                   className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-violet-300/40"
                 >
-                  {(viduMode === 'short-play' ? [8, 9, 10, 11, 12] : [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]).map((item) => (
+                  {(isViduQ4 ? NB_FLUX_VIDU_CONTRACT.viduQ4.durations : viduMode === 'short-play' ? [8, 9, 10, 11, 12] : [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]).map((item) => (
                     <option key={item} value={item} className="bg-zinc-900">{item}s</option>
                   ))}
                 </select>
@@ -3897,7 +4089,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
                   onChange={(e) => update({ resolution: e.target.value })}
                   className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-violet-300/40 disabled:opacity-60"
                 >
-                  {(viduMode === 'short-play' ? ['1080p'] : ['default', '720p', '1080p']).map((item) => (
+                  {(isViduQ4 ? NB_FLUX_VIDU_CONTRACT.viduQ4.resolutions : viduMode === 'short-play' ? ['1080p'] : ['default', '720p', '1080p']).map((item) => (
                     <option key={item} value={item} className="bg-zinc-900">{item}</option>
                   ))}
                 </select>
@@ -3915,7 +4107,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
                     ))}
                   </select>
                 </div>
-              ) : (
+              ) : !isViduQ4 && (
                 <div>
                   <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.seedRandom')}</label>
                   <input
@@ -3929,6 +4121,12 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
                 </div>
               )}
             </div>
+            {isViduQ4 && <div className="nodrag nowheel space-y-2 text-xs">
+              <div>{translate('nodes:generation.newBudgetModels.viduDescription')}</div>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={generateAudio} onChange={(e) => update({ generateAudio: e.target.checked })} />{translate('nodes:generation.newBudgetModels.generateAudio')}</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={viduQ4IsRec} onChange={(e) => update({ viduQ4IsRec: e.target.checked })} />{translate('nodes:generation.newBudgetModels.isRec')}</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={viduQ4Watermark} onChange={(e) => update({ viduQ4Watermark: e.target.checked })} />{translate('nodes:generation.newBudgetModels.watermark')}</label>
+            </div>}
             {viduMode === 'short-play' && (
               <>
                 <div>
@@ -3984,7 +4182,11 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
             <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.resolution')}</label>
             <select
               value={resolution || resolutionOptions[0]}
-              onChange={(e) => update({ resolution: e.target.value })}
+              onChange={(e) => {
+                const next = e.target.value;
+                const ratios = h3Spec ? H3_TURBO.ratios(h3Spec,next) : [];
+                update({resolution:next,...(h3Spec && !ratios.includes(ratio) ? {ratio:ratios[0]} : {})});
+              }}
               className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-white/30"
             >
               {resolutionOptions.map((r) => (
@@ -3994,45 +4196,8 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
           </div>
         )}
 
-        {isAgnesExternalSelected && (
-          <div className="rounded border border-emerald-300/20 bg-emerald-400/[0.06] p-2 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-semibold text-white/75">Agnes 视频参数</span>
-              <span className="text-[9px] text-emerald-100/60">/v1/videos</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <div>
-                <label className="text-[10px] text-white/50 block mb-1">帧率</label>
-                <select
-                  value={String(agnesFrameRate)}
-                  onChange={(e) => updateProviderParams({ frameRate: Number(e.target.value) || 24 })}
-                  className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-white/30"
-                >
-                  {[8, 12, 16, 24, 30].map((fps) => (
-                    <option key={fps} value={fps} className="bg-zinc-900">{fps} fps</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] text-white/50 block mb-1">帧数覆盖</label>
-                <input
-                  type="number"
-                  min={9}
-                  max={441}
-                  value={String(agnesNumFrames)}
-                  onChange={(e) => updateProviderParams({
-                    numFrames: e.target.value ? Math.max(9, Math.min(441, Number(e.target.value) || 9)) : '',
-                  })}
-                  placeholder="自动"
-                  className="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-white/30 placeholder:text-white/25"
-                />
-              </div>
-            </div>
-            <div className="text-[10px] leading-relaxed text-white/45">
-              默认由比例、分辨率和时长换算宽高与帧数；通常只需要调比例、时长和分辨率，特殊测试再覆盖帧数。
-            </div>
-          </div>
-        )}
+        {isAgnesExternalSelected && <AgnesVideoControls mode={providerParams.mode || 'auto'}
+          migrated={agnesMigrated} update={updateProviderParams} />}
 
         {/* veo 专用选项(非FAL) */}
         {!isExternalSelected && !isFal && modelDef.kind === 'veo' && !isVeoOmni && !isApimartBudgetVideo && (
@@ -4137,7 +4302,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
         )}
 
         {/* Seed(非FAL) */}
-        {showGenericVideoControls && !isHappyHorse && !isFlux3 && !isKling && !isUpscaler && !isWan && !isAnimate && !isApimartBudgetVideo && (
+        {showGenericVideoControls && !isHappyHorse && !isFlux3 && !isKling && !isUpscaler && !isWan && !isAnimate && !isMuse && !isH3Lowprice && !isApimartBudgetVideo && (
         <div>
           <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.seedRandom')}</label>
           <input
@@ -4258,7 +4423,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
         )}
 
         {/* Prompt */}
-        {!isUpscaler && !isAnimate && <div>
+        {!isSeedance25Draft && !isUpscaler && !isAnimate && !(isKlingV4 && klingV4Model === 'kling-v4-custom-voice') && <div>
               <label className="text-[10px] text-white/50 block mb-1">
                 {isWan30 && wan30Mode === 'r2v'
                   ? translate('nodes:video.wan30LocalPromptRequired')
@@ -4284,7 +4449,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
 
         <ReuseResultToggle
           checked={d?.reuseResult === true}
-          hasResult={hasReusableGenerationResult('video', d)}
+          hasResult={klingV4Aux ? Boolean(d.klingV4Result && d.outputText) : hasReusableGenerationResult('video', d)}
           onChange={(checked) => update({ reuseResult: checked })}
           accentColor="#fb7185"
         />
@@ -4294,7 +4459,7 @@ const VideoNode = ({ id, data, selected }: NodeProps) => {
             onClick={() => requestCanvasNodeRun(id)}
             className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs font-medium transition-colors"
           >
-            <Sparkles size={12} /> {translate(isUpscaler ? 'nodes:video.startUpscale' : 'nodes:video.generateVideo')}
+            <Sparkles size={12} /> {isKlingV4 ? translate(d.klingV4Pending ? 'klingV4:resume' : klingV4Aux ? 'klingV4:create' : 'klingV4:generate') : translate(isUpscaler ? 'nodes:video.startUpscale' : 'nodes:video.generateVideo')}
           </button>
         ) : (
           <button

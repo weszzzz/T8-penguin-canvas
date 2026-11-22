@@ -1,9 +1,20 @@
+import nov21 from '../../backend/src/shared/nov21ModelsContract.json';
+import nov19 from '../../backend/src/shared/nov19ModelsContract.json';
+import h3Turbo from '../../backend/src/shared/h3TurboContract.json';
+import { isPreviewImage, isFluxVariant, PREVIEW_MUSE_FLUX } from './previewMuseFlux';
 import { minimumProviderMediaPollCount } from './providerTimeoutPolicy';
+import nbDoubao from '../../backend/src/shared/nbLowpriceDoubaoContract.json';
+import mossImage from '../../backend/src/shared/mossImageContract.json';
+import motionVideo from '../../backend/src/shared/motionVideoContract.json';
+import {isNewImageModel,NEW_IMAGE_CONTRACT} from './g26Krea';
+import {flashVideoProfile} from './flashVideo';
+import { TRIPO } from './tripo3d';
 
 export type RunRecoveryKind =
   | 'runninghub'
   | 'seedance'
   | 'seedream-nz'
+  | 'model3d'
   | 'wan'
   | 'happyhorse'
   | 'hailuo'
@@ -12,6 +23,10 @@ export type RunRecoveryKind =
   | 'upscaler'
   | 'fashvsr'
   | 'vosr2'
+  | 'h3-lowprice'
+  | 'muse' | 'heygen'
+  | 'topaz'
+  | 'motion'
   | 'animate'
   | 'vidu'
   | 'seed-audio'
@@ -30,6 +45,10 @@ export interface RunRecoveryDescriptor {
   requestId?: string;
   endpoint?: string;
   model?: string;
+  connectionRef?: string;
+  outputFormat?: 'pcm';
+  channels?: string;
+  sampleRate?: string;
   site?: 'cn' | 'intl';
   taskProvider?: 'seedance-nz' | 'zhenzhen-legacy';
   speed?: 'relax' | 'fast' | 'turbo';
@@ -38,7 +57,7 @@ export interface RunRecoveryDescriptor {
 }
 const RECOVERY_KINDS = new Set<RunRecoveryKind>([
   'runninghub', 'seedance', 'seedream-nz', 'wan', 'happyhorse', 'hailuo', 'flux3', 'kling', 'upscaler', 'fashvsr', 'vosr2', 'animate', 'vidu', 'seed-audio', 'suno',
-  'image', 'mj', 'video', 'image-fal', 'video-fal',
+  'model3d', 'h3-lowprice', 'heygen', 'muse', 'topaz', 'motion', 'image', 'mj', 'video', 'image-fal', 'video-fal',
 ]);
 
 function text(value: unknown, maxLength: number): string {
@@ -62,12 +81,19 @@ function normalizeExplicitRecovery(value: unknown): RunRecoveryDescriptor | null
     requestId: text(raw.requestId, 512) || undefined,
     endpoint: text(raw.endpoint, 1024) || undefined,
     model: text(raw.model, 240) || undefined,
+    ...(kind === 'motion' && /^seedance-nz:[a-f0-9]{64}$/.test(String(raw.connectionRef || '')) ? { connectionRef: String(raw.connectionRef) } : {}),
+    ...(nov19.audio.models.includes(String(raw.model)) && raw.outputFormat==='pcm'?{outputFormat:'pcm' as const,sampleRate:(String(raw.model).endsWith('-next')?nov19.audio.nextRates:nov19.audio.systemRates).includes(String(raw.sampleRate))?String(raw.sampleRate):String(raw.model).endsWith('-next')?'48000':'22050',channels:raw.channels==='2'&&String(raw.model).endsWith('-next')?'2':'1'}:{}),
+    ...(raw.model === nbDoubao.audio.iclModel && raw.outputFormat === 'pcm' ? {
+      outputFormat: 'pcm' as const,
+      sampleRate: nbDoubao.audio.iclFields.sample_rate.options.includes(String(raw.sampleRate)) ? String(raw.sampleRate) : '24000',
+    } : {}),
     site: ['cn', 'intl'].includes(text(raw.site, 20).toLowerCase()) ? text(raw.site, 20).toLowerCase() as 'cn' | 'intl' : undefined,
     taskProvider: ['seedance-nz', 'zhenzhen-legacy'].includes(text(raw.taskProvider, 80)) ? text(raw.taskProvider, 80) as 'seedance-nz' | 'zhenzhen-legacy' : undefined,
     speed: ['relax', 'fast', 'turbo'].includes(text(raw.speed, 20).toLowerCase()) ? text(raw.speed, 20).toLowerCase() as 'relax' | 'fast' | 'turbo' : undefined,
     pollIntervalMs,
     maxPolls: Math.min(7200, minimumProviderMediaPollCount(pollIntervalMs, Number(raw.maxPolls) || 1200)),
   };
+  if (kind === 'motion' && (!descriptor.connectionRef || !motionVideo.models.includes(descriptor.model || ''))) return null;
   if (kind === 'suno') return descriptor.taskIds?.length ? descriptor : null;
   if (kind === 'image-fal' || kind === 'video-fal') {
     return descriptor.requestId && descriptor.endpoint ? descriptor : null;
@@ -91,16 +117,25 @@ export function inferRunRecoveryDescriptor(payload: Record<string, unknown>): Ru
   const maxPolls = Math.min(7200, minimumProviderMediaPollCount(pollIntervalMs, Number(payload.pollLimit) || 1200));
   if (provider === 'suno' && taskIds.length) return { version: 1, kind: 'suno', taskIds, model, pollIntervalMs, maxPolls };
   if (!taskId) return null;
+  if(provider==='seedance-nz-3d'&&[nov21.miora.model,...TRIPO.models,...NEW_IMAGE_CONTRACT.hitem.models,...NEW_IMAGE_CONTRACT.meshy.models,'hunyuan3d-v3.1-text-to-3d','hunyuan3d-v3.1-image-to-3d'].includes(model))return {version:1,kind:'model3d',taskId,model,pollIntervalMs,maxPolls:Math.max(maxPolls,1350)};
   if (provider === 'runninghub') {
     const site = text(payload.site, 20).toLowerCase() === 'intl' ? 'intl' : 'cn';
     return { version: 1, kind: 'runninghub', taskId, model, site, pollIntervalMs, maxPolls };
   }
   if (provider === 'seedance-nz') {
     const lowerModel = model.toLowerCase();
-    if (lowerModel.includes('seed-audio')) return { version: 1, kind: 'seed-audio', taskId, model, pollIntervalMs, maxPolls };
-    if (lowerModel.includes('seedream') || lowerModel === 'vosr2-image-upscale') {
+    if (flashVideoProfile(model)) return {version:1,kind:'seedance',taskId,model,taskProvider:'seedance-nz',pollIntervalMs,maxPolls};
+    if (motionVideo.models.includes(model)) return normalizeExplicitRecovery({ kind: 'motion', taskId, model, connectionRef: payload.connectionRef, pollIntervalMs, maxPolls });
+    if (nov21.gemini.models.includes(lowerModel) || nov19.audio.models.includes(lowerModel) || lowerModel.includes('seed-audio') || [nbDoubao.audio.cloneModel, nbDoubao.audio.iclModel].includes(lowerModel)) return { version: 1, kind: 'seed-audio', taskId, model, pollIntervalMs, maxPolls,
+      ...(nov19.audio.models.includes(lowerModel)&&payload.outputFormat==='pcm'?{outputFormat:'pcm',sampleRate:String(payload.sampleRate|| (lowerModel.endsWith('-next')?'48000':'22050')),channels:payload.channels==='2'&&lowerModel.endsWith('-next')?'2':'1'}:{}),
+      ...(lowerModel === nbDoubao.audio.iclModel && payload.outputFormat === 'pcm' ? {
+        outputFormat: 'pcm', sampleRate: nbDoubao.audio.iclFields.sample_rate.options.includes(String(payload.sampleRate)) ? String(payload.sampleRate) : '24000',
+      } : {}),
+    };
+    if ([nov21.longImage.model,nov19.kling.model,...nov19.mai.models,h3Turbo.minimax.model,h3Turbo.qwen.model].includes(lowerModel) || isNewImageModel(lowerModel) || isPreviewImage(lowerModel) || isFluxVariant(lowerModel) || lowerModel === mossImage.model || lowerModel.includes('seedream') || nbDoubao.banana.models.includes(lowerModel) || lowerModel === 'mai-image-2-6' || lowerModel === 'mai-image-2-6-flash' || lowerModel === 'vosr2-image-upscale' || lowerModel === 'flux-3-image' || lowerModel === 'zhenzhen-image-nb-2.1') {
       return { version: 1, kind: 'seedream-nz', taskId, model, pollIntervalMs, maxPolls };
     }
+    if (nov21.heygen.models.includes(model))return {version:1,kind:'heygen',taskId,model,pollIntervalMs,maxPolls};
     if (lowerModel.startsWith('wan-')) return { version: 1, kind: 'wan', taskId, model, pollIntervalMs, maxPolls };
     if (lowerModel.startsWith('happyhorse-')) return { version: 1, kind: 'happyhorse', taskId, model, pollIntervalMs, maxPolls };
     if (lowerModel.startsWith('hailuo-')) return { version: 1, kind: 'hailuo', taskId, model, pollIntervalMs, maxPolls };
@@ -112,6 +147,9 @@ export function inferRunRecoveryDescriptor(payload: Record<string, unknown>): Ru
     if (lowerModel === 'vosr2-video-upscale') {
       return { version: 1, kind: 'vosr2', taskId, model, pollIntervalMs, maxPolls };
     }
+    if (Object.values(h3Turbo).some(spec => (spec === h3Turbo.video || 'video' in spec && spec.video) && spec.model === model)) return {version:1,kind:'h3-lowprice',taskId,model,pollIntervalMs,maxPolls};
+    if (model === PREVIEW_MUSE_FLUX.muse.videoModel) return {version:1,kind:'muse',taskId,model,pollIntervalMs,maxPolls};
+    if (model === 'Topaz-Upscale-LowPirce') return { version: 1, kind: 'topaz', taskId, model, pollIntervalMs, maxPolls };
     if (lowerModel === 'animate-motion-transfer') {
       return { version: 1, kind: 'animate', taskId, model, pollIntervalMs, maxPolls };
     }

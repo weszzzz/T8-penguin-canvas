@@ -7,6 +7,7 @@ import { normalizeRhNodeId } from '../../utils/rhTextBinding';
 import { dedupeUpstreamMaterialBuckets } from '../../utils/upstreamMaterialBuckets';
 import { shouldCollectNodeTextOutput } from '../../utils/imageNodeOutputMode';
 import { normalizeLoopCustomIterationInput } from '../../utils/loopDerivedExecution';
+import { motionAssetRefs } from '../../utils/motionVideo';
 
 /**
  * useUpstreamMaterials - 通用「上游素材聚合」hook
@@ -43,6 +44,8 @@ export interface Material {
   sourceNodeSerialId?: number;
   /** Stable provider clip identity used by chained music operations. */
   clipId?: string;
+  /** Stable persisted asset behind an ordered animation output slot. */
+  assetId?: string;
   /** Target handles on the consuming node reached by this source material. */
   targetHandles?: string[];
 }
@@ -274,6 +277,7 @@ export function collectUpstreamMaterials(
       keyOverride?: string,
       labelOverride?: string,
       clipIdOverride?: string,
+      assetIdOverride?: string,
     ) => {
       if (typeof v !== 'string') return;
       const s = v.trim();
@@ -289,33 +293,36 @@ export function collectUpstreamMaterials(
         origin: 'upstream',
         label: labelOverride || (s.split('/').pop() || s).slice(0, 28),
         clipId: clipIdOverride || undefined,
+        ...(assetIdOverride ? { assetId: assetIdOverride } : {}),
       });
     };
 
     for (const n of list) {
       if (!n) continue;
       const sid = n.id;
-      const collectNodeTextOutput = shouldCollectNodeTextOutput(n.type, n.data);
       const handles = handleMap.get(sid) || new Set<string | null>([null]);
       const routedData = selectSourceHandleData((n.data || {}) as Record<string, unknown>, handles);
       for (const ud of routedData as any[]) {
+        const collectNodeTextOutput = shouldCollectNodeTextOutput(n.type, n.data, ud);
         const textMeta = textMetaFromData(ud);
 
-      // 显式素材集: 保留素材集内部顺序，并用序号 key 避免相同 URL 被全局去重误删。
+      // Preserve ordered repeated slots by their persisted item identity. Only
+      // malformed legacy slots without a unique stored ID use the old index key.
       // 同时跳过下面的旧字段读取，避免 imageUrls/textSegments 双写后重复出现。
       if (n.type === 'material-set' && Array.isArray(ud.materialSetItems)) {
         const buckets = collectMaterialSetBucketsFromData(ud);
+        const slotKey = (item: {id:string}, index:number) => ud.materialSetItems.filter((raw:any)=>raw?.id===item.id).length === 1 ? item.id : index;
         buckets.text.forEach((item, index) => {
-          pushText(sid, valueOfMaterialSetItem(item), `material-set:${sid}:text:${index}`, item.name, textMeta);
+          pushText(sid, valueOfMaterialSetItem(item), `material-set:${sid}:text:${slotKey(item,index)}`, item.name, textMeta);
         });
         buckets.image.forEach((item, index) => {
-          pushUrl(sid, 'image', item.url, images, `material-set:${sid}:image:${index}`, item.name);
+          pushUrl(sid, 'image', item.url, images, `material-set:${sid}:image:${slotKey(item,index)}`, item.name);
         });
         buckets.video.forEach((item, index) => {
-          pushUrl(sid, 'video', item.url, videos, `material-set:${sid}:video:${index}`, item.name);
+          pushUrl(sid, 'video', item.url, videos, `material-set:${sid}:video:${slotKey(item,index)}`, item.name);
         });
         buckets.audio.forEach((item, index) => {
-          pushUrl(sid, 'audio', item.url, audios, `material-set:${sid}:audio:${index}`, item.name);
+          pushUrl(sid, 'audio', item.url, audios, `material-set:${sid}:audio:${slotKey(item,index)}`, item.name);
         });
         continue;
       }
@@ -365,20 +372,24 @@ export function collectUpstreamMaterials(
       }
 
       // 图像: 单 + 多
-      pushUrl(sid, 'image', ud.imageUrl, images);
+      pushUrl(sid, 'image', ud.imageUrl, images, undefined, typeof ud.fileName === 'string' ? ud.fileName : ud.fileNames?.[0]);
       pushUrl(sid, 'image', ud.resultUrl, images, undefined, '目标框图像');
       const arrFields = ['imageUrls', 'urls', 'generatedImages', 'resultUrls'];
       for (const f of arrFields) {
         const v = ud[f];
         if (Array.isArray(v)) {
-          for (const u of v) pushUrl(sid, 'image', u, images);
+          v.forEach((u:any,index:number)=>pushUrl(sid,'image',u,images,undefined,ud.fileNames?.[index]));
         }
       }
 
       // 视频: 单 + 多 (v1.2.8.2: videoUrls 数组 — LoopNode 聚合多视频产物)
-      pushUrl(sid, 'video', ud.videoUrl, videos);
-      if (Array.isArray(ud.videoUrls)) {
-        for (const u of ud.videoUrls) pushUrl(sid, 'video', u, videos);
+      const motionSlots = motionAssetRefs(ud);
+      if (motionSlots.length) motionSlots.forEach((slot, index) => pushUrl(sid, 'video', slot.url, videos, `motion-slot:${sid}:${slot.assetId}:${index}`, undefined, undefined, slot.assetId));
+      else {
+        pushUrl(sid, 'video', ud.videoUrl, videos);
+        if (Array.isArray(ud.videoUrls)) {
+          for (const u of ud.videoUrls) pushUrl(sid, 'video', u, videos);
+        }
       }
 
       const audioClipIds = new Map<string, string>();

@@ -1,13 +1,35 @@
 {
   "schema": "t8-creative-runtime-catalog-v1",
-  "sourceDigest": "541eb29bb2d3fa6eb927852ec50a5166bedd25f7faaf4b8e18d92764f7c42c3f",
+  "sourceDigest": "cf0d95b89acd7e452b59c0cb3c7e510b98ad27398dfb5c6266b316a7fbdde5f9",
   "generatedFrom": [
+    "backend/src/shared/nov21ModelsContract.json",
+    "backend/src/shared/nov21ModelsContract.mjs",
+    "backend/src/providers/miora3d.js",
+    "backend/src/shared/nov19ModelsContract.json",
+    "backend/src/shared/nov19ModelsContract.mjs",
+    "backend/src/shared/qwenAudio31Voices.json",
     "src/providers/models.ts",
     "src/config/seedance.ts",
     "src/utils/midjourneyNz.ts",
     "backend/src/shared/seedanceNzLlmModels.json",
     "backend/src/providers/seedanceNz.js",
-    "backend/src/shared/seedreamNzContract.json"
+    "backend/src/shared/seedreamNzContract.json",
+    "backend/src/shared/nb21FluxViduQ4Contract.json",
+    "backend/src/shared/maiImageContract.json",
+    "backend/src/shared/mossImageContract.json",
+    "backend/src/shared/previewMuseFluxContract.json",
+    "backend/src/shared/g26Krea3dContract.json",
+    "backend/src/shared/tripo3dContract.json",
+    "backend/src/shared/seedream55DraftContract.json",
+    "backend/src/shared/seedream55DraftContract.mjs",
+    "backend/src/shared/h3TurboContract.json",
+    "backend/src/shared/h3TurboContract.mjs",
+    "backend/src/shared/seedance25FlashContract.json",
+    "backend/src/shared/seedance25FlashContract.mjs",
+    "backend/src/shared/tripo3dContract.mjs",
+    "backend/src/providers/tripo3d.js",
+    "backend/src/shared/flashVideoContract.json",
+    "backend/src/shared/nbLowpriceDoubaoContract.json"
   ],
   "platforms": [
     {
@@ -886,6 +908,849 @@
       }
     },
     {
+      "id": "image:seedance-nz:dola-seedream-5.5-i2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "dola-seedream-5.5-i2i",
+      "label": "dola-seedream-5.5-i2i",
+      "family": "seedream-v5-pro",
+      "available": true,
+      "parameters": {
+        "label": "dola-seedream-5.5-i2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedream-v5-pro",
+        "available": true,
+        "tabLabel": "Seedream",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "seedream-v5",
+        "supportsReference": true,
+        "maxReferenceImages": 10,
+        "sharedParameterContract": "backend/src/shared/seedream55DraftContract.mjs",
+        "promptMaxLength": 5000,
+        "referenceMaxBytes": 31457280,
+        "nativeSeed": false,
+        "backgroundModes": [
+          "auto",
+          "transparent",
+          "opaque"
+        ],
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:dola-seedream-5.5-layer-decomposition",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "dola-seedream-5.5-layer-decomposition",
+      "label": "dola-seedream-5.5-layer-decomposition",
+      "family": "seedream-layer-decomposition",
+      "available": true,
+      "parameters": {
+        "label": "dola-seedream-5.5-layer-decomposition",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedream-layer-decomposition",
+        "available": true,
+        "tabLabel": "Seedream分层",
+        "capabilities": [
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "seedream-layer",
+        "supportsReference": true,
+        "maxReferenceImages": 1,
+        "sharedParameterContract": "backend/src/shared/seedream55DraftContract.mjs",
+        "promptMaxLength": 2000,
+        "referenceMaxBytes": 31457280,
+        "layerCountRange": [
+          2,
+          100
+        ],
+        "nativeSeed": false,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:dola-seedream-5.5-t2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "dola-seedream-5.5-t2i",
+      "label": "dola-seedream-5.5-t2i",
+      "family": "seedream-v5-pro",
+      "available": true,
+      "parameters": {
+        "label": "dola-seedream-5.5-t2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedream-v5-pro",
+        "available": true,
+        "tabLabel": "Seedream",
+        "capabilities": [
+          "t2i"
+        ],
+        "parameterKind": "seedream-v5",
+        "supportsReference": false,
+        "maxReferenceImages": 0,
+        "sharedParameterContract": "backend/src/shared/seedream55DraftContract.mjs",
+        "promptMaxLength": 5000,
+        "referenceMaxBytes": 31457280,
+        "nativeSeed": false,
+        "backgroundModes": [
+          "auto",
+          "transparent",
+          "opaque"
+        ],
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:flux-3-image",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "flux-3-image",
+      "label": "flux-3-image",
+      "family": "flux-3-image",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-image",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "flux-3-image",
+        "available": true,
+        "tabLabel": "Flux",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "flux-image",
+        "supportsReference": true,
+        "maxReferenceImages": 10,
+        "sizes": [
+          "768sq",
+          "1k",
+          "1.5k",
+          "2k",
+          "4k"
+        ],
+        "aspectRatios": [
+          "auto",
+          "16:9",
+          "1:1",
+          "1:2",
+          "21:9",
+          "2:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "5:7",
+          "7:5",
+          "9:16",
+          "9:21"
+        ],
+        "defaultSize": "1k",
+        "defaultAspectRatio": "auto",
+        "maxOutputs": 1,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:flux-3-image-i2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "flux-3-image-i2i",
+      "label": "flux-3-image-i2i",
+      "family": "flux-3-image",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-image-i2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "flux-3-image",
+        "available": true,
+        "tabLabel": "Flux",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "flux-image",
+        "aspectRatios": [
+          "auto",
+          "16:9",
+          "1:1",
+          "1:2",
+          "21:9",
+          "2:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "5:7",
+          "7:5",
+          "9:16",
+          "9:21"
+        ],
+        "defaultAspectRatio": "auto",
+        "sizes": [
+          "768sq",
+          "1k",
+          "1.5k",
+          "2k",
+          "4k"
+        ],
+        "defaultSize": "1k",
+        "supportsReference": true,
+        "maxReferenceImages": 10
+      }
+    },
+    {
+      "id": "image:seedance-nz:flux-3-image-klein-i2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "flux-3-image-klein-i2i",
+      "label": "flux-3-image-klein-i2i",
+      "family": "flux-3-image",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-image-klein-i2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "flux-3-image",
+        "available": true,
+        "tabLabel": "Flux",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "flux-image",
+        "aspectRatios": [
+          "auto",
+          "16:9",
+          "1:1",
+          "1:2",
+          "21:9",
+          "2:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "5:7",
+          "7:5",
+          "9:16",
+          "9:21"
+        ],
+        "defaultAspectRatio": "auto",
+        "sizes": [
+          "768sq",
+          "1k",
+          "1.5k",
+          "2k",
+          "4k"
+        ],
+        "defaultSize": "1k",
+        "supportsReference": true,
+        "maxReferenceImages": 10
+      }
+    },
+    {
+      "id": "image:seedance-nz:flux-3-image-klein-t2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "flux-3-image-klein-t2i",
+      "label": "flux-3-image-klein-t2i",
+      "family": "flux-3-image",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-image-klein-t2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "flux-3-image",
+        "available": true,
+        "tabLabel": "Flux",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "flux-image",
+        "aspectRatios": [
+          "auto",
+          "16:9",
+          "1:1",
+          "1:2",
+          "21:9",
+          "2:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "5:7",
+          "7:5",
+          "9:16",
+          "9:21"
+        ],
+        "defaultAspectRatio": "auto",
+        "sizes": [
+          "768sq",
+          "1k",
+          "1.5k",
+          "2k",
+          "4k"
+        ],
+        "defaultSize": "1k",
+        "supportsReference": true,
+        "maxReferenceImages": 10
+      }
+    },
+    {
+      "id": "image:seedance-nz:flux-3-image-t2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "flux-3-image-t2i",
+      "label": "flux-3-image-t2i",
+      "family": "flux-3-image",
+      "available": true,
+      "parameters": {
+        "label": "flux-3-image-t2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "flux-3-image",
+        "available": true,
+        "tabLabel": "Flux",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "flux-image",
+        "aspectRatios": [
+          "auto",
+          "16:9",
+          "1:1",
+          "1:2",
+          "21:9",
+          "2:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "5:7",
+          "7:5",
+          "9:16",
+          "9:21"
+        ],
+        "defaultAspectRatio": "auto",
+        "sizes": [
+          "768sq",
+          "1k",
+          "1.5k",
+          "2k",
+          "4k"
+        ],
+        "defaultSize": "1k",
+        "supportsReference": true,
+        "maxReferenceImages": 10
+      }
+    },
+    {
+      "id": "image:seedance-nz:kling-v4-image",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "kling-v4-image",
+      "label": "kling-v4-image",
+      "family": "kling-v4-image",
+      "available": true,
+      "parameters": {
+        "label": "kling-v4-image",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "kling-v4-image",
+        "available": true,
+        "tabLabel": "GPT2",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "seedance-nz-image",
+        "supportsReference": true,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:kling-v4-long-image",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "kling-v4-long-image",
+      "label": "kling-v4-long-image",
+      "family": "kling-v4-image",
+      "available": true,
+      "parameters": {
+        "label": "kling-v4-long-image",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "kling-v4-image",
+        "available": true,
+        "tabLabel": "Kling Image",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "kling-long-image",
+        "aspectRatios": [],
+        "defaultAspectRatio": "",
+        "sizes": [],
+        "defaultSize": "",
+        "supportsReference": true,
+        "maxReferenceImages": 3,
+        "sharedParameterContract": "backend/src/shared/nov21ModelsContract.mjs",
+        "skills": [
+          "ecommerce",
+          "webpage"
+        ],
+        "ecommerceReferences": {
+          "min": 1,
+          "max": 3
+        },
+        "webpageRoles": [
+          "style",
+          "subject"
+        ],
+        "resolutions": [
+          "1k",
+          "2k"
+        ],
+        "unsupportedFields": [
+          "n",
+          "size",
+          "width",
+          "height"
+        ],
+        "outputFormat": "png"
+      }
+    },
+    {
+      "id": "image:seedance-nz:krea-v3-i2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "krea-v3-i2i",
+      "label": "krea-v3-i2i",
+      "family": "krea",
+      "available": true,
+      "parameters": {
+        "label": "krea-v3-i2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "krea",
+        "available": true,
+        "tabLabel": "krea",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "g26-krea",
+        "aspectRatios": [],
+        "defaultAspectRatio": "",
+        "sizes": [],
+        "defaultSize": "",
+        "supportsReference": true,
+        "maxReferenceImages": 8
+      }
+    },
+    {
+      "id": "image:seedance-nz:krea-v3-t2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "krea-v3-t2i",
+      "label": "krea-v3-t2i",
+      "family": "krea",
+      "available": true,
+      "parameters": {
+        "label": "krea-v3-t2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "krea",
+        "available": true,
+        "tabLabel": "krea",
+        "capabilities": [
+          "t2i"
+        ],
+        "parameterKind": "g26-krea",
+        "aspectRatios": [],
+        "defaultAspectRatio": "",
+        "sizes": [],
+        "defaultSize": "",
+        "supportsReference": false,
+        "maxReferenceImages": 0
+      }
+    },
+    {
+      "id": "image:seedance-nz:mai-image-2-6",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "mai-image-2-6",
+      "label": "mai-image-2-6",
+      "family": "mai-image-2-6",
+      "available": true,
+      "parameters": {
+        "label": "mai-image-2-6",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "mai-image-2-6",
+        "available": true,
+        "tabLabel": "Mai",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "mai-image",
+        "supportsReference": true,
+        "maxReferenceImages": 5,
+        "sizes": [
+          "1k",
+          "2k"
+        ],
+        "aspectRatios": [
+          "auto",
+          "1:1",
+          "16:9",
+          "9:16",
+          "4:3",
+          "3:4",
+          "3:2",
+          "2:3",
+          "4:5",
+          "5:4",
+          "21:9",
+          "9:21",
+          "1:4",
+          "4:1",
+          "custom_ratio",
+          "custom_pixels"
+        ],
+        "defaultSize": "1k",
+        "defaultAspectRatio": "1:1",
+        "maxOutputs": 1,
+        "referenceSizing": "upstream-controlled",
+        "webGrounding": true,
+        "nativeSeed": false,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:mai-image-2-6-flash",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "mai-image-2-6-flash",
+      "label": "mai-image-2-6-flash",
+      "family": "mai-image-2-6",
+      "available": true,
+      "parameters": {
+        "label": "mai-image-2-6-flash",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "mai-image-2-6",
+        "available": true,
+        "tabLabel": "Mai",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "mai-image",
+        "supportsReference": true,
+        "maxReferenceImages": 5,
+        "sizes": [
+          "1k",
+          "2k"
+        ],
+        "aspectRatios": [
+          "auto",
+          "1:1",
+          "16:9",
+          "9:16",
+          "4:3",
+          "3:4",
+          "3:2",
+          "2:3",
+          "4:5",
+          "5:4",
+          "21:9",
+          "9:21",
+          "1:4",
+          "4:1",
+          "custom_ratio",
+          "custom_pixels"
+        ],
+        "defaultSize": "1k",
+        "defaultAspectRatio": "1:1",
+        "maxOutputs": 1,
+        "referenceSizing": "upstream-controlled",
+        "webGrounding": true,
+        "nativeSeed": false,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:mai-image-2-7",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "mai-image-2-7",
+      "label": "mai-image-2-7",
+      "family": "mai-image-2-6",
+      "available": true,
+      "parameters": {
+        "label": "mai-image-2-7",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "mai-image-2-6",
+        "available": true,
+        "tabLabel": "Mai",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "mai-image",
+        "supportsReference": true,
+        "maxReferenceImages": 5,
+        "sizes": [
+          "1k",
+          "2k"
+        ],
+        "aspectRatios": [
+          "auto",
+          "1:1",
+          "16:9",
+          "9:16",
+          "4:3",
+          "3:4",
+          "3:2",
+          "2:3",
+          "4:5",
+          "5:4",
+          "21:9",
+          "9:21",
+          "1:4",
+          "4:1",
+          "custom_ratio",
+          "custom_pixels"
+        ],
+        "defaultSize": "1k",
+        "defaultAspectRatio": "1:1",
+        "maxOutputs": 1,
+        "referenceSizing": "upstream-controlled",
+        "webGrounding": true,
+        "nativeSeed": false,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:mai-image-2-7-flash",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "mai-image-2-7-flash",
+      "label": "mai-image-2-7-flash",
+      "family": "mai-image-2-6",
+      "available": true,
+      "parameters": {
+        "label": "mai-image-2-7-flash",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "mai-image-2-6",
+        "available": true,
+        "tabLabel": "Mai",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "mai-image",
+        "supportsReference": true,
+        "maxReferenceImages": 5,
+        "sizes": [
+          "1k",
+          "2k"
+        ],
+        "aspectRatios": [
+          "auto",
+          "1:1",
+          "16:9",
+          "9:16",
+          "4:3",
+          "3:4",
+          "3:2",
+          "2:3",
+          "4:5",
+          "5:4",
+          "21:9",
+          "9:21",
+          "1:4",
+          "4:1",
+          "custom_ratio",
+          "custom_pixels"
+        ],
+        "defaultSize": "1k",
+        "defaultAspectRatio": "1:1",
+        "maxOutputs": 1,
+        "referenceSizing": "upstream-controlled",
+        "webGrounding": true,
+        "nativeSeed": false,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:minimax-h3-image",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-image",
+      "label": "minimax-h3-image",
+      "family": "minimax-h3-image",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-image",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-image",
+        "available": true,
+        "tabLabel": "Minimax H3 Image",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "h3-turbo-image",
+        "aspectRatios": [
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "9:16",
+          "16:9",
+          "21:9",
+          "1:3",
+          "3:1"
+        ],
+        "defaultAspectRatio": "1:1",
+        "sizes": [
+          "1k",
+          "2k",
+          "4k"
+        ],
+        "defaultSize": "2k",
+        "supportsReference": true,
+        "maxReferenceImages": 16,
+        "seedField": "h3TurboSeed",
+        "seedRange": [
+          -1,
+          2147483647
+        ],
+        "originalOutput": true,
+        "outputFormats": [
+          "jpeg",
+          "png",
+          "webp"
+        ],
+        "resolution720pRequiresReferences": false,
+        "sharedParameterContract": "backend/src/shared/h3TurboContract.mjs"
+      }
+    },
+    {
+      "id": "image:seedance-nz:moss-image",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "moss-image",
+      "label": "moss-image",
+      "family": "moss-image",
+      "available": true,
+      "parameters": {
+        "label": "moss-image",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "moss-image",
+        "available": true,
+        "tabLabel": "Moss Image",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "moss-image",
+        "supportsReference": true,
+        "maxReferenceImages": 1,
+        "sizes": [],
+        "aspectRatios": [
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "9:16",
+          "16:9",
+          "21:9"
+        ],
+        "defaultSize": "",
+        "defaultAspectRatio": "9:16",
+        "maxOutputs": 1,
+        "nativeSeed": false,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:qwen-image-2.1-turbo",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "qwen-image-2.1-turbo",
+      "label": "qwen-image-2.1-turbo",
+      "family": "qwen-image-2.1-turbo",
+      "available": true,
+      "parameters": {
+        "label": "qwen-image-2.1-turbo",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "qwen-image-2.1-turbo",
+        "available": true,
+        "tabLabel": "Qwen Image 2.1 Turbo",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "h3-turbo-image",
+        "aspectRatios": [
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "9:16",
+          "16:9",
+          "21:9"
+        ],
+        "defaultAspectRatio": "1:1",
+        "sizes": [
+          "1k",
+          "2k",
+          "720p"
+        ],
+        "defaultSize": "1k",
+        "supportsReference": true,
+        "maxReferenceImages": 4,
+        "seedField": "h3TurboSeed",
+        "seedRange": [
+          -1,
+          2147483647
+        ],
+        "originalOutput": true,
+        "promptMaxUtf8Bytes": 8192,
+        "resolution720pRequiresReferences": true,
+        "sharedParameterContract": "backend/src/shared/h3TurboContract.mjs"
+      }
+    },
+    {
       "id": "image:seedance-nz:qwen-image-3.0-global-i2i",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -1246,6 +2111,104 @@
       }
     },
     {
+      "id": "image:seedance-nz:seedream-v5.5-i2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedream-v5.5-i2i",
+      "label": "seedream-v5.5-i2i",
+      "family": "seedream-v5-pro",
+      "available": true,
+      "parameters": {
+        "label": "seedream-v5.5-i2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedream-v5-pro",
+        "available": true,
+        "tabLabel": "Seedream",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "seedream-v5",
+        "supportsReference": true,
+        "maxReferenceImages": 10,
+        "sharedParameterContract": "backend/src/shared/seedream55DraftContract.mjs",
+        "promptMaxLength": 5000,
+        "referenceMaxBytes": 31457280,
+        "nativeSeed": false,
+        "backgroundModes": [
+          "auto",
+          "transparent",
+          "opaque"
+        ],
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:seedream-v5.5-layer-decomposition",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedream-v5.5-layer-decomposition",
+      "label": "seedream-v5.5-layer-decomposition",
+      "family": "seedream-layer-decomposition",
+      "available": true,
+      "parameters": {
+        "label": "seedream-v5.5-layer-decomposition",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedream-layer-decomposition",
+        "available": true,
+        "tabLabel": "Seedream分层",
+        "capabilities": [
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "seedream-layer",
+        "supportsReference": true,
+        "maxReferenceImages": 1,
+        "sharedParameterContract": "backend/src/shared/seedream55DraftContract.mjs",
+        "promptMaxLength": 2000,
+        "referenceMaxBytes": 31457280,
+        "layerCountRange": [
+          2,
+          100
+        ],
+        "nativeSeed": false,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:seedream-v5.5-t2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedream-v5.5-t2i",
+      "label": "seedream-v5.5-t2i",
+      "family": "seedream-v5-pro",
+      "available": true,
+      "parameters": {
+        "label": "seedream-v5.5-t2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedream-v5-pro",
+        "available": true,
+        "tabLabel": "Seedream",
+        "capabilities": [
+          "t2i"
+        ],
+        "parameterKind": "seedream-v5",
+        "supportsReference": false,
+        "maxReferenceImages": 0,
+        "sharedParameterContract": "backend/src/shared/seedream55DraftContract.mjs",
+        "promptMaxLength": 5000,
+        "referenceMaxBytes": 31457280,
+        "nativeSeed": false,
+        "backgroundModes": [
+          "auto",
+          "transparent",
+          "opaque"
+        ],
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
       "id": "image:seedance-nz:vosr2-image-upscale",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -1339,6 +2302,32 @@
         "supportsReference": false,
         "maxReferenceImages": 0,
         "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:z-image-t2i",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "z-image-t2i",
+      "label": "z-image-t2i",
+      "family": "z-image",
+      "available": true,
+      "parameters": {
+        "label": "z-image-t2i",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "z-image",
+        "available": true,
+        "tabLabel": "z-image",
+        "capabilities": [
+          "t2i"
+        ],
+        "parameterKind": "g26-krea",
+        "aspectRatios": [],
+        "defaultAspectRatio": "",
+        "sizes": [],
+        "defaultSize": "",
+        "supportsReference": false,
+        "maxReferenceImages": 0
       }
     },
     {
@@ -1438,6 +2427,90 @@
         "supportsReference": true,
         "maxReferenceImages": 16,
         "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:zhenzhen-image-g-v2.6-flare",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen-image-g-v2.6-flare",
+      "label": "zhenzhen-image-g-v2.6-flare",
+      "family": "gpt-image-2.6",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen-image-g-v2.6-flare",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "gpt-image-2.6",
+        "available": true,
+        "tabLabel": "gpt-image-2.6",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "g26-krea",
+        "aspectRatios": [],
+        "defaultAspectRatio": "",
+        "sizes": [],
+        "defaultSize": "",
+        "supportsReference": true,
+        "maxReferenceImages": 16
+      }
+    },
+    {
+      "id": "image:seedance-nz:zhenzhen-image-g-v2.6-lowprice",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen-image-g-v2.6-lowprice",
+      "label": "zhenzhen-image-g-v2.6-lowprice",
+      "family": "gpt-image-2.6",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen-image-g-v2.6-lowprice",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "gpt-image-2.6",
+        "available": true,
+        "tabLabel": "gpt-image-2.6",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "g26-krea",
+        "aspectRatios": [],
+        "defaultAspectRatio": "",
+        "sizes": [],
+        "defaultSize": "",
+        "supportsReference": true,
+        "maxReferenceImages": 16
+      }
+    },
+    {
+      "id": "image:seedance-nz:zhenzhen-image-g-v2.6-sunburst",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen-image-g-v2.6-sunburst",
+      "label": "zhenzhen-image-g-v2.6-sunburst",
+      "family": "gpt-image-2.6",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen-image-g-v2.6-sunburst",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "gpt-image-2.6",
+        "available": true,
+        "tabLabel": "gpt-image-2.6",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "g26-krea",
+        "aspectRatios": [],
+        "defaultAspectRatio": "",
+        "sizes": [],
+        "defaultSize": "",
+        "supportsReference": true,
+        "maxReferenceImages": 16
       }
     },
     {
@@ -1631,6 +2704,88 @@
       }
     },
     {
+      "id": "image:seedance-nz:zhenzhen-image-hy-v3.5-preview",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen-image-hy-v3.5-preview",
+      "label": "zhenzhen-image-hy-v3.5-preview",
+      "family": "zhenzhen-image-hy-v3.5-preview",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen-image-hy-v3.5-preview",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "zhenzhen-image-hy-v3.5-preview",
+        "available": true,
+        "tabLabel": "Hunyuan Image",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "preview-image",
+        "aspectRatios": [
+          "auto",
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "9:16",
+          "16:9",
+          "21:9",
+          "custom"
+        ],
+        "defaultAspectRatio": "auto",
+        "sizes": [
+          "1K",
+          "2K",
+          "4K"
+        ],
+        "defaultSize": "1K",
+        "supportsReference": true,
+        "maxReferenceImages": 5
+      }
+    },
+    {
+      "id": "image:seedance-nz:zhenzhen-image-muse",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen-image-muse",
+      "label": "zhenzhen-image-muse",
+      "family": "zhenzhen-image-muse",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen-image-muse",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "zhenzhen-image-muse",
+        "available": true,
+        "tabLabel": "Muse Image",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "preview-image",
+        "aspectRatios": [
+          "auto",
+          "1:1",
+          "16:9",
+          "9:16",
+          "4:3",
+          "3:4",
+          "3:2",
+          "2:3"
+        ],
+        "defaultAspectRatio": "auto",
+        "sizes": [],
+        "defaultSize": "",
+        "supportsReference": true,
+        "maxReferenceImages": 9
+      }
+    },
+    {
       "id": "image:seedance-nz:zhenzhen-image-nb-2",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -1681,6 +2836,106 @@
       }
     },
     {
+      "id": "image:seedance-nz:zhenzhen-image-nb-2.1",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen-image-nb-2.1",
+      "label": "zhenzhen-image-nb-2.1",
+      "family": "nano-banana-2",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen-image-nb-2.1",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "nano-banana-2",
+        "available": true,
+        "tabLabel": "香蕉2",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "seedance-nz-image",
+        "supportsReference": true,
+        "maxReferenceImages": 14,
+        "sizes": [
+          "1k",
+          "2k",
+          "4k"
+        ],
+        "aspectRatios": [
+          "auto",
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "9:16",
+          "16:9",
+          "21:9"
+        ],
+        "defaultSize": "1k",
+        "defaultAspectRatio": "1:1",
+        "maxOutputs": 1,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:zhenzhen-image-nb-2.1-lowprice",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen-image-nb-2.1-lowprice",
+      "label": "zhenzhen-image-nb-2.1-lowprice",
+      "family": "nano-banana-2",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen-image-nb-2.1-lowprice",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "nano-banana-2",
+        "available": true,
+        "tabLabel": "香蕉2",
+        "aspectRatios": [
+          "auto",
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "9:16",
+          "16:9",
+          "21:9",
+          "1:4",
+          "4:1",
+          "1:8",
+          "8:1"
+        ],
+        "sizes": [
+          "1K",
+          "2K",
+          "4K"
+        ],
+        "defaultSize": "1K",
+        "defaultAspectRatio": "1:1",
+        "fixedOutputCount": 1,
+        "promptCharacters": {
+          "min": 1,
+          "max": 5000
+        },
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "seedance-nz-image",
+        "supportsReference": true,
+        "maxReferenceImages": 14,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
       "id": "image:seedance-nz:zhenzhen-image-nb-pro",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -1694,6 +2949,56 @@
         "family": "nano-banana-pro",
         "available": true,
         "tabLabel": "香蕉Pro",
+        "capabilities": [
+          "t2i",
+          "i2i",
+          "edit"
+        ],
+        "parameterKind": "seedance-nz-image",
+        "supportsReference": true,
+        "maxReferenceImages": 14,
+        "description": "贞贞的平价AI小屋图像模型"
+      }
+    },
+    {
+      "id": "image:seedance-nz:zhenzhen-image-nb-pro-lowprice",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen-image-nb-pro-lowprice",
+      "label": "zhenzhen-image-nb-pro-lowprice",
+      "family": "nano-banana-2",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen-image-nb-pro-lowprice",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "nano-banana-2",
+        "available": true,
+        "tabLabel": "香蕉2",
+        "aspectRatios": [
+          "auto",
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "9:16",
+          "16:9",
+          "21:9"
+        ],
+        "sizes": [
+          "1K",
+          "2K",
+          "4K"
+        ],
+        "defaultSize": "1K",
+        "defaultAspectRatio": "1:1",
+        "fixedOutputCount": 1,
+        "promptCharacters": {
+          "min": 1,
+          "max": 5000
+        },
         "capabilities": [
           "t2i",
           "i2i",
@@ -3830,6 +5135,94 @@
       }
     },
     {
+      "id": "video:seedance-nz:heygen-avatar-6",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "heygen-avatar-6",
+      "label": "heygen-avatar-6",
+      "family": "heygen-avatar-6",
+      "available": true,
+      "parameters": {
+        "label": "heygen-avatar-6",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "heygen-avatar-6",
+        "available": true,
+        "nodeKind": "heygen",
+        "ratios": [
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:5",
+          "5:4"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [],
+        "resolutions": [
+          "1080p",
+          "2k"
+        ],
+        "defaultResolution": "1080p",
+        "supportsImages": false,
+        "supportsVideos": false,
+        "supportsAudios": true,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 1,
+        "sharedParameterContract": "backend/src/shared/nov21ModelsContract.mjs",
+        "endpoint": "/v1/video/generations",
+        "durationFromInput": true,
+        "promptMaxCharacters": 5000,
+        "avatarField": "heygenAvatar",
+        "voiceField": "heygenVoice",
+        "motionField": "heygenMotionPrompt",
+        "audioExcludesPromptAndVoice": true
+      }
+    },
+    {
+      "id": "video:seedance-nz:heygen-avatar-6-turbo",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "heygen-avatar-6-turbo",
+      "label": "heygen-avatar-6-turbo",
+      "family": "heygen-avatar-6",
+      "available": true,
+      "parameters": {
+        "label": "heygen-avatar-6-turbo",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "heygen-avatar-6",
+        "available": true,
+        "nodeKind": "heygen",
+        "ratios": [
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:5",
+          "5:4"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [],
+        "resolutions": [
+          "1080p",
+          "2k"
+        ],
+        "defaultResolution": "1080p",
+        "supportsImages": false,
+        "supportsVideos": false,
+        "supportsAudios": true,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 1,
+        "sharedParameterContract": "backend/src/shared/nov21ModelsContract.mjs",
+        "endpoint": "/v1/video/generations",
+        "durationFromInput": true,
+        "promptMaxCharacters": 5000,
+        "avatarField": "heygenAvatar",
+        "voiceField": "heygenVoice",
+        "motionField": "heygenMotionPrompt",
+        "audioExcludesPromptAndVoice": true
+      }
+    },
+    {
       "id": "video:seedance-nz:kling-o3-4k-i2v",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -4670,6 +6063,206 @@
       }
     },
     {
+      "id": "video:seedance-nz:kling-v4-custom-element",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "kling-v4-custom-element",
+      "label": "kling-v4-custom-element",
+      "family": "kling-v3.0",
+      "available": true,
+      "parameters": {
+        "label": "kling-v4-custom-element",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "kling-v3.0",
+        "available": true,
+        "nodeKind": "kling",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          10
+        ],
+        "defaultDuration": 5,
+        "resolutions": [],
+        "defaultResolution": "",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 4,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "Kling · 文生/图生/首尾帧/O3 参考生视频与视频编辑"
+      }
+    },
+    {
+      "id": "video:seedance-nz:kling-v4-custom-voice",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "kling-v4-custom-voice",
+      "label": "kling-v4-custom-voice",
+      "family": "kling-v3.0",
+      "available": true,
+      "parameters": {
+        "label": "kling-v4-custom-voice",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "kling-v3.0",
+        "available": true,
+        "nodeKind": "kling",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          10
+        ],
+        "defaultDuration": 5,
+        "resolutions": [],
+        "defaultResolution": "",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 4,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "Kling · 文生/图生/首尾帧/O3 参考生视频与视频编辑"
+      }
+    },
+    {
+      "id": "video:seedance-nz:kling-v4-i2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "kling-v4-i2v",
+      "label": "kling-v4-i2v",
+      "family": "kling-v3.0",
+      "available": true,
+      "parameters": {
+        "label": "kling-v4-i2v",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "kling-v3.0",
+        "available": true,
+        "nodeKind": "kling",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          10
+        ],
+        "defaultDuration": 5,
+        "resolutions": [],
+        "defaultResolution": "",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 4,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "Kling · 文生/图生/首尾帧/O3 参考生视频与视频编辑"
+      }
+    },
+    {
+      "id": "video:seedance-nz:kling-v4-omni",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "kling-v4-omni",
+      "label": "kling-v4-omni",
+      "family": "kling-v3.0",
+      "available": true,
+      "parameters": {
+        "label": "kling-v4-omni",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "kling-v3.0",
+        "available": true,
+        "nodeKind": "kling",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          10
+        ],
+        "defaultDuration": 5,
+        "resolutions": [],
+        "defaultResolution": "",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 4,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "Kling · 文生/图生/首尾帧/O3 参考生视频与视频编辑"
+      }
+    },
+    {
+      "id": "video:seedance-nz:kling-v4-t2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "kling-v4-t2v",
+      "label": "kling-v4-t2v",
+      "family": "kling-v3.0",
+      "available": true,
+      "parameters": {
+        "label": "kling-v4-t2v",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "kling-v3.0",
+        "available": true,
+        "nodeKind": "kling",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          10
+        ],
+        "defaultDuration": 5,
+        "resolutions": [],
+        "defaultResolution": "",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 4,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "Kling · 文生/图生/首尾帧/O3 参考生视频与视频编辑"
+      }
+    },
+    {
       "id": "video:seedance-nz:mini",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -4785,6 +6378,518 @@
         "maxReferenceVideos": 3,
         "maxReferenceAudios": 4,
         "description": "MiniMax-H3 独立 V2 协议；支持纯文本、首尾关键帧、多模态参考与驱动音频。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:minimax-h3-comfyui-charswap",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-comfyui-charswap",
+      "label": "minimax-h3-comfyui-charswap",
+      "family": "minimax-h3-comfyui-max",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-comfyui-charswap",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-comfyui-max",
+        "available": true,
+        "nodeKind": "h3-lowprice",
+        "ratios": [
+          "auto",
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:3",
+          "3:4",
+          "21:9"
+        ],
+        "defaultRatio": "auto",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "768p",
+          "1088p",
+          "auto"
+        ],
+        "defaultResolution": "768p",
+        "supportsImages": true,
+        "supportsVideos": true,
+        "supportsAudios": false,
+        "maxReferenceImages": 9,
+        "maxReferenceVideos": 1,
+        "maxReferenceAudios": 0,
+        "sharedParameterContract": "backend/src/shared/h3TurboContract.mjs",
+        "nativeSeed": true,
+        "seedField": "h3ComfySeed",
+        "framesField": "h3ComfyFrames",
+        "durationModeField": "h3ComfyDurationMode",
+        "framesRange": {
+          "min": 22,
+          "max": 362,
+          "step": 17
+        }
+      }
+    },
+    {
+      "id": "video:seedance-nz:minimax-h3-comfyui-charswap-token",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-comfyui-charswap-token",
+      "label": "minimax-h3-comfyui-charswap-token",
+      "family": "minimax-h3-comfyui-max",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-comfyui-charswap-token",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-comfyui-max",
+        "available": true,
+        "nodeKind": "h3-lowprice",
+        "ratios": [
+          "auto"
+        ],
+        "defaultRatio": "auto",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "768p"
+        ],
+        "defaultResolution": "768p",
+        "supportsImages": true,
+        "supportsVideos": true,
+        "supportsAudios": false,
+        "maxReferenceImages": 5,
+        "maxReferenceVideos": 1,
+        "maxReferenceAudios": 0,
+        "sharedParameterContract": "backend/src/shared/h3TurboContract.mjs",
+        "nativeSeed": false,
+        "fixedResolution": "768p",
+        "minimumReferenceImages": 1,
+        "audioLimitPerFile": true,
+        "framesField": "h3ComfyFrames",
+        "durationModeField": "h3ComfyDurationMode",
+        "framesRange": {
+          "min": 22,
+          "max": 362,
+          "step": 17
+        },
+        "exactReferenceVideos": 1
+      }
+    },
+    {
+      "id": "video:seedance-nz:minimax-h3-comfyui-digital-human-token",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-comfyui-digital-human-token",
+      "label": "minimax-h3-comfyui-digital-human-token",
+      "family": "minimax-h3-comfyui-max",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-comfyui-digital-human-token",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-comfyui-max",
+        "available": true,
+        "nodeKind": "h3-lowprice",
+        "ratios": [
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:3",
+          "3:4",
+          "3:2",
+          "2:3",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "768p"
+        ],
+        "defaultResolution": "768p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": true,
+        "maxReferenceImages": 1,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 1,
+        "sharedParameterContract": "backend/src/shared/h3TurboContract.mjs",
+        "nativeSeed": false,
+        "fixedResolution": "768p",
+        "minimumReferenceImages": 1,
+        "audioLimitPerFile": true,
+        "exactReferenceAudios": 1,
+        "audioMustFitDuration": true
+      }
+    },
+    {
+      "id": "video:seedance-nz:minimax-h3-comfyui-max",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-comfyui-max",
+      "label": "minimax-h3-comfyui-max",
+      "family": "minimax-h3-comfyui-max",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-comfyui-max",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-comfyui-max",
+        "available": true,
+        "nodeKind": "h3-lowprice",
+        "ratios": [
+          "16:9",
+          "9:16"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "608p",
+          "768p",
+          "896p",
+          "1088p",
+          "1280p",
+          "1440p"
+        ],
+        "defaultResolution": "480p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": true,
+        "maxReferenceImages": 9,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 3,
+        "sharedParameterContract": "backend/src/shared/h3TurboContract.mjs",
+        "nativeSeed": false,
+        "seedField": "h3ComfySeed"
+      }
+    },
+    {
+      "id": "video:seedance-nz:minimax-h3-comfyui-max-10020",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-comfyui-max-10020",
+      "label": "minimax-h3-comfyui-max-10020",
+      "family": "minimax-h3-comfyui-max",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-comfyui-max-10020",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-comfyui-max",
+        "available": true,
+        "nodeKind": "h3-lowprice",
+        "ratios": [
+          "16:9",
+          "9:16"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "608p",
+          "672p",
+          "768p"
+        ],
+        "defaultResolution": "480p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": true,
+        "maxReferenceImages": 6,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 3,
+        "sharedParameterContract": "backend/src/shared/h3TurboContract.mjs",
+        "nativeSeed": false,
+        "seedField": "h3ComfySeed"
+      }
+    },
+    {
+      "id": "video:seedance-nz:minimax-h3-comfyui-max-10020-token",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-comfyui-max-10020-token",
+      "label": "minimax-h3-comfyui-max-10020-token",
+      "family": "minimax-h3-comfyui-max",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-comfyui-max-10020-token",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-comfyui-max",
+        "available": true,
+        "nodeKind": "h3-lowprice",
+        "ratios": [
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:3",
+          "3:4",
+          "3:2",
+          "2:3",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "768p"
+        ],
+        "defaultResolution": "768p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": true,
+        "maxReferenceImages": 6,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 3,
+        "sharedParameterContract": "backend/src/shared/h3TurboContract.mjs",
+        "nativeSeed": false,
+        "fixedResolution": "768p",
+        "minimumReferenceImages": 1,
+        "audioLimitPerFile": true
+      }
+    },
+    {
+      "id": "video:seedance-nz:minimax-h3-comfyui-max-10021",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-comfyui-max-10021",
+      "label": "minimax-h3-comfyui-max-10021",
+      "family": "minimax-h3-comfyui-max",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-comfyui-max-10021",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-comfyui-max",
+        "available": true,
+        "nodeKind": "h3-lowprice",
+        "ratios": [
+          "16:9",
+          "9:16"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "608p",
+          "672p",
+          "768p"
+        ],
+        "defaultResolution": "480p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": true,
+        "maxReferenceImages": 9,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 3,
+        "sharedParameterContract": "backend/src/shared/h3TurboContract.mjs",
+        "nativeSeed": false,
+        "seedField": "h3ComfySeed"
+      }
+    },
+    {
+      "id": "video:seedance-nz:minimax-h3-comfyui-max-10021-token",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-comfyui-max-10021-token",
+      "label": "minimax-h3-comfyui-max-10021-token",
+      "family": "minimax-h3-comfyui-max",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-comfyui-max-10021-token",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-comfyui-max",
+        "available": true,
+        "nodeKind": "h3-lowprice",
+        "ratios": [
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:3",
+          "3:4",
+          "3:2",
+          "2:3",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "768p"
+        ],
+        "defaultResolution": "768p",
+        "supportsImages": true,
+        "supportsVideos": true,
+        "supportsAudios": true,
+        "maxReferenceImages": 6,
+        "maxReferenceVideos": 1,
+        "maxReferenceAudios": 3,
+        "sharedParameterContract": "backend/src/shared/h3TurboContract.mjs",
+        "nativeSeed": false,
+        "fixedResolution": "768p",
+        "minimumReferenceImages": 1,
+        "audioLimitPerFile": true
+      }
+    },
+    {
+      "id": "video:seedance-nz:minimax-h3-comfyui-wuxi",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "minimax-h3-comfyui-wuxi",
+      "label": "minimax-h3-comfyui-wuxi",
+      "family": "minimax-h3-comfyui-max",
+      "available": true,
+      "parameters": {
+        "label": "minimax-h3-comfyui-wuxi",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "minimax-h3-comfyui-max",
+        "available": true,
+        "nodeKind": "h3-lowprice",
+        "ratios": [
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:3",
+          "3:4",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "704p",
+          "768p",
+          "928p",
+          "1088p",
+          "1440p",
+          "2160p"
+        ],
+        "defaultResolution": "480p",
+        "supportsImages": true,
+        "supportsVideos": true,
+        "supportsAudios": true,
+        "maxReferenceImages": 9,
+        "maxReferenceVideos": 3,
+        "maxReferenceAudios": 3,
+        "sharedParameterContract": "backend/src/shared/h3TurboContract.mjs",
+        "nativeSeed": true,
+        "seedField": "h3ComfySeed"
       }
     },
     {
@@ -5148,6 +7253,530 @@
       }
     },
     {
+      "id": "video:seedance-nz:seedance-2.5-flash-i2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-flash-i2v",
+      "label": "seedance-2.5-flash-i2v（首尾帧图生视频）",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-flash-i2v（首尾帧图生视频）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [
+          "adaptive"
+        ],
+        "defaultRatio": "adaptive",
+        "durations": [
+          -1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 2,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "1-2 张图片，依次作为首帧和可选尾帧；提示词可选。",
+        "sharedParameterContract": "backend/src/shared/seedance25FlashContract.mjs",
+        "supportsDraft": false,
+        "referenceTaskTypes": [
+          "auto",
+          "reference",
+          "edit",
+          "extend"
+        ],
+        "referenceTaskTypeField": "seedance25ReferenceTaskType",
+        "referenceDuration": {
+          "min": 2,
+          "max": 30,
+          "totalMax": 30
+        }
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-flash-multi",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-flash-multi",
+      "label": "seedance-2.5-flash-multi（多模态参考）",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-flash-multi（多模态参考）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          -1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": true,
+        "supportsAudios": true,
+        "maxReferenceImages": 10,
+        "maxReferenceVideos": 5,
+        "maxReferenceAudios": 5,
+        "description": "10 images / 5 videos / 5 audios",
+        "sharedParameterContract": "backend/src/shared/seedance25FlashContract.mjs",
+        "supportsDraft": false,
+        "referenceTaskTypes": [
+          "auto",
+          "reference",
+          "edit",
+          "extend"
+        ],
+        "referenceTaskTypeField": "seedance25ReferenceTaskType",
+        "referenceDuration": {
+          "min": 2,
+          "max": 30,
+          "totalMax": 30
+        }
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-flash-t2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-flash-t2v",
+      "label": "seedance-2.5-flash-t2v（文生视频）",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-flash-t2v（文生视频）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          -1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": false,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "仅提示词；不发送参考素材。",
+        "sharedParameterContract": "backend/src/shared/seedance25FlashContract.mjs",
+        "supportsDraft": false,
+        "referenceTaskTypes": [
+          "auto",
+          "reference",
+          "edit",
+          "extend"
+        ],
+        "referenceTaskTypeField": "seedance25ReferenceTaskType",
+        "referenceDuration": {
+          "min": 2,
+          "max": 30,
+          "totalMax": 30
+        }
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-global-flash-i2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-global-flash-i2v",
+      "label": "seedance-2.5-global-flash-i2v（首尾帧图生视频）",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-global-flash-i2v（首尾帧图生视频）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [
+          "adaptive"
+        ],
+        "defaultRatio": "adaptive",
+        "durations": [
+          -1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 2,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "1-2 张图片，依次作为首帧和可选尾帧；提示词可选。",
+        "sharedParameterContract": "backend/src/shared/seedance25FlashContract.mjs",
+        "supportsDraft": false,
+        "referenceTaskTypes": [
+          "auto",
+          "reference",
+          "edit",
+          "extend"
+        ],
+        "referenceTaskTypeField": "seedance25ReferenceTaskType",
+        "referenceDuration": {
+          "min": 2,
+          "max": 30,
+          "totalMax": 30
+        }
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-global-flash-multi",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-global-flash-multi",
+      "label": "seedance-2.5-global-flash-multi（多模态参考）",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-global-flash-multi（多模态参考）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          -1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": true,
+        "supportsAudios": true,
+        "maxReferenceImages": 10,
+        "maxReferenceVideos": 5,
+        "maxReferenceAudios": 5,
+        "description": "10 images / 5 videos / 5 audios",
+        "sharedParameterContract": "backend/src/shared/seedance25FlashContract.mjs",
+        "supportsDraft": false,
+        "referenceTaskTypes": [
+          "auto",
+          "reference",
+          "edit",
+          "extend"
+        ],
+        "referenceTaskTypeField": "seedance25ReferenceTaskType",
+        "referenceDuration": {
+          "min": 2,
+          "max": 30,
+          "totalMax": 30
+        }
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-global-flash-t2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-global-flash-t2v",
+      "label": "seedance-2.5-global-flash-t2v（文生视频）",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-global-flash-t2v（文生视频）",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [
+          "adaptive",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          -1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "480p",
+          "720p"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": false,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "仅提示词；不发送参考素材。",
+        "sharedParameterContract": "backend/src/shared/seedance25FlashContract.mjs",
+        "supportsDraft": false,
+        "referenceTaskTypes": [
+          "auto",
+          "reference",
+          "edit",
+          "extend"
+        ],
+        "referenceTaskTypeField": "seedance25ReferenceTaskType",
+        "referenceDuration": {
+          "min": 2,
+          "max": 30,
+          "totalMax": 30
+        }
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-global-standard-draft-to-video",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-global-standard-draft-to-video",
+      "label": "seedance-2.5-global-standard-draft-to-video",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-global-standard-draft-to-video",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [],
+        "defaultRatio": "adaptive",
+        "durations": [],
+        "defaultDuration": 5,
+        "resolutions": [],
+        "defaultResolution": "720p",
+        "supportsImages": false,
+        "supportsVideos": true,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 1,
+        "maxReferenceAudios": 0,
+        "description": "480P draft → native1080p",
+        "noPrompt": true,
+        "inputMode": "completed-draft-task-id",
+        "draftTaskIdField": "seedance25DraftTaskId",
+        "outputFormats": [
+          "mp4",
+          "mov"
+        ],
+        "outputResolution": "native1080p",
+        "sharedParameterContract": "backend/src/shared/seedream55DraftContract.mjs"
+      }
+    },
+    {
       "id": "video:seedance-nz:seedance-2.5-global-standard-i2v",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -5364,6 +7993,44 @@
         "maxReferenceVideos": 0,
         "maxReferenceAudios": 0,
         "description": "仅提示词；不发送参考素材。"
+      }
+    },
+    {
+      "id": "video:seedance-nz:seedance-2.5-standard-draft-to-video",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "seedance-2.5-standard-draft-to-video",
+      "label": "seedance-2.5-standard-draft-to-video",
+      "family": "seedance-2.5",
+      "available": true,
+      "parameters": {
+        "label": "seedance-2.5-standard-draft-to-video",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seedance-2.5",
+        "available": true,
+        "nodeKind": "seedance25",
+        "ratios": [],
+        "defaultRatio": "adaptive",
+        "durations": [],
+        "defaultDuration": 5,
+        "resolutions": [],
+        "defaultResolution": "720p",
+        "supportsImages": false,
+        "supportsVideos": true,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 1,
+        "maxReferenceAudios": 0,
+        "description": "480P draft → native1080p",
+        "noPrompt": true,
+        "inputMode": "completed-draft-task-id",
+        "draftTaskIdField": "seedance25DraftTaskId",
+        "outputFormats": [
+          "mp4",
+          "mov"
+        ],
+        "outputResolution": "native1080p",
+        "sharedParameterContract": "backend/src/shared/seedream55DraftContract.mjs"
       }
     },
     {
@@ -5599,6 +8266,51 @@
         "family": "seedance-2.0",
         "available": true,
         "apiSource": "seedance-nz"
+      }
+    },
+    {
+      "id": "video:seedance-nz:Topaz-Upscale-LowPirce",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "Topaz-Upscale-LowPirce",
+      "label": "Topaz-Upscale-LowPirce",
+      "family": "Topaz-Upscale-LowPirce",
+      "available": true,
+      "parameters": {
+        "label": "Topaz-Upscale-LowPirce",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "Topaz-Upscale-LowPirce",
+        "available": true,
+        "nodeKind": "upscaler",
+        "ratios": [],
+        "defaultRatio": "",
+        "durations": [],
+        "resolutions": [
+          "720p",
+          "1080p",
+          "2K",
+          "4K"
+        ],
+        "defaultResolution": "1080p",
+        "supportsImages": false,
+        "supportsVideos": true,
+        "supportsAudios": false,
+        "maxReferenceImages": 0,
+        "maxReferenceVideos": 1,
+        "maxReferenceAudios": 0,
+        "description": "Topaz · 单个 MP4 视频高清修复，保持原始宽高比",
+        "restorationModels": [
+          "Ultra",
+          "Max",
+          "High",
+          "Medium",
+          "Low"
+        ],
+        "defaultRestorationModel": "Max",
+        "restorationModelField": "topazQuality",
+        "inputVideoUrlField": "topazVideoUrl",
+        "endpoint": "/v1/video/generations",
+        "noPrompt": true
       }
     },
     {
@@ -6412,6 +9124,218 @@
       }
     },
     {
+      "id": "video:seedance-nz:vidu-q4-preview-global-i2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "vidu-q4-preview-global-i2v",
+      "label": "vidu-q4-preview-global-i2v",
+      "family": "vidu-q3",
+      "available": true,
+      "parameters": {
+        "label": "vidu-q4-preview-global-i2v",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "vidu-q3",
+        "available": true,
+        "nodeKind": "vidu",
+        "ratios": [],
+        "defaultRatio": "16:9",
+        "durations": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "540p",
+          "720p",
+          "1080p",
+          "2k",
+          "4k"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 1,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "Vidu Q3 · 文生/图生/首尾帧/参考生视频/短剧成片"
+      }
+    },
+    {
+      "id": "video:seedance-nz:vidu-q4-preview-global-r2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "vidu-q4-preview-global-r2v",
+      "label": "vidu-q4-preview-global-r2v",
+      "family": "vidu-q3",
+      "available": true,
+      "parameters": {
+        "label": "vidu-q4-preview-global-r2v",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "vidu-q3",
+        "available": true,
+        "nodeKind": "vidu",
+        "ratios": [
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:3",
+          "3:4"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "540p",
+          "720p",
+          "1080p",
+          "2k",
+          "4k"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": true,
+        "maxReferenceImages": 15,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 3,
+        "description": "Vidu Q3 · 文生/图生/首尾帧/参考生视频/短剧成片"
+      }
+    },
+    {
+      "id": "video:seedance-nz:vidu-q4-preview-i2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "vidu-q4-preview-i2v",
+      "label": "vidu-q4-preview-i2v",
+      "family": "vidu-q3",
+      "available": true,
+      "parameters": {
+        "label": "vidu-q4-preview-i2v",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "vidu-q3",
+        "available": true,
+        "nodeKind": "vidu",
+        "ratios": [],
+        "defaultRatio": "16:9",
+        "durations": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "540p",
+          "720p",
+          "1080p",
+          "2k",
+          "4k"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 1,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0,
+        "description": "Vidu Q3 · 文生/图生/首尾帧/参考生视频/短剧成片"
+      }
+    },
+    {
+      "id": "video:seedance-nz:vidu-q4-preview-r2v",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "vidu-q4-preview-r2v",
+      "label": "vidu-q4-preview-r2v",
+      "family": "vidu-q3",
+      "available": true,
+      "parameters": {
+        "label": "vidu-q4-preview-r2v",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "vidu-q3",
+        "available": true,
+        "nodeKind": "vidu",
+        "ratios": [
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:3",
+          "3:4"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16
+        ],
+        "defaultDuration": 5,
+        "resolutions": [
+          "540p",
+          "720p",
+          "1080p",
+          "2k",
+          "4k"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": true,
+        "maxReferenceImages": 15,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 3,
+        "description": "Vidu Q3 · 文生/图生/首尾帧/参考生视频/短剧成片"
+      }
+    },
+    {
       "id": "video:seedance-nz:vosr2-video-upscale",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -7131,6 +10055,57 @@
       }
     },
     {
+      "id": "video:seedance-nz:zhenzhen-video-g-omni-1.2-flash-lowprice",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen-video-g-omni-1.2-flash-lowprice",
+      "label": "zhenzhen-video-g-omni-1.2-flash-lowprice",
+      "family": "veo3.1",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen-video-g-omni-1.2-flash-lowprice",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "veo3.1",
+        "available": true,
+        "nodeKind": "veo",
+        "ratios": [
+          "16:9",
+          "9:16"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "defaultDuration": 3,
+        "resolutions": [
+          "360p",
+          "720p",
+          "1080p",
+          "4k"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": true,
+        "supportsAudios": false,
+        "maxReferenceImages": 10,
+        "maxReferenceVideos": 1,
+        "maxReferenceAudios": 0,
+        "description": "Google Veo 系列 (默认 veo-omni-10s)"
+      }
+    },
+    {
       "id": "video:seedance-nz:zhenzhen-video-g-omni-flash",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -7241,6 +10216,102 @@
         "maxReferenceVideos": 0,
         "maxReferenceAudios": 0,
         "description": "xAI Grok Video (最多 7 张参考图)"
+      }
+    },
+    {
+      "id": "video:seedance-nz:zhenzhen-video-kling-v4-flash",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen-video-kling-v4-flash",
+      "label": "zhenzhen-video-kling-v4-flash",
+      "family": "kling-v3.0",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen-video-kling-v4-flash",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "kling-v3.0",
+        "available": true,
+        "nodeKind": "kling",
+        "ratios": [
+          "16:9",
+          "9:16",
+          "1:1",
+          "21:9"
+        ],
+        "defaultRatio": "16:9",
+        "durations": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "defaultDuration": 3,
+        "resolutions": [
+          "720p"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": true,
+        "supportsAudios": false,
+        "maxReferenceImages": 10,
+        "maxReferenceVideos": 5,
+        "maxReferenceAudios": 0,
+        "description": "Kling · 文生/图生/首尾帧/O3 参考生视频与视频编辑"
+      }
+    },
+    {
+      "id": "video:seedance-nz:zhenzhen-video-muse",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen-video-muse",
+      "label": "zhenzhen-video-muse",
+      "family": "zhenzhen-video-muse",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen-video-muse",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "zhenzhen-video-muse",
+        "available": true,
+        "nodeKind": "muse",
+        "ratios": [
+          "auto",
+          "1:1",
+          "16:9",
+          "9:16",
+          "4:3",
+          "3:4",
+          "3:2",
+          "2:3"
+        ],
+        "defaultRatio": "auto",
+        "durations": [
+          10
+        ],
+        "defaultDuration": 10,
+        "resolutions": [
+          "720p"
+        ],
+        "defaultResolution": "720p",
+        "supportsImages": true,
+        "supportsVideos": false,
+        "supportsAudios": false,
+        "maxReferenceImages": 9,
+        "maxReferenceVideos": 0,
+        "maxReferenceAudios": 0
       }
     },
     {
@@ -8571,6 +11642,267 @@
       }
     },
     {
+      "id": "audio:seedance-nz:doubao-seed-icl-2.0",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "doubao-seed-icl-2.0",
+      "label": "doubao-seed-icl-2.0",
+      "family": "seed-audio",
+      "available": true,
+      "parameters": {
+        "label": "doubao-seed-icl-2.0",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seed-audio",
+        "available": true,
+        "tabLabel": "Seed Audio",
+        "orderedMultiOutput": true,
+        "requiresSameAccountSpeaker": true,
+        "speakerInputHandle": "speaker",
+        "promptCharacters": {
+          "min": 1,
+          "max": 10000
+        },
+        "metadataFields": {
+          "voice_model": {
+            "kind": "select",
+            "default": "seed-tts-2.0-standard",
+            "options": [
+              "api_default",
+              "seed-tts-2.0-standard",
+              "seed-tts-2.0-expressive"
+            ]
+          },
+          "format": {
+            "kind": "select",
+            "default": "mp3",
+            "options": [
+              "mp3",
+              "pcm",
+              "ogg_opus",
+              "wav"
+            ]
+          },
+          "sample_rate": {
+            "kind": "select",
+            "default": "24000",
+            "options": [
+              "8000",
+              "16000",
+              "22050",
+              "24000",
+              "32000",
+              "44100",
+              "48000"
+            ]
+          },
+          "speech_rate": {
+            "kind": "number",
+            "min": -50,
+            "max": 100,
+            "default": 0
+          },
+          "loudness_rate": {
+            "kind": "number",
+            "min": -50,
+            "max": 100,
+            "default": 0
+          },
+          "pitch": {
+            "kind": "number",
+            "min": -12,
+            "max": 12,
+            "default": 0
+          },
+          "explicit_language": {
+            "kind": "select",
+            "options": [
+              "api_default",
+              "zh-cn",
+              "en",
+              "ja",
+              "es-mx",
+              "id",
+              "pt-br",
+              "pt",
+              "ko",
+              "de",
+              "fr",
+              "th",
+              "vi",
+              "ru",
+              "fil",
+              "ms",
+              "ar"
+            ]
+          },
+          "context_texts": {
+            "kind": "textarea",
+            "max": 500
+          },
+          "bit_rate": {
+            "kind": "number",
+            "min": 16000,
+            "max": 160000,
+            "integer": true,
+            "advanced": true
+          },
+          "max_length_to_filter_parenthesis": {
+            "kind": "select",
+            "numeric": true,
+            "options": [
+              "api_default",
+              "0",
+              "100"
+            ],
+            "advanced": true
+          },
+          "silence_duration": {
+            "kind": "number",
+            "min": 0,
+            "max": 30000,
+            "default": 0,
+            "advanced": true
+          },
+          "enable_subtitle": {
+            "kind": "boolean",
+            "advanced": true
+          },
+          "disable_markdown_filter": {
+            "kind": "boolean",
+            "advanced": true
+          },
+          "disable_emoji_filter": {
+            "kind": "boolean",
+            "advanced": true
+          },
+          "enable_latex_tn": {
+            "kind": "boolean",
+            "advanced": true
+          },
+          "aigc_watermark": {
+            "kind": "boolean",
+            "advanced": true
+          },
+          "disable_default_bit_rate": {
+            "kind": "boolean",
+            "advanced": true
+          },
+          "tone_fidelity": {
+            "kind": "boolean",
+            "advanced": true
+          },
+          "aigc_metadata_enable": {
+            "kind": "boolean",
+            "advanced": true
+          },
+          "latex_parser": {
+            "kind": "select",
+            "options": [
+              "api_default",
+              "v2"
+            ],
+            "advanced": true
+          },
+          "section_id": {
+            "kind": "text",
+            "max": 128,
+            "advanced": true
+          },
+          "aigc_metadata_content_producer": {
+            "kind": "text",
+            "max": 128,
+            "advanced": true
+          },
+          "aigc_metadata_produce_id": {
+            "kind": "text",
+            "max": 128,
+            "advanced": true
+          },
+          "aigc_metadata_content_propagator": {
+            "kind": "text",
+            "max": 128,
+            "advanced": true
+          },
+          "aigc_metadata_propagate_id": {
+            "kind": "text",
+            "max": 128,
+            "advanced": true
+          }
+        }
+      }
+    },
+    {
+      "id": "audio:seedance-nz:doubao-voice-clone",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "doubao-voice-clone",
+      "label": "doubao-voice-clone",
+      "family": "seed-audio",
+      "available": true,
+      "parameters": {
+        "label": "doubao-voice-clone",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "seed-audio",
+        "available": true,
+        "tabLabel": "Seed Audio",
+        "orderedMultiOutput": true,
+        "speakerResultField": "result_text",
+        "exactAudioReferences": 1,
+        "encodedSampleMaxBytes": 10485760,
+        "promptCharacters": {
+          "min": 4,
+          "max": 300
+        },
+        "metadataFields": {
+          "custom_speaker_id": {
+            "kind": "text",
+            "max": 256
+          },
+          "language": {
+            "kind": "select",
+            "options": [
+              "api_default",
+              "0",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10",
+              "11",
+              "12",
+              "13",
+              "14",
+              "15",
+              "16",
+              "17",
+              "19",
+              "20",
+              "21"
+            ]
+          },
+          "reference_text": {
+            "kind": "textarea",
+            "max": 2000
+          },
+          "enable_audio_denoise": {
+            "kind": "boolean"
+          },
+          "disable_volume_normalization": {
+            "kind": "boolean"
+          },
+          "speaker_id": {
+            "kind": "text",
+            "advanced": true
+          }
+        }
+      }
+    },
+    {
       "id": "audio:seedance-nz:flowmusic",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -8681,6 +12013,51 @@
       }
     },
     {
+      "id": "audio:seedance-nz:qwen-audio-3.1-tts-flash",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "qwen-audio-3.1-tts-flash",
+      "label": "qwen-audio-3.1-tts-flash",
+      "family": "qwen3-tts",
+      "available": true,
+      "parameters": {
+        "label": "qwen-audio-3.1-tts-flash",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "qwen3-tts",
+        "available": true
+      }
+    },
+    {
+      "id": "audio:seedance-nz:qwen-audio-3.1-tts-next",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "qwen-audio-3.1-tts-next",
+      "label": "qwen-audio-3.1-tts-next",
+      "family": "qwen3-tts",
+      "available": true,
+      "parameters": {
+        "label": "qwen-audio-3.1-tts-next",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "qwen3-tts",
+        "available": true
+      }
+    },
+    {
+      "id": "audio:seedance-nz:qwen-audio-3.1-tts-plus",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "qwen-audio-3.1-tts-plus",
+      "label": "qwen-audio-3.1-tts-plus",
+      "family": "qwen3-tts",
+      "available": true,
+      "parameters": {
+        "label": "qwen-audio-3.1-tts-plus",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "qwen3-tts",
+        "available": true
+      }
+    },
+    {
       "id": "audio:seedance-nz:qwen3-tts-flash",
       "provider": "seedance-nz",
       "platformLabel": "贞贞的平价AI小屋",
@@ -8738,6 +12115,46 @@
         "platformLabel": "贞贞的平价AI小屋",
         "family": "whisper",
         "available": true
+      }
+    },
+    {
+      "id": "audio:seedance-nz:zhenzhen/gm-2.5-flash-tts",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen/gm-2.5-flash-tts",
+      "label": "zhenzhen/gm-2.5-flash-tts",
+      "family": "gemini-tts",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen/gm-2.5-flash-tts",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "gemini-tts",
+        "available": true,
+        "tabLabel": "Gemini 2.5 TTS",
+        "sharedParameterContract": "backend/src/shared/nov21ModelsContract.mjs",
+        "format": "wav",
+        "sampleRate": 24000,
+        "channels": 1
+      }
+    },
+    {
+      "id": "audio:seedance-nz:zhenzhen/gm-2.5-pro-tts",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "model": "zhenzhen/gm-2.5-pro-tts",
+      "label": "zhenzhen/gm-2.5-pro-tts",
+      "family": "gemini-tts",
+      "available": true,
+      "parameters": {
+        "label": "zhenzhen/gm-2.5-pro-tts",
+        "platformLabel": "贞贞的平价AI小屋",
+        "family": "gemini-tts",
+        "available": true,
+        "tabLabel": "Gemini 2.5 TTS",
+        "sharedParameterContract": "backend/src/shared/nov21ModelsContract.mjs",
+        "format": "wav",
+        "sampleRate": 24000,
+        "channels": 1
       }
     },
     {
@@ -9873,6 +13290,134 @@
       }
     },
     {
+      "id": "model3d:seedance-nz:hitem3d-portrait-v2.1-image-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "hitem3d-portrait-v2.1-image-to-3d",
+      "label": "hitem3d-portrait-v2.1-image-to-3d",
+      "family": "hitem3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "hitem3d",
+        "endpoint": "/v1/3d/generations",
+        "orderedImageViews": 1,
+        "minimumReferenceImages": 1,
+        "viewOrder": [
+          "front"
+        ],
+        "requestTypes": [
+          "mesh",
+          "both"
+        ],
+        "resolutions": [
+          "1536pro"
+        ],
+        "face": {
+          "minimum": 100000,
+          "maximum": 2000000
+        }
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:hitem3d-portrait-v2.1-multi-image-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "hitem3d-portrait-v2.1-multi-image-to-3d",
+      "label": "hitem3d-portrait-v2.1-multi-image-to-3d",
+      "family": "hitem3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "hitem3d",
+        "endpoint": "/v1/3d/generations",
+        "orderedImageViews": 4,
+        "minimumReferenceImages": 2,
+        "viewOrder": [
+          "front",
+          "back",
+          "left",
+          "right"
+        ],
+        "requestTypes": [
+          "mesh",
+          "both"
+        ],
+        "resolutions": [
+          "1536pro"
+        ],
+        "face": {
+          "minimum": 100000,
+          "maximum": 2000000
+        }
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:hitem3d-v2-image-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "hitem3d-v2-image-to-3d",
+      "label": "hitem3d-v2-image-to-3d",
+      "family": "hitem3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "hitem3d",
+        "endpoint": "/v1/3d/generations",
+        "orderedImageViews": 1,
+        "minimumReferenceImages": 1,
+        "viewOrder": [
+          "front"
+        ],
+        "requestTypes": [
+          "mesh",
+          "both"
+        ],
+        "resolutions": [
+          "1536",
+          "1536pro"
+        ],
+        "face": {
+          "minimum": 100000,
+          "maximum": 2000000
+        }
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:hitem3d-v2-multi-image-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "hitem3d-v2-multi-image-to-3d",
+      "label": "hitem3d-v2-multi-image-to-3d",
+      "family": "hitem3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "hitem3d",
+        "endpoint": "/v1/3d/generations",
+        "orderedImageViews": 4,
+        "minimumReferenceImages": 2,
+        "viewOrder": [
+          "front",
+          "back",
+          "left",
+          "right"
+        ],
+        "requestTypes": [
+          "mesh",
+          "both"
+        ],
+        "resolutions": [
+          "1536",
+          "1536pro"
+        ],
+        "face": {
+          "minimum": 100000,
+          "maximum": 2000000
+        }
+      }
+    },
+    {
       "id": "model3d:seedance-nz:hunyuan3d-v3.1-image-to-3d",
       "kind": "model3d",
       "provider": "seedance-nz",
@@ -9922,6 +13467,1046 @@
           "Sketch"
         ],
         "enablePbrDefault": false
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:meshy-6-global-image-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "meshy-6-global-image-to-3d",
+      "label": "meshy-6-global-image-to-3d",
+      "family": "meshy",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "meshy",
+        "endpoint": "/v1/3d/generations",
+        "orderedImageViews": 1,
+        "minimumReferenceImages": 1,
+        "viewOrder": [
+          "front"
+        ],
+        "optionalControls": [
+          "topology",
+          "target_polycount",
+          "symmetry_mode",
+          "should_remesh",
+          "enable_pbr",
+          "ta_pose",
+          "should_texture"
+        ]
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:meshy-6-global-text-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "meshy-6-global-text-to-3d",
+      "label": "meshy-6-global-text-to-3d",
+      "family": "meshy",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "meshy",
+        "endpoint": "/v1/3d/generations",
+        "orderedImageViews": 0,
+        "minimumReferenceImages": 0,
+        "viewOrder": [],
+        "optionalControls": [
+          "topology",
+          "target_polycount",
+          "symmetry_mode",
+          "should_remesh",
+          "enable_pbr",
+          "ta_pose",
+          "art_style",
+          "enable_prompt_expansion"
+        ],
+        "prompt": {
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "artStyles": [
+          "realistic",
+          "sculpture"
+        ]
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:miora-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "miora-3d",
+      "label": "miora-3d",
+      "family": "miora-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Miora 3D",
+        "endpoint": "/v1/3d/generations",
+        "viewOrder": [
+          "front",
+          "left",
+          "right",
+          "back",
+          "top",
+          "bottom",
+          "front-left",
+          "front-right"
+        ],
+        "maximumReferenceImages": 8,
+        "sharedParameterContract": "backend/src/shared/nov21ModelsContract.mjs",
+        "preserveAllFiles": true
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-convert",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-convert",
+      "label": "tripo-convert",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "convert",
+        "mode": "convert",
+        "viewOrder": [],
+        "metadataFields": [
+          "model_url",
+          "format",
+          "texture_format",
+          "texture_size",
+          "face_limit",
+          "quad",
+          "force_symmetry",
+          "flatten_bottom",
+          "flatten_bottom_threshold",
+          "scale_factor",
+          "pivot_to_center_bottom",
+          "export_vertex_colors",
+          "bake",
+          "pack_uv",
+          "fbx_preset",
+          "with_animation",
+          "animate_in_place",
+          "part_names",
+          "export_orientation"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-h-v2.5-image-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-h-v2.5-image-to-3d",
+      "label": "tripo-h-v2.5-image-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "image",
+        "viewOrder": [],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-h-v2.5-multiview-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-h-v2.5-multiview-to-3d",
+      "label": "tripo-h-v2.5-multiview-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "multiview",
+        "viewOrder": [
+          "front",
+          "left",
+          "back",
+          "right"
+        ],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-h-v2.5-text-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-h-v2.5-text-to-3d",
+      "label": "tripo-h-v2.5-text-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "text",
+        "viewOrder": [],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-h-v3.0-image-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-h-v3.0-image-to-3d",
+      "label": "tripo-h-v3.0-image-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "image",
+        "viewOrder": [],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-h-v3.0-multiview-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-h-v3.0-multiview-to-3d",
+      "label": "tripo-h-v3.0-multiview-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "multiview",
+        "viewOrder": [
+          "front",
+          "left",
+          "back",
+          "right"
+        ],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-h-v3.0-text-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-h-v3.0-text-to-3d",
+      "label": "tripo-h-v3.0-text-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "text",
+        "viewOrder": [],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-h-v3.1-image-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-h-v3.1-image-to-3d",
+      "label": "tripo-h-v3.1-image-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "image",
+        "viewOrder": [],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-h-v3.1-multiview-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-h-v3.1-multiview-to-3d",
+      "label": "tripo-h-v3.1-multiview-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "multiview",
+        "viewOrder": [
+          "front",
+          "left",
+          "back",
+          "right"
+        ],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-h-v3.1-text-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-h-v3.1-text-to-3d",
+      "label": "tripo-h-v3.1-text-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "text",
+        "viewOrder": [],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-image-to-splat",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-image-to-splat",
+      "label": "tripo-image-to-splat",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "splat",
+        "mode": "image",
+        "viewOrder": [],
+        "metadataFields": [
+          "model_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-mesh-complete",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-mesh-complete",
+      "label": "tripo-mesh-complete",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "mesh",
+        "mode": "mesh",
+        "viewOrder": [],
+        "metadataFields": [
+          "model_url",
+          "seg_type",
+          "image_url",
+          "transform",
+          "granularity",
+          "hint",
+          "segmentation_granularity",
+          "split_by_connectivity",
+          "ref_image_url",
+          "tripo_segment_task_id",
+          "completion_mode",
+          "part_names"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-mesh-segment-v1",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-mesh-segment-v1",
+      "label": "tripo-mesh-segment-v1",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "mesh",
+        "mode": "mesh",
+        "viewOrder": [],
+        "metadataFields": [
+          "model_url",
+          "seg_type",
+          "image_url",
+          "transform",
+          "granularity",
+          "hint",
+          "segmentation_granularity",
+          "split_by_connectivity",
+          "ref_image_url",
+          "tripo_segment_task_id",
+          "completion_mode",
+          "part_names"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-mesh-segment-v2",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-mesh-segment-v2",
+      "label": "tripo-mesh-segment-v2",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "mesh",
+        "mode": "mesh",
+        "viewOrder": [],
+        "metadataFields": [
+          "model_url",
+          "seg_type",
+          "image_url",
+          "transform",
+          "granularity",
+          "hint",
+          "segmentation_granularity",
+          "split_by_connectivity",
+          "ref_image_url",
+          "tripo_segment_task_id",
+          "completion_mode",
+          "part_names"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-mesh-smartsegment",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-mesh-smartsegment",
+      "label": "tripo-mesh-smartsegment",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "mesh",
+        "mode": "mesh",
+        "viewOrder": [],
+        "metadataFields": [
+          "model_url",
+          "seg_type",
+          "image_url",
+          "transform",
+          "granularity",
+          "hint",
+          "segmentation_granularity",
+          "split_by_connectivity",
+          "ref_image_url",
+          "tripo_segment_task_id",
+          "completion_mode",
+          "part_names"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-p-p1-image-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-p-p1-image-to-3d",
+      "label": "tripo-p-p1-image-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "image",
+        "viewOrder": [],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-p-p1-multiview-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-p-p1-multiview-to-3d",
+      "label": "tripo-p-p1-multiview-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "multiview",
+        "viewOrder": [
+          "front",
+          "left",
+          "back",
+          "right"
+        ],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-p-p1-text-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-p-p1-text-to-3d",
+      "label": "tripo-p-p1-text-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "text",
+        "viewOrder": [],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-p-p2-image-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-p-p2-image-to-3d",
+      "label": "tripo-p-p2-image-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "image",
+        "viewOrder": [],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-p-p2-multiview-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-p-p2-multiview-to-3d",
+      "label": "tripo-p-p2-multiview-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "multiview",
+        "viewOrder": [
+          "front",
+          "left",
+          "back",
+          "right"
+        ],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-p-p2-text-to-3d",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-p-p2-text-to-3d",
+      "label": "tripo-p-p2-text-to-3d",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "generate",
+        "mode": "text",
+        "viewOrder": [],
+        "metadataFields": [
+          "face_limit",
+          "texture",
+          "pbr",
+          "export_uv",
+          "texture_quality",
+          "geometry_quality",
+          "quad",
+          "auto_size",
+          "smart_low_poly",
+          "generate_parts",
+          "compress",
+          "texture_alignment",
+          "orientation",
+          "export_orientation",
+          "input_mode",
+          "multiview_task_id",
+          "enable_image_autofix",
+          "negative_prompt",
+          "image_seed",
+          "model_seed",
+          "texture_seed"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-retopology-v1",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-retopology-v1",
+      "label": "tripo-retopology-v1",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "retopology",
+        "mode": "retopology",
+        "viewOrder": [],
+        "metadataFields": [
+          "model_url",
+          "face_limit",
+          "quad",
+          "bake",
+          "part_names"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-retopology-v2",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-retopology-v2",
+      "label": "tripo-retopology-v2",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "retopology",
+        "mode": "retopology",
+        "viewOrder": [],
+        "metadataFields": [
+          "model_url",
+          "face_limit",
+          "quad",
+          "bake",
+          "part_names"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-texture-v2.5",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-texture-v2.5",
+      "label": "tripo-texture-v2.5",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "texture",
+        "mode": "texture",
+        "viewOrder": [],
+        "metadataFields": [
+          "model_url",
+          "texture_prompt_mode",
+          "texture_prompt_text",
+          "texture_image_url",
+          "texture_front_image_url",
+          "texture_left_image_url",
+          "texture_back_image_url",
+          "texture_right_image_url",
+          "style_image_url",
+          "part_names",
+          "pbr",
+          "texture_quality",
+          "texture_alignment",
+          "bake",
+          "texture_seed",
+          "compress"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
+      }
+    },
+    {
+      "id": "model3d:seedance-nz:tripo-texture-v3.0",
+      "kind": "model3d",
+      "provider": "seedance-nz",
+      "platformLabel": "贞贞的平价AI小屋",
+      "action": "tripo-texture-v3.0",
+      "label": "tripo-texture-v3.0",
+      "family": "tripo-3d",
+      "resultKind": "model3d",
+      "parameters": {
+        "tab": "Tripo 3D",
+        "endpoint": "/v1/3d/generations",
+        "family": "texture",
+        "mode": "texture",
+        "viewOrder": [],
+        "metadataFields": [
+          "model_url",
+          "texture_prompt_mode",
+          "texture_prompt_text",
+          "texture_image_url",
+          "texture_front_image_url",
+          "texture_left_image_url",
+          "texture_back_image_url",
+          "texture_right_image_url",
+          "style_image_url",
+          "part_names",
+          "pbr",
+          "texture_quality",
+          "texture_alignment",
+          "bake",
+          "texture_seed",
+          "compress"
+        ],
+        "conditionalFieldContract": "backend/src/shared/tripo3dContract.mjs"
       }
     },
     {
@@ -9997,9 +14582,9 @@
   ],
   "counts": {
     "llm": 34,
-    "image": 63,
-    "video": 131,
-    "audio": 17,
-    "actions": 61
+    "image": 94,
+    "video": 163,
+    "audio": 24,
+    "actions": 93
   }
 }

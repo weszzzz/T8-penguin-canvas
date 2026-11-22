@@ -1,3 +1,16 @@
+import {LongImageControls} from './Nov21Controls';
+import {NOV21,buildLongImageRequest,longImageSettings} from '../../utils/nov21Models';
+import KlingImageControls from './KlingImageControls';
+import {NOV19,buildKlingImageRequest,klingImageSettings} from '../../utils/nov19Models';
+import H3TurboImageControls from './H3TurboImageControls';
+import { H3_TURBO, buildH3ImageRequest } from '../../utils/h3Turbo';
+import Seedream55Controls from './Seedream55Controls';
+import { SEEDREAM55_DRAFT, buildSeedream55Request } from '../../utils/seedream55Draft';
+import PreviewImageControls from './PreviewImageControls';
+import { PREVIEW_MUSE_FLUX, isPreviewImage, isFluxVariant, buildPreviewImageRequest, previewImageSettings, fluxVariantSettings } from '../../utils/previewMuseFlux';
+import { NEW_IMAGE_CONTRACT,NEW_IMAGE_TABS,isNewImageModel,newImageSettings,buildNewImageRequest } from '../../utils/g26Krea';
+import G26KreaControls from './G26KreaControls';
+import {originalImageDisplayUrl,downloadOriginalImage} from '../../utils/mediaPreview';
 import { memo, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react';
@@ -7,6 +20,10 @@ import { useUpstreamMaterials, type Material } from './useUpstreamMaterials';
 import { useOrderedMaterials } from './useOrderedMaterials';
 import MaterialPreviewSection from './MaterialPreviewSection';
 import ReuseResultToggle from './ReuseResultToggle';
+import MaiImageControls from './MaiImageControls';
+import MossImageControls from './MossImageControls';
+import { buildMossImageRequest, MOSS_IMAGE_CONTRACT } from '../../utils/mossImage';
+import { buildMaiImageRequest, maiImageSettings } from '../../utils/maiImage';
 import MentionPromptInput from './MentionPromptInput';
 import SmartImage from '../SmartImage';
 import LazyVideo from '../LazyVideo';
@@ -15,6 +32,9 @@ import { resolveMediaMentions, type MediaMention } from './mediaMentions';
 import historyInputContract from '../../../backend/src/shared/generationHistoryInputContract.json';
 import { SEEDREAM_NZ_FAMILIES, seedreamNzFamily, seedreamNzFamilyChange, seedreamNzRuntimeModel, seedreamNzValidation, type SeedreamNzResolution } from '../../utils/seedreamNzContract';
 import {
+  FLUX3_IMAGE_MODEL, ZHENZHEN_IMAGE_NB_21_MODEL, NB_FLUX_VIDU_CONTRACT,
+  isNbLowpriceModel, NB_LOWPRICE_DOUBAO_CONTRACT,
+  MAI_IMAGE_TAB, isMaiImageModel, MOSS_IMAGE_MODEL,
   IMAGE_MODELS,
   FAL_REGISTRY,
   GPT_FAL_SIZES,
@@ -461,10 +481,21 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   // 子模型变体(对齐 gpt-image-2-web 的 g_model/n_model)
   const savedApiModel = typeof d?.apiModel === 'string' ? d.apiModel : '';
   // 旧画布没有 imageBuiltinSource；保存过平价小屋模型时自动恢复对应平台。
-  const isBudgetImageTab = modelDef.id === 'gpt-image-2'
+  const isH3TurboImage = !isExternalSelected && modelDef.paramKind === 'h3-turbo-image';
+  const isKlingImage = !isExternalSelected && modelDef.paramKind === 'kling-image';
+  const isBudgetImageTab = isKlingImage || isH3TurboImage || modelDef.id === 'gpt-image-2'
     || modelDef.id === 'nano-banana-2'
     || modelDef.id === 'nano-banana-pro'
-    || modelDef.id === 'grok-image';
+    || modelDef.id === 'grok-image'
+    || modelDef.id === FLUX3_IMAGE_MODEL
+    || modelDef.id === MAI_IMAGE_TAB
+    || modelDef.id === MOSS_IMAGE_MODEL || isPreviewImage(modelDef.id) || NEW_IMAGE_TABS.includes(modelDef.id);
+  const isFluxImage = !isExternalSelected && modelDef.id === FLUX3_IMAGE_MODEL;
+  const isPreviewImageTab = !isExternalSelected && isPreviewImage(modelDef.id);
+  const isNewImageTab = !isExternalSelected && NEW_IMAGE_TABS.includes(modelDef.id);
+  const isMaiImage = !isExternalSelected && modelDef.id === MAI_IMAGE_TAB;
+  const isMossImage = !isExternalSelected && modelDef.id === MOSS_IMAGE_MODEL;
+  const maiSettings = maiImageSettings(d || {},savedApiModel);
   const isQwenImageTab = modelDef.paramKind === 'qwen-image-3.0';
   const isQwenImage21Tab = modelDef.paramKind === 'qwen-image-global-2.1';
   const isSeedreamLayerTab = modelDef.paramKind === 'seedream-layer';
@@ -472,7 +503,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   const isVosr2ImageTab = modelDef.paramKind === 'vosr2-upscale';
   const isZhenzhenBudgetImageSelected = !isExternalSelected
     && isBudgetImageTab
-    && (d?.imageBuiltinSource === 'seedance-nz' || isZhenzhenBudgetImageModel(savedApiModel));
+    && (isH3TurboImage || isNewImageTab || isPreviewImageTab || isFluxImage || isMaiImage || isKlingImage || isMossImage || d?.imageBuiltinSource === 'seedance-nz' || isZhenzhenBudgetImageModel(savedApiModel));
   const isZhenzhenBudgetMjSelected = !isExternalSelected
     && modelDef.paramKind === 'mj'
     && d?.imageBuiltinSource === 'seedance-nz';
@@ -483,7 +514,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
     || isSeedreamLayerTab
     || isWanImageTab
     || isVosr2ImageTab;
-  const budgetDefaultApiModel = modelDef.id === 'grok-image'
+  const budgetDefaultApiModel = isKlingImage || isH3TurboImage || isNewImageTab || isPreviewImageTab ? modelDef.apiModel : isMossImage ? MOSS_IMAGE_MODEL : isMaiImage ? MAI_IMAGE_TAB : isFluxImage ? FLUX3_IMAGE_MODEL : modelDef.id === 'grok-image'
     ? ZHENZHEN_IMAGE_GK_V15_MODEL
     : modelDef.id === 'nano-banana-2'
       ? ZHENZHEN_IMAGE_NB_2_MODEL
@@ -491,7 +522,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         ? ZHENZHEN_IMAGE_NB_PRO_MODEL
         : ZHENZHEN_IMAGE_G2_T2I_MODEL;
   const builtinApiModelOptions = isZhenzhenBudgetImageSelected
-    ? modelDef.id === 'grok-image'
+    ? isH3TurboImage || isNewImageTab || isPreviewImageTab || isFluxImage || isMaiImage || isKlingImage || isMossImage ? modelDef.apiModelOptions : modelDef.id === 'grok-image'
       ? ZHENZHEN_BUDGET_GROK_MODEL_OPTIONS
       : modelDef.id === 'nano-banana-2'
         ? ZHENZHEN_BUDGET_BANANA_2_MODEL_OPTIONS
@@ -515,8 +546,12 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   const isZhenzhenGrokImageEdit = apiModel === ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL;
   const isZhenzhenNb2Lite = apiModel === ZHENZHEN_IMAGE_NB_2_LITE_MODEL;
   const isZhenzhenNb2 = apiModel === ZHENZHEN_IMAGE_NB_2_MODEL;
+  const isZhenzhenNb21 = apiModel === ZHENZHEN_IMAGE_NB_21_MODEL;
   const isZhenzhenNbPro = apiModel === ZHENZHEN_IMAGE_NB_PRO_MODEL;
-  const isZhenzhenNb = isZhenzhenNb2Lite || isZhenzhenNb2 || isZhenzhenNbPro;
+  const isNbLowprice = isNbLowpriceModel(apiModel);
+  const isZhenzhenNb = isZhenzhenNb2Lite || isZhenzhenNb2 || isZhenzhenNb21 || isZhenzhenNbPro || isNbLowprice;
+  const fluxImageGrounding = d?.fluxImageGrounding !== false;
+  const fluxImageSafetyTolerance = [0, 1, 2, 3, 4].includes(d?.fluxImageSafetyTolerance) ? d.fluxImageSafetyTolerance : 2;
   const isQwenImageI2I = isQwenImageTab && isQwenImage30I2IModel(apiModel);
   const isWanImageI2I = isWanImageTab && isWan27GlobalI2IModel(apiModel);
   const zhenzhenNbImageCount = isZhenzhenNb2Lite
@@ -532,6 +567,8 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
     : '贞贞的平价AI小屋';
   const effectiveAspectRatios = isZhenzhenImageG2
     ? ZHENZHEN_IMAGE_G2_RATIOS
+    : isNbLowprice ? (apiModel === NB_LOWPRICE_DOUBAO_CONTRACT.banana.models[0] ? NB_LOWPRICE_DOUBAO_CONTRACT.banana.proRatios : NB_LOWPRICE_DOUBAO_CONTRACT.banana.nb21Ratios)
+    : isZhenzhenNb21 ? NB_FLUX_VIDU_CONTRACT.banana21.ratios
     : isZhenzhenGrokImageV2Edit
       ? [...ZHENZHEN_IMAGE_GK_V2_EDIT_RATIOS]
     : isZhenzhenGrokImageV2
@@ -547,7 +584,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         : modelDef.aspectRatios;
   const effectiveAspectRatio = effectiveAspectRatios.includes(aspectRatio)
     ? aspectRatio
-    : (isZhenzhenImageG2 ? 'adaptive' : isZhenzhenGrokImageV2Edit ? 'auto' : isQwenImage21Tab ? '3:4' : '1:1');
+    : (isMossImage ? MOSS_IMAGE_CONTRACT.defaultRatio : isZhenzhenImageG2 ? 'adaptive' : isZhenzhenGrokImageV2Edit ? 'auto' : isQwenImage21Tab ? '3:4' : '1:1');
   const effectiveSizes = isZhenzhenImageG2
     ? ['1K']
     : isZhenzhenLowpriceImage
@@ -556,18 +593,18 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         ? ['0.5K', '1K', '2K', '4K']
         : isZhenzhenNb2Lite
           ? ['1K']
-          : isZhenzhenNbPro
+          : isZhenzhenNbPro || isZhenzhenNb21 || isNbLowprice
             ? ['1K', '2K', '4K']
       : (isZhenzhenGrokImageV2 || isZhenzhenGrokImageV2Edit || isZhenzhenGrokImage || isZhenzhenGrokImageEdit)
         ? []
         : modelDef.sizes;
-  const effectiveSizeLevel = isZhenzhenImageG2
+  const effectiveSizeLevel = isMossImage ? '' : isZhenzhenImageG2
     ? '1K'
     : isZhenzhenNb2Lite
       ? '1K'
       : isZhenzhenNb2 && !['0.5K', '1K', '2K', '4K'].includes(sizeLevel)
         ? '1K'
-        : (isZhenzhenLowpriceImage || isZhenzhenNbPro) && !['1K', '2K', '4K'].includes(sizeLevel)
+        : (isZhenzhenLowpriceImage || isZhenzhenNbPro || isZhenzhenNb21 || isNbLowprice) && !['1K', '2K', '4K'].includes(sizeLevel)
           ? '1K'
           : sizeLevel;
 
@@ -723,6 +760,11 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
     ? isJimengCliImageSelected
       ? 10
       : Math.max(8, modelDef.maxReferenceImages || 0)
+    : NOV21.isImage(apiModel) ? d?.longImageSkill==='webpage'?2:3
+    : isNewImageTab
+      ? apiModel === NEW_IMAGE_CONTRACT.g26.models[0] ? (newImageSettings(apiModel,d || {}).g26Mode === 'image' ? NEW_IMAGE_CONTRACT.g26.lowpriceMaxReferences : 0)
+        : NEW_IMAGE_CONTRACT.g26.models.includes(apiModel) ? (newImageSettings(apiModel,d || {}).g26Mode === 'image' ? 16 : 0)
+        : apiModel === 'krea-v3-i2i' ? 8 : 0
     : isSeedreamLayerTab || isVosr2ImageTab
       ? 1
     : isQwenImageTab
@@ -803,6 +845,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   const orderedImages = useOrderedMaterials(allImagesUnordered, materialOrder);
   const orderedTexts = useOrderedMaterials(visibleUpstreamTexts, materialOrder);
   const seedreamNzUiModel = seedreamNzRuntimeModel(seedreamNzModelFamily, orderedImages.length);
+  const isSeedream55 = !isExternalSelected && (isSeedreamLayerTab ? SEEDREAM55_DRAFT.isImage(apiModel) : isSeedreamNz && SEEDREAM55_DRAFT.isImage(seedreamNzUiModel));
   const mentionMaterials = useMemo(
     () => orderedImages.slice(0, maxRefs),
     [orderedImages, maxRefs],
@@ -824,6 +867,32 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   // 切换模型时,如果当前比例/尺寸不在新模型选项里则重置
   const switchModel = (mId: string) => {
     const newDef = IMAGE_MODELS.find((m) => m.id === mId) || IMAGE_MODELS[0];
+    if (NEW_IMAGE_TABS.includes(newDef.id)) {
+      update({model:newDef.id,apiModel:newDef.apiModel,imageBuiltinSource:'seedance-nz',aspectRatio:'',sizeLevel:'',...newImageSettings(newDef.apiModel,d || {})});return;
+    }
+    if (newDef.id === NOV19.contract.kling.model) { update({model:newDef.id,apiModel:newDef.apiModel,imageBuiltinSource:'seedance-nz',aspectRatio:'',sizeLevel:'',...klingImageSettings({})});return; }
+    if (newDef.id === MOSS_IMAGE_MODEL) {
+      update({ model: newDef.id, apiModel: MOSS_IMAGE_MODEL, imageBuiltinSource: 'seedance-nz',
+        aspectRatio: MOSS_IMAGE_CONTRACT.defaultRatio, sizeLevel: '' });
+      return;
+    }
+    if (newDef.paramKind === 'h3-turbo-image') {
+      update({model:newDef.id,apiModel:newDef.apiModel,imageBuiltinSource:'seedance-nz',aspectRatio:newDef.defaultAspectRatio,sizeLevel:newDef.defaultSize,h3TurboSeed:d.h3TurboSeed ?? -1,h3TurboFormat:d.h3TurboFormat ?? 'jpeg'}); return;
+    }
+    if (isPreviewImage(newDef.id)) {
+      update({ model: newDef.id, apiModel: newDef.apiModel, imageBuiltinSource: 'seedance-nz',
+        aspectRatio: newDef.defaultAspectRatio, sizeLevel: newDef.defaultSize }); return;
+    }
+    if (newDef.id === MAI_IMAGE_TAB) {
+      update({ model: newDef.id, apiModel: MAI_IMAGE_TAB, imageBuiltinSource: 'seedance-nz',
+        aspectRatio: '', sizeLevel: '', ...maiImageSettings(d || {}) });
+      return;
+    }
+    if (newDef.id === FLUX3_IMAGE_MODEL) {
+      update({ model: newDef.id, apiModel: FLUX3_IMAGE_MODEL, imageBuiltinSource: 'seedance-nz',
+        aspectRatio: newDef.defaultAspectRatio, sizeLevel: newDef.defaultSize });
+      return;
+    }
     if (newDef.paramKind === 'vosr2-upscale') {
       update({
         model: newDef.id,
@@ -940,6 +1009,29 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   };
 
   const switchApiModel = (nextApiModel: string) => {
+    if (isNewImageModel(nextApiModel)) {
+      const def=IMAGE_MODELS.find(m=>m.apiModelOptions.some(o=>o.value===nextApiModel))!;
+      update({model:def.id,apiModel:nextApiModel,imageBuiltinSource:'seedance-nz',aspectRatio:'',sizeLevel:'',
+        ...(nextApiModel===NEW_IMAGE_CONTRACT.g26.models[0]&&d?.g26Mode==='svg'?{g26Mode:'image'}:{})});return;
+    }
+    if (isPreviewImage(nextApiModel) || isFluxVariant(nextApiModel)) {
+      const def = IMAGE_MODELS.find(m => m.apiModelOptions.some(o => o.value === nextApiModel))!;
+      update({ model: def.id, apiModel: nextApiModel, imageBuiltinSource: 'seedance-nz',
+        aspectRatio: def.aspectRatios.includes(aspectRatio) ? aspectRatio : def.defaultAspectRatio,
+        sizeLevel: def.sizes.includes(sizeLevel) ? sizeLevel : def.defaultSize });
+      return;
+    }
+    if (nextApiModel === NOV19.contract.kling.model) {update({model:nextApiModel,apiModel:nextApiModel,imageBuiltinSource:'seedance-nz',aspectRatio:'',sizeLevel:''});return;}
+    if (nextApiModel === MOSS_IMAGE_MODEL) {
+      update({ model: MOSS_IMAGE_MODEL, apiModel: nextApiModel, imageBuiltinSource: 'seedance-nz',
+        aspectRatio: MOSS_IMAGE_CONTRACT.ratios.includes(aspectRatio) ? aspectRatio : MOSS_IMAGE_CONTRACT.defaultRatio, sizeLevel: '' });
+      return;
+    }
+    if (isMaiImageModel(nextApiModel)) {
+      update({ model: MAI_IMAGE_TAB, apiModel: nextApiModel, imageBuiltinSource: 'seedance-nz',
+        aspectRatio: '', sizeLevel: '',...(NOV19.isMai(nextApiModel)?{maiSize:d?.maiSize==='auto'?'1:1':d?.maiSize??'1:1',maiAutoAspectRatio:false,maiBackground:d?.maiBackground??'auto',maiNsfw:d?.maiNsfw??false}:{}) });
+      return;
+    }
     if ((QWEN_IMAGE_30_MODELS as readonly string[]).includes(nextApiModel)) {
       update({
         model: 'qwen-image-3.0',
@@ -981,12 +1073,19 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         || nextApiModel === ZHENZHEN_IMAGE_GK_V15_MODEL
         || nextApiModel === ZHENZHEN_IMAGE_GK_V15_EDIT_MODEL
         ? 'grok-image'
-        : nextApiModel === ZHENZHEN_IMAGE_NB_2_MODEL || nextApiModel === ZHENZHEN_IMAGE_NB_2_LITE_MODEL
+        : nextApiModel === FLUX3_IMAGE_MODEL ? FLUX3_IMAGE_MODEL
+        : nextApiModel === ZHENZHEN_IMAGE_NB_2_MODEL || nextApiModel === ZHENZHEN_IMAGE_NB_2_LITE_MODEL || nextApiModel === ZHENZHEN_IMAGE_NB_21_MODEL || isNbLowpriceModel(nextApiModel)
           ? 'nano-banana-2'
           : nextApiModel === ZHENZHEN_IMAGE_NB_PRO_MODEL
             ? 'nano-banana-pro'
             : 'gpt-image-2';
-      const nextRatio = isZhenzhenImageG2Model(nextApiModel)
+      const nextRatio = nextApiModel === FLUX3_IMAGE_MODEL
+        ? (NB_FLUX_VIDU_CONTRACT.flux.ratios.includes(aspectRatio) ? aspectRatio : 'auto')
+        : isNbLowpriceModel(nextApiModel)
+          ? ((nextApiModel === NB_LOWPRICE_DOUBAO_CONTRACT.banana.models[0] ? NB_LOWPRICE_DOUBAO_CONTRACT.banana.proRatios : NB_LOWPRICE_DOUBAO_CONTRACT.banana.nb21Ratios).includes(aspectRatio) ? aspectRatio : '1:1')
+        : nextApiModel === ZHENZHEN_IMAGE_NB_21_MODEL
+        ? (NB_FLUX_VIDU_CONTRACT.banana21.ratios.includes(aspectRatio) ? aspectRatio : '1:1')
+        : isZhenzhenImageG2Model(nextApiModel)
         ? (ZHENZHEN_IMAGE_G2_RATIOS.includes(aspectRatio) ? aspectRatio : 'adaptive')
         : nextApiModel === ZHENZHEN_IMAGE_GK_V2_EDIT_MODEL
           ? ((ZHENZHEN_IMAGE_GK_V2_EDIT_RATIOS as readonly string[]).includes(aspectRatio) ? aspectRatio : 'auto')
@@ -1001,7 +1100,11 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         model: nextModel,
         apiModel: nextApiModel,
         imageBuiltinSource: 'seedance-nz',
-        sizeLevel: nextApiModel === ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL || isZhenzhenImageG25Model(nextApiModel)
+        sizeLevel: nextApiModel === FLUX3_IMAGE_MODEL
+          ? (NB_FLUX_VIDU_CONTRACT.flux.resolutions.includes(sizeLevel) ? sizeLevel : '1k')
+          : nextApiModel === ZHENZHEN_IMAGE_NB_21_MODEL || isNbLowpriceModel(nextApiModel)
+          ? (['1K', '2K', '4K'].includes(sizeLevel) ? sizeLevel : '1K')
+          : nextApiModel === ZHENZHEN_IMAGE_G_V2_LOWPRICE_MODEL || isZhenzhenImageG25Model(nextApiModel)
           ? (['1K', '2K', '4K'].includes(sizeLevel) ? sizeLevel : '1K')
           : nextApiModel === ZHENZHEN_IMAGE_NB_2_MODEL
             ? (['0.5K', '1K', '2K', '4K'].includes(sizeLevel) ? sizeLevel : '1K')
@@ -1052,7 +1155,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
     void getNodes;
     return {
       prompt: prompts.join('\n').trim(),
-      images: images.slice(0, maxRefs),
+      images: isH3TurboImage || isNewImageTab || isPreviewImageTab || isFluxImage || isZhenzhenNb21 || isMaiImage || isKlingImage || isMossImage || isNbLowprice ? images : images.slice(0, maxRefs),
     };
   };
 
@@ -1140,14 +1243,50 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
 
   const handleGenerate = async (reporter?: RunNodeLifecycleReporter) => {
     if (status === 'generating' || reporter?.signal?.aborted) return;
+    if (savedExternalMissing) {
+      const message = translate('settings:strata.sourceUnavailable');
+      setError(message); update({ status: 'error', error: message });
+      return;
+    }
     setError(null);
     setDownloadNotice(null);
     const { upstreamImages, basePrompt, compiledPrompt, finalPrompt } = resolveGenerationInput();
     const src = `image:${id.slice(0, 6)}`;
+    if ((isH3TurboImage || isNewImageTab || isPreviewImageTab || isFluxImage || isZhenzhenNb21 || isMaiImage || isKlingImage || isMossImage || isNbLowprice) && upstreamImages.length > maxRefs) {
+      setError(translate('nodes:generation.newBudgetModels.tooManyImages', { count: maxRefs }));
+      return;
+    }
+    if (isNbLowprice && ([...finalPrompt].length < 1 || [...finalPrompt].length > 5000)) {
+      setError(translate('nodes:generation.nbLowpricePromptLimit'));
+      return;
+    }
+    if (isZhenzhenNb21 && (finalPrompt.length < 5 || finalPrompt.length > 5000)) {
+      setError(translate('nodes:generation.newBudgetModels.bananaPrompt'));
+      return;
+    }
     const promptRequired = !isSeedreamLayerTab && !isVosr2ImageTab && (
       !isZhenzhenBudgetMjSelected
       || midjourneyNzRequiresPrompt(mjNzOperation, mjNzVideoSource)
     );
+    if (isH3TurboImage) {
+      try { buildH3ImageRequest(apiModel,finalPrompt,upstreamImages,d || {}); } catch { setError(translate('h3Turbo:invalid')); return; }
+    }
+    if (isNewImageTab) {
+      try {buildNewImageRequest(apiModel,finalPrompt,upstreamImages,d || {});} catch(error:any){setError(translate(error.message));return;}
+    }
+    if (isPreviewImageTab || isFluxImage && isFluxVariant(apiModel)) {
+      try { buildPreviewImageRequest(apiModel, finalPrompt, upstreamImages, effectiveAspectRatio, effectiveSizeLevel, d || {}); }
+      catch (error: any) { setError(translate(error.message)); return; }
+    }
+    if (isKlingImage) { try{(NOV21.isImage(apiModel)?buildLongImageRequest:buildKlingImageRequest)(finalPrompt,upstreamImages,d || {});}catch(error:any){setError(translate(error.message));return;} }
+    if (isMaiImage) {
+      try { buildMaiImageRequest(apiModel, finalPrompt, upstreamImages, maiSettings); }
+      catch (error: any) { setError(translate(error.message)); return; }
+    }
+    if (isMossImage) {
+      try { buildMossImageRequest(finalPrompt, upstreamImages, effectiveAspectRatio); }
+      catch (error: any) { setError(translate(error.message)); return; }
+    }
     if (!basePrompt && promptRequired && (!isComfyExternal || comfyHasPromptField)) {
       setError('未连接 text 节点也未填写 prompt');
       logBus.error('生成中止: 缺少 prompt', src);
@@ -1299,7 +1438,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         return;
       }
     }
-    if (isSeedreamNz && seedreamNzResolution === 'custom') {
+    if (isSeedreamNz && !isSeedream55 && seedreamNzResolution === 'custom') {
       const match = seedreamNzResolvedSize.match(/^(\d+)x(\d+)$/);
       const width = Number(match?.[1]);
       const height = Number(match?.[2]);
@@ -1991,7 +2130,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           : isZhenzhenBudgetImageSelected
           ? apiModel
           : seedreamNzRuntimeModel(seedreamNzModelFamily, providerRefs.length);
-        const imageFamilyLabel = isVosr2ImageTab
+        const imageFamilyLabel = isH3TurboImage ? modelDef.tabLabel : isMossImage ? 'Moss Image' : isKlingImage ? 'Kling Image' : isMaiImage ? 'Mai' : isVosr2ImageTab
           ? 'Vosr2 图片超分'
           : isSeedreamLayerTab
           ? 'Seedream 分层'
@@ -2010,7 +2149,12 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           : isZhenzhenApimartImage
             ? 'APIMart Image'
             : 'Seedream';
-        const sizeLabel = isVosr2ImageTab
+        const sizeLabel = isH3TurboImage ? `${effectiveSizeLevel} · ${effectiveAspectRatio}` : isMossImage ? effectiveAspectRatio : isMaiImage
+          ? providerRefs.length ? '参考图决定尺寸 · 单张 PNG'
+            : maiSettings.maiAutoAspectRatio ? `auto · ${maiSettings.maiResolution}`
+            : maiSettings.maiSize === 'custom_pixels' ? `${maiSettings.maiWidth}x${maiSettings.maiHeight}`
+            : `${maiSettings.maiSize === 'custom_ratio' ? maiSettings.maiCustomRatio : maiSettings.maiSize} · ${maiSettings.maiResolution}`
+          : isVosr2ImageTab
           ? '固定输出 4K'
           : isSeedreamLayerTab
           ? `${seedreamLayerResolution} · ${seedreamOutputFormat} · 全部图层`
@@ -2043,7 +2187,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           `${seedanceNzProviderLabel} ${imageFamilyLabel} 提交: model=${expectedModel} 参考图=${providerRefs.length} 尺寸=${sizeLabel}`,
           src,
         );
-        const submit = await submitSeedreamNz(isVosr2ImageTab ? {
+        const submit = await submitSeedreamNz(isKlingImage ? (NOV21.isImage(apiModel)?buildLongImageRequest:buildKlingImageRequest)(finalPrompt,providerRefs,d || {}) : isH3TurboImage ? buildH3ImageRequest(apiModel,finalPrompt,providerRefs,d || {}) : isNewImageTab ? buildNewImageRequest(apiModel,finalPrompt,providerRefs,d || {}) : isPreviewImageTab || isFluxImage && isFluxVariant(apiModel) ? buildPreviewImageRequest(apiModel, finalPrompt, providerRefs, effectiveAspectRatio, effectiveSizeLevel, d || {}) : isMaiImage ? buildMaiImageRequest(apiModel, finalPrompt, providerRefs, maiSettings) : isMossImage ? buildMossImageRequest(finalPrompt, providerRefs, effectiveAspectRatio) : isSeedream55 ? buildSeedream55Request(isSeedreamLayerTab ? apiModel : seedreamNzUiModel, finalPrompt, providerRefs, d, isSeedreamLayerTab, translate) : isVosr2ImageTab ? {
           model: VOSR2_IMAGE_UPSCALE_MODEL,
           images: providerRefs,
         } : {
@@ -2086,6 +2230,8 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               | 'zhenzhen-image-gk-v15-edit'
               | 'zhenzhen-image-nb-2-lite'
               | 'zhenzhen-image-nb-2'
+              | 'zhenzhen-image-nb-2.1'
+              | 'flux-3-image'
               | 'zhenzhen-image-nb-pro'
             : undefined,
           modelFamily: isZhenzhenBudgetImageSelected || isQwenImageTab || isQwenImage21Tab || isSeedreamLayerTab || isWanImageTab ? undefined : seedreamNzModelFamily,
@@ -2101,6 +2247,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             ? '1k'
             : isZhenzhenImageG25
               ? zhenzhenImageG25Size === 'custom' ? undefined : zhenzhenImageG25Resolution
+            : isFluxImage ? effectiveSizeLevel as '768sq' | '1k' | '1.5k' | '2k' | '4k'
             : isZhenzhenLowpriceImage
               ? effectiveSizeLevel.toLowerCase() as '1k' | '2k' | '4k'
               : isZhenzhenNb
@@ -2152,7 +2299,9 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           width: isWanImageTab && !isWanImageI2I ? wanImageWidth : undefined,
           height: isWanImageTab && !isWanImageI2I ? wanImageHeight : undefined,
           thinking_mode: isWanImageTab && !isWanImageI2I ? wanImageThinkingMode : undefined,
-          aspect_ratio: isZhenzhenGrokImageV2Edit ? effectiveAspectRatio : undefined,
+          aspect_ratio: isZhenzhenGrokImageV2Edit || isFluxImage ? effectiveAspectRatio : undefined,
+          grounding: isFluxImage ? fluxImageGrounding : undefined,
+          safety_tolerance: isFluxImage ? fluxImageSafetyTolerance : undefined,
           nsfw_check: isZhenzhenImageG25Lowprice
             ? zhenzhenImageG25NsfwCheck
             : isZhenzhenGrokImageV2Edit ? grokV2EditNsfwCheck : undefined,
@@ -2220,6 +2369,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               progress: '100%',
               imageUrl: url,
               imageUrls: query.urls,
+              ...(isSeedream55 ? { seedreamLayers: query.layers || [] } : {}),
               lastPrompt: finalPrompt,
               usedI2I: isSeedreamLayerTab || isVosr2ImageTab
                 ? true
@@ -2477,12 +2627,19 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             ...(isZhenzhenGrokImageV2 || isZhenzhenGrokImageV2Edit ? { grokV2ImageCount } : {}),
             ...(isZhenzhenGrokImageV2Edit ? { grokV2EditResolution, grokV2EditNsfwCheck } : {}),
             ...(isZhenzhenNb ? { apimartImageCount: zhenzhenNbImageCount } : {}),
+            ...(isFluxImage ? fluxVariantSettings(d || {}) : {}),
+            ...(isPreviewImageTab ? previewImageSettings(d || {}) : {}),
+            ...(isH3TurboImage ? { h3TurboSeed: d.h3TurboSeed ?? -1, ...(apiModel === H3_TURBO.contract.minimax.model ? { h3TurboFormat: d.h3TurboFormat ?? 'jpeg' } : {}) } : {}),
+            ...(isNewImageTab ? newImageSettings(apiModel,d || {}) : {}),
+            ...(isMaiImage ? maiSettings : {}),
+            ...(isKlingImage ? NOV21.isImage(apiModel)?longImageSettings(d || {}):klingImageSettings(d || {}) : {}),
           } : {}),
           ...(!isExternalSelected && isQwenImageTab ? { qwenSizingMode, qwenResolution, qwenCustomSize,
             qwenImageCount, qwenSeed, qwenNegativePrompt, qwenPromptExtend } : {}),
           ...(!isExternalSelected && isQwenImage21Tab ? { qwen21Resolution, qwen21Seed } : {}),
           ...(!isExternalSelected && isWanImageTab && !isWanImageI2I ? { wanImageWidth, wanImageHeight, wanImageThinkingMode } : {}),
           ...(!isExternalSelected && isSeedreamLayerTab ? { seedreamLayerResolution, seedreamOutputFormat } : {}),
+          ...(isSeedream55 ? { seedream55Background: d.seedream55Background ?? 'auto', seedream55Watermark: d.seedream55Watermark ?? false, seedream55SafetyIdentifier: d.seedream55SafetyIdentifier ?? '', seedream55MaxImages: d.seedream55MaxImages ?? 30, seedream55TextRecognition: d.seedream55TextRecognition ?? false } : {}),
           ...(!isExternalSelected && isSeedreamNz ? { seedreamNzModelFamily, seedreamNzResolution, seedreamNzCustomSize, seedreamOutputFormat } : {}),
         } };
     },
@@ -2607,7 +2764,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                           || isSeedreamLayerTab
                           || isWanImageTab
                           || isVosr2ImageTab;
-                        const leavingDedicatedBudgetTab = isQwenImageTab || isQwenImage21Tab || isSeedreamLayerTab || isWanImageTab || isVosr2ImageTab;
+                        const leavingDedicatedBudgetTab = isH3TurboImage || isNewImageTab || isPreviewImageTab || isFluxImage || isQwenImageTab || isQwenImage21Tab || isSeedreamLayerTab || isWanImageTab || isVosr2ImageTab;
                         const fallbackModel = IMAGE_MODELS[0];
                         update({
                           providerSource: 'zhenzhen',
@@ -3108,18 +3265,29 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
             )}
         </div>
 
-        {/* 模型 TAB 切换(对应主项目 gpt-image-2-web Tab 0/1/2) */}
+        {/* 模型分类与视频节点保持一致，沿用既有来源过滤和切换逻辑。 */}
         {!isExternalSelected && <div>
-          <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.model')}</label>
-          <div
-            className={`flex flex-wrap gap-0.5 p-0.5 rounded ${isPixel ? '' : 'bg-white/5'}`}
-            style={isPixel ? { background: 'var(--px-muted)', border: '1.5px solid var(--px-ink)' } : undefined}
+          <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.modelType')}</label>
+          <select
+            aria-label={translate('nodes:generation.modelType')}
+            data-image-model-family
+            value={modelDef.id}
+            onChange={(event) => switchModel(event.currentTarget.value)}
+            className="nodrag nopan nowheel w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-white/30"
           >
             {IMAGE_MODELS
+              .filter((m) => m.paramKind !== 'h3-turbo-image' || isZhenzhenBudgetPlatformSelected)
+              .filter((m) => m.id !== FLUX3_IMAGE_MODEL || isZhenzhenBudgetPlatformSelected)
+              .filter((m) => m.id !== MAI_IMAGE_TAB || isZhenzhenBudgetPlatformSelected)
+              .filter((m) => (!NEW_IMAGE_TABS.includes(m.id) && !isPreviewImage(m.id) && m.id !== NOV19.contract.kling.model && m.id !== MOSS_IMAGE_MODEL) || isZhenzhenBudgetPlatformSelected)
               .filter((m) => !isZhenzhenBudgetPlatformSelected
                 || m.id === 'gpt-image-2'
                 || m.id === 'nano-banana-2'
                 || m.id === 'nano-banana-pro'
+                || m.id === FLUX3_IMAGE_MODEL
+                || m.id === MAI_IMAGE_TAB
+                || m.paramKind === 'h3-turbo-image'
+                || NEW_IMAGE_TABS.includes(m.id) || isPreviewImage(m.id) || m.id === NOV19.contract.kling.model || m.id === MOSS_IMAGE_MODEL
                 || m.id === 'grok-image'
                 || m.id === 'qwen-image-3.0'
                 || m.id === QWEN_IMAGE_GLOBAL_21_MODEL
@@ -3127,27 +3295,8 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                 || m.id === 'seedream-layer-decomposition'
                 || m.id === VOSR2_IMAGE_UPSCALE_MODEL
                 || m.id === 'midjourney')
-              .map((m) => {
-              const isActive = m.id === model;
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => switchModel(m.id)}
-                  title={m.description}
-                  className={`min-w-[64px] flex-1 py-1 text-[10px] font-semibold rounded transition-all ${
-                    isActive ? 'bg-amber-500/30 text-amber-200' : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                  style={
-                    isPixel && isActive
-                      ? { background: 'var(--px-yellow)', color: 'var(--px-ink)', border: '1.5px solid var(--px-ink)', boxShadow: '1px 1px 0 var(--px-ink)' }
-                      : isPixel ? { color: 'var(--px-ink-soft)' } : undefined
-                  }
-                >
-                  {m.tabLabel}
-                </button>
-              );
-            })}
-          </div>
+              .map((m) => <option key={m.id} value={m.id} className="bg-zinc-900">{m.tabLabel}</option>)}
+          </select>
         </div>}
 
         {isSeedream && !isExternalSelected && (
@@ -3213,7 +3362,12 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           <div className="rounded border border-cyan-400/25 bg-cyan-500/5 px-2 py-1.5 text-[10px] leading-4 text-cyan-100/80">
             <div>{`贞贞的平价AI小屋 · ${apiModel}`}</div>
             <div>
-              {isZhenzhenImageG2
+              {isKlingImage ? translate(NOV21.isImage(apiModel)?'nov21:longHint':'nov19:klingHint') : isH3TurboImage ? translate('h3Turbo:imageHint', { count: maxRefs }) : isNewImageTab ? translate('g26Krea3d:newImageDescription') : isPreviewImageTab ? translate(apiModel === PREVIEW_MUSE_FLUX.hy.model ? 'previewMuseFlux:hyDescription' : 'previewMuseFlux:museImageDescription') : isMossImage ? translate('nodes:generation.moss.description')
+                : isMaiImage ? translate(NOV19.isMai(apiModel)?'nov19:maiHint':'nodes:generation.mai.description')
+                : isFluxImage ? translate(isFluxVariant(apiModel) ? 'previewMuseFlux:fluxDescription' : 'nodes:generation.newBudgetModels.fluxDescription')
+                : isNbLowprice ? translate('nodes:generation.newBudgetModels.nbLowpriceDescription')
+                : isZhenzhenNb21 ? translate('nodes:generation.newBudgetModels.bananaDescription')
+                : isZhenzhenImageG2
                 ? isZhenzhenImageG2I2I
                   ? '图生图模式：必须提供 1–10 张参考图；固定 1K。'
                   : '文生图模式：只使用 Prompt，已连接的参考图不会发送；固定 1K。'
@@ -3241,6 +3395,26 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           </div>
         )}
 
+        {isH3TurboImage && <H3TurboImageControls model={apiModel} data={d || {}} referenceCount={orderedImages.length} update={update} />}
+        {isNewImageTab && <G26KreaControls model={apiModel} data={d || {}} update={update} />}
+        {(isPreviewImageTab || isFluxImage && isFluxVariant(apiModel)) && <PreviewImageControls model={apiModel} ratio={effectiveAspectRatio} data={d || {}} update={update} />}
+        {isKlingImage && (NOV21.isImage(apiModel)?<LongImageControls data={d || {}} update={update}/>:<KlingImageControls data={d || {}} update={update} />)}
+        {isMaiImage && <MaiImageControls model={apiModel} data={maiSettings} referenceCount={orderedImages.length} update={update} />}
+        {isMossImage && <MossImageControls ratio={effectiveAspectRatio} update={update} />}
+        {isFluxImage && (
+          <div className="nodrag nowheel rounded border border-cyan-400/25 p-2 space-y-2">
+            {!apiModel.includes('-klein-') && <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={fluxImageGrounding} onChange={(e) => { const value = e.currentTarget.checked; update({ fluxImageGrounding: value }); }} />
+              {translate('nodes:generation.newBudgetModels.grounding')}
+            </label>}
+            <label className="block text-xs">{translate('nodes:generation.newBudgetModels.safetyTolerance')}
+              <select className="ml-2 rounded bg-white/5" value={fluxImageSafetyTolerance}
+                onChange={(e) => { const value = Number(e.currentTarget.value); update({ fluxImageSafetyTolerance: value }); }}>
+                {[0, 1, 2, 3, 4].map((value) => <option className="bg-zinc-900" key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+          </div>
+        )}
         {isZhenzhenImageG25 && !isExternalSelected && (
           <div className="space-y-2 rounded border border-cyan-400/25 bg-cyan-500/5 p-2">
             <div className="grid grid-cols-2 gap-2">
@@ -3449,6 +3623,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           </div>
         )}
 
+        {isSeedream55 && <Seedream55Controls data={d} layer={isSeedreamLayerTab} update={update} />}
         {isSeedreamLayerTab && !isExternalSelected && (
           <div className="rounded border border-cyan-400/25 bg-cyan-500/5 px-2 py-1.5 text-[10px] leading-4 text-cyan-100/80">
             <div>贞贞的平价AI小屋 · {apiModel}</div>
@@ -3644,7 +3819,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
         )}
 
         {/* 比例 + 尺寸;Seedream 使用像素尺寸 + 输出格式,Grok Image 只需要比例 */}
-        {(!isFal && !isMj && !isComfyExternal && !isQwenImageTab && !isQwenImage21Tab && !isSeedreamLayerTab && !isWanImageTab && !isGptImage25 && !isZhenzhenImageG25) && (
+        {(!isFal && !isMj && !isComfyExternal && !isH3TurboImage && !isNewImageTab && !isMaiImage && !isKlingImage && !isMossImage && !isQwenImageTab && !isQwenImage21Tab && !isSeedreamLayerTab && !isWanImageTab && !isGptImage25 && !isZhenzhenImageG25) && (
           <div className={`grid gap-2 ${isSeedream || (!isGrokImage && effectiveSizes.length) ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {effectiveAspectRatios.length > 0 && <div>
               <label className="text-[10px] text-white/50 block mb-1">{translate('nodes:generation.aspectRatio')}</label>
@@ -4545,7 +4720,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
           </button>
         ) : (
           <button
-            onClick={() => requestCanvasNodeRun(id)}
+            onClick={(event) => { event.stopPropagation(); requestCanvasNodeRun(id); }}
             className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-medium transition-colors"
           >
             <Sparkles size={12} /> {translate('nodes:generation.generate')}
@@ -4568,6 +4743,8 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
       </div>
 
       {/* 结果展示：仅在未外挂 OutputNode 时在节点内预览，避免与下游 OutputNode 重复 */}
+      {isSeedream55 && isSeedreamLayerTab && Array.isArray(d.imageUrls) && d.imageUrls.map((url: string, index: number) => <a key={index} className="nodrag mx-2 mb-1 block text-xs underline" href={originalImageDisplayUrl(url)} download onClick={event => { event.preventDefault(); event.stopPropagation(); void downloadOriginalImage(url).catch(error => setError(String(error.message))); }}>{translate('seedream55:layerFile', { index: index + 1 })}</a>)}
+      {(isH3TurboImage || isNewImageTab || isSeedream55) && imageUrl && <a className="nodrag mx-2 mb-2 block rounded border border-white/15 p-2 text-center text-xs" href={originalImageDisplayUrl(imageUrl)} download={imageUrl.split('/').pop()} onClick={event=>{event.preventDefault();event.stopPropagation();void downloadOriginalImage(imageUrl).catch(error=>setError(translate('g26Krea3d:downloadFailed',{error:String(error?.message||error)})));}}>{translate('g26Krea3d:downloadOriginal')}</a>}
       {imageUrl && !hasAutoOutput && (
         <div className="border-t border-white/10 p-2">
           <SmartImage
